@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -5,10 +6,10 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import Suggestions, { Suggestion } from "./Suggestions";
 import { QueuedFile } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess } from "@/utils/toast";
+import { parseFilename } from "@/lib/parser";
 
 interface LearningCardProps {
   file: QueuedFile;
@@ -24,12 +25,6 @@ const formSchema = z.object({
 
 type FormSchemaType = z.infer<typeof formSchema>;
 
-const mockSuggestions: Suggestion[] = [
-    { label: "Series", value: "The Wicked + The Divine", field: "series" },
-    { label: "Publisher", value: "Image Comics", field: "publisher" },
-    { label: "Year", value: "2014", field: "year" },
-];
-
 const LearningCard = ({ file }: LearningCardProps) => {
   const { addComic, removeFile } = useAppContext();
 
@@ -44,6 +39,17 @@ const LearningCard = ({ file }: LearningCardProps) => {
     },
   });
 
+  useEffect(() => {
+    const parsed = parseFilename(file.path);
+    form.reset({
+      series: parsed.series || "",
+      issue: parsed.issue || "",
+      year: parsed.year || new Date().getFullYear(),
+      volume: parsed.volume || "",
+      publisher: "",
+    });
+  }, [file, form]);
+
   const onSubmit = (values: FormSchemaType) => {
     addComic({
       ...values,
@@ -56,10 +62,6 @@ const LearningCard = ({ file }: LearningCardProps) => {
   const handleSkip = () => {
     removeFile(file.id, 'skip');
     showSuccess(`Skipped file: ${file.name}`);
-  };
-
-  const handleSuggestionClick = (field: string, value: string) => {
-    form.setValue(field as keyof FormSchemaType, value, { shouldValidate: true });
   };
 
   return (
@@ -135,7 +137,6 @@ const LearningCard = ({ file }: LearningCardProps) => {
                   )}
                 />
               </div>
-              <Suggestions suggestions={mockSuggestions} onSuggestionClick={handleSuggestionClick} />
             </div>
           </CardContent>
           <CardFooter className="flex justify-end gap-2">

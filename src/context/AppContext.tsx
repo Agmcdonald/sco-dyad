@@ -12,19 +12,19 @@ const initialComics: Comic[] = [
 ];
 
 const initialFiles: QueuedFile[] = [
-  { id: 1, name: "Radiant Black 01.cbz", series: "Radiant Black", issue: "1", year: 2021, publisher: "Image Comics", confidence: "High", status: "Pending" },
-  { id: 2, name: "Invincible_v1_001.cbr", series: "Invincible", issue: "1", year: 2003, publisher: "Image Comics", confidence: "High", status: "Pending" },
-  { id: 3, name: "Monstress-001.cbz", series: "Monstress", issue: "1", year: 2015, publisher: "Image Comics", confidence: "Medium", status: "Pending" },
-  { id: 4, name: "Paper Girls #1.zip", series: "Paper Girls", issue: "1", year: 2015, publisher: "Image Comics", confidence: "High", status: "Pending" },
-  { id: 5, name: "WicDiv_1.cbz", series: "The Wicked + The Divine", issue: "1", year: 2014, publisher: "Image Comics", confidence: "Low", status: "Pending" },
-  { id: 6, name: "East of West 01 (2013).cbr", series: "East of West", issue: "1", year: 2013, publisher: "Image Comics", confidence: "High", status: "Pending" },
-  { id: 7, name: "Corrupted_File.cbz", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+  { id: 1, name: "Radiant Black 01.cbz", path: "/comics/incoming/Radiant Black 01.cbz", series: "Radiant Black", issue: "1", year: 2021, publisher: "Image Comics", confidence: "High", status: "Pending" },
+  { id: 2, name: "Invincible_v1_001.cbr", path: "/comics/incoming/Invincible_v1_001.cbr", series: "Invincible", issue: "1", year: 2003, publisher: "Image Comics", confidence: "High", status: "Pending" },
+  { id: 3, name: "Monstress-001.cbz", path: "/comics/incoming/Monstress-001.cbz", series: "Monstress", issue: "1", year: 2015, publisher: "Image Comics", confidence: "Medium", status: "Pending" },
+  { id: 4, name: "Paper Girls #1.zip", path: "/comics/incoming/Paper Girls #1.zip", series: "Paper Girls", issue: "1", year: 2015, publisher: "Image Comics", confidence: "High", status: "Pending" },
+  { id: 5, name: "WicDiv_1.cbz", path: "/comics/incoming/The Wicked + The Divine/WicDiv_1.cbz", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+  { id: 6, name: "East of West 01 (2013).cbr", path: "/comics/incoming/East of West 01 (2013).cbr", series: "East of West", issue: "1", year: 2013, publisher: "Image Comics", confidence: "High", status: "Pending" },
+  { id: 7, name: "Corrupted_File.cbz", path: "/comics/incoming/Corrupted_File.cbz", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
 ];
 
 const mockFilesToAdd: QueuedFile[] = [
-    { id: 100, name: "BlackScience_01.cbr", series: "Black Science", issue: "1", year: 2013, publisher: "Image Comics", confidence: "High", status: "Pending" },
-    { id: 101, name: "DeadlyClass_v1_1.cbz", series: "Deadly Class", issue: "1", year: 2014, publisher: "Image Comics", confidence: "Medium", status: "Pending" },
-    { id: 102, name: "unknown_comic.cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Warning" },
+    { id: 100, name: "BlackScience_01.cbr", path: "/comics/incoming/BlackScience_01.cbr", series: "Black Science", issue: "1", year: 2013, publisher: "Image Comics", confidence: "High", status: "Pending" },
+    { id: 101, name: "DeadlyClass_v1_1.cbz", path: "/comics/incoming/DeadlyClass_v1_1.cbz", series: "Deadly Class", issue: "1", year: 2014, publisher: "Image Comics", confidence: "Medium", status: "Pending" },
+    { id: 102, name: "unknown_comic.cbr", path: "/comics/incoming/unknown_comic.cbr", series: null, issue: null, year: null, publisher: null, confidence: "Warning", status: "Pending" },
 ];
 
 interface AppContextType {

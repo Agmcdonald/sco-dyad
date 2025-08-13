@@ -5,6 +5,7 @@ import FileDropzone from "@/components/FileDropzone";
 import FileQueue from "@/components/FileQueue";
 import { useSelection } from "@/context/SelectionContext";
 import { useAppContext } from "@/context/AppContext";
+import { parseFilename } from "@/lib/parser";
 
 const Organize = () => {
   const { 
@@ -15,7 +16,8 @@ const Organize = () => {
     isProcessing, 
     startProcessing, 
     pauseProcessing,
-    logAction
+    logAction,
+    updateFile
   } = useAppContext();
   const { setSelectedItem } = useSelection();
   const queueIndex = useRef(0);
@@ -41,13 +43,30 @@ const Organize = () => {
         const currentFile = files[queueIndex.current];
 
         if (currentFile && currentFile.status === 'Pending') {
-            if (currentFile.name.toLowerCase().includes("corrupted")) {
-              setFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: "Error" } : f));
+            // If file has no metadata, try to parse it
+            if (!currentFile.series) {
+              const parsed = parseFilename(currentFile.path);
+              if (parsed.series && parsed.issue) {
+                updateFile({
+                  ...currentFile,
+                  series: parsed.series,
+                  issue: parsed.issue,
+                  year: parsed.year,
+                  publisher: null, // Publisher still needs to be found
+                  confidence: "Medium",
+                });
+                // The file will be re-evaluated in the next interval
+              } else {
+                updateFile({ ...currentFile, status: "Warning" });
+                logAction('info', `'${currentFile.name}' needs manual review.`);
+              }
+            } else if (currentFile.name.toLowerCase().includes("corrupted")) {
+              updateFile({ ...currentFile, status: "Error" });
               logAction('error', `Failed to process '${currentFile.name}'.`);
             } else if (currentFile.confidence === "Low") {
-              setFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: "Warning" } : f));
+              updateFile({ ...currentFile, status: "Warning" });
             } else if (currentFile.series && currentFile.issue && currentFile.year && currentFile.publisher) {
-              setFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: "Success" } : f));
+              updateFile({ ...currentFile, status: "Success" });
               
               setTimeout(() => {
                 addComic({
@@ -73,7 +92,7 @@ const Organize = () => {
     }
 
     return () => clearInterval(interval);
-  }, [isProcessing, files, setFiles, addComic, removeFile, setSelectedItem, pauseProcessing, logAction]);
+  }, [isProcessing, files, setFiles, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile]);
 
   return (
     <div className="h-full flex flex-col space-y-4">
