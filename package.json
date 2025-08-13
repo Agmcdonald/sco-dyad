@@ -2,27 +2,11 @@
   "name": "dyad-comic-sorter-desktop",
   "private": true,
   "version": "0.1.0",
-  "type": "commonjs",
-  "main": "electron.js",
+  "type": "module",
   "scripts": {
-    "dev": "concurrently -k \"npm:vite\" \"npm:electron:start\"",
-    "vite": "vite",
-    "electron:start": "wait-on tcp:8080 && cross-env ELECTRON_START_URL=http://localhost:8080 electron .",
-    "build": "vite build && electron-builder",
+    "dev": "vite",
+    "build": "vite build",
     "preview": "vite preview"
-  },
-  "build": {
-    "appId": "com.dyad.comicsorter",
-    "productName": "Dyad Comic Sorter",
-    "files": [
-      "dist/**/*",
-      "electron.js",
-      "preload.js"
-    ],
-    "directories": {
-      "buildResources": "assets",
-      "output": "release"
-    }
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -85,11 +69,6 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react-swc": "^3.9.0",
     "autoprefixer": "^10.4.20",
-    "concurrently": "^8.2.2",
-    "cross-env": "^7.0.3",
-    "electron": "^32.0.1",
-    "electron-builder": "^25.1.1",
-    "electron-devtools-installer": "^3.2.0",
     "eslint": "^9.9.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.9",
@@ -98,7 +77,6 @@
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
-    "vite": "^6.3.4",
-    "wait-on": "^7.2.0"
+    "vite": "^6.3.4"
   }
 }
