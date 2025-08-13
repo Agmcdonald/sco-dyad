@@ -5,12 +5,13 @@ import FileDropzone from "@/components/FileDropzone";
 import FileQueue from "@/components/FileQueue";
 import { useSelection } from "@/context/SelectionContext";
 import { useAppContext } from "@/context/AppContext";
+import { useSettings } from "@/context/SettingsContext";
 import { parseFilename } from "@/lib/parser";
+import { fetchComicMetadata } from "@/lib/scraper";
 
 const Organize = () => {
   const { 
     files, 
-    setFiles, 
     addComic, 
     removeFile, 
     isProcessing, 
@@ -19,6 +20,7 @@ const Organize = () => {
     logAction,
     updateFile
   } = useAppContext();
+  const { settings } = useSettings();
   const { setSelectedItem } = useSelection();
   const queueIndex = useRef(0);
 
@@ -33,66 +35,54 @@ const Organize = () => {
   useEffect(() => {
     let interval: NodeJS.Timeout;
 
-    if (isProcessing && queueIndex.current < files.length) {
-      interval = setInterval(() => {
-        if (queueIndex.current >= files.length) {
-            pauseProcessing();
-            return;
-        }
-        
-        const currentFile = files[queueIndex.current];
+    const processNextFile = async () => {
+      if (queueIndex.current >= files.length) {
+        pauseProcessing();
+        return;
+      }
+      
+      const currentFile = files[queueIndex.current];
 
-        if (currentFile && currentFile.status === 'Pending') {
-            // If file has no metadata, try to parse it
-            if (!currentFile.series) {
-              const parsed = parseFilename(currentFile.path);
-              if (parsed.series && parsed.issue) {
-                updateFile({
-                  ...currentFile,
-                  series: parsed.series,
-                  issue: parsed.issue,
-                  year: parsed.year,
-                  publisher: null, // Publisher still needs to be found
-                  confidence: "Medium",
-                });
-                // The file will be re-evaluated in the next interval
-              } else {
-                updateFile({ ...currentFile, status: "Warning" });
-                logAction('info', `'${currentFile.name}' needs manual review.`);
-              }
-            } else if (currentFile.name.toLowerCase().includes("corrupted")) {
-              updateFile({ ...currentFile, status: "Error" });
-              logAction('error', `Failed to process '${currentFile.name}'.`);
-            } else if (currentFile.confidence === "Low") {
-              updateFile({ ...currentFile, status: "Warning" });
-            } else if (currentFile.series && currentFile.issue && currentFile.year && currentFile.publisher) {
-              updateFile({ ...currentFile, status: "Success" });
-              
-              setTimeout(() => {
-                addComic({
-                  series: currentFile.series!,
-                  issue: currentFile.issue!,
-                  year: currentFile.year!,
-                  publisher: currentFile.publisher!,
-                  volume: String(currentFile.year!),
-                  summary: `Added from file: ${currentFile.name}`
-                }, currentFile);
-                removeFile(currentFile.id);
-                setSelectedItem(null);
-              }, 500);
-            }
-        }
+      if (currentFile && currentFile.status === 'Pending') {
+        const parsed = parseFilename(currentFile.path);
+        const scraperResult = await fetchComicMetadata(parsed, settings.comicVineApiKey);
 
-        queueIndex.current++;
+        if (scraperResult.success && scraperResult.data) {
+          const finalData = {
+            series: parsed.series!,
+            issue: parsed.issue!,
+            year: parsed.year!,
+            publisher: scraperResult.data.publisher,
+            volume: scraperResult.data.volume,
+            summary: scraperResult.data.summary,
+          };
 
-        if (queueIndex.current >= files.length) {
-          pauseProcessing();
+          updateFile({ ...currentFile, ...finalData, status: "Success", confidence: "High" });
+          
+          setTimeout(() => {
+            addComic(finalData, currentFile);
+            removeFile(currentFile.id);
+            setSelectedItem(null);
+          }, 500);
+
+        } else {
+          updateFile({ ...currentFile, status: "Warning", series: parsed.series, issue: parsed.issue, year: parsed.year });
+          logAction('info', `'${currentFile.name}': ${scraperResult.error}`);
         }
-      }, 1500);
+      }
+
+      queueIndex.current++;
+      if (queueIndex.current >= files.length) {
+        pauseProcessing();
+      }
+    };
+
+    if (isProcessing) {
+      interval = setInterval(processNextFile, 1500);
     }
 
     return () => clearInterval(interval);
-  }, [isProcessing, files, setFiles, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile]);
+  }, [isProcessing, files, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile, settings.comicVineApiKey]);
 
   return (
     <div className="h-full flex flex-col space-y-4">

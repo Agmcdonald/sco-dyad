@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound";
 import { SelectionProvider } from "./context/SelectionContext";
 import { AppProvider } from "./context/AppContext";
 import { ThemeProvider } from "./components/ThemeProvider";
+import { SettingsProvider } from "./context/SettingsContext";
 
 const queryClient = new QueryClient();
 
@@ -22,26 +23,28 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <TooltipProvider>
-          <AppProvider>
-            <SelectionProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/" element={<Layout />}>
-                    <Route index element={<Navigate to="/dashboard" replace />} />
-                    <Route path="dashboard" element={<Dashboard />} />
-                    <Route path="organize" element={<Organize />} />
-                    <Route path="learning" element={<Learning />} />
-                    <Route path="library" element={<Library />} />
-                    <Route path="activity" element={<Activity />} />
-                    <Route path="settings" element={<Settings />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Route>
-                </Routes>
-              </BrowserRouter>
-            </SelectionProvider>
-          </AppProvider>
+          <SettingsProvider>
+            <AppProvider>
+              <SelectionProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <Routes>
+                    <Route path="/" element={<Layout />}>
+                      <Route index element={<Navigate to="/dashboard" replace />} />
+                      <Route path="dashboard" element={<Dashboard />} />
+                      <Route path="organize" element={<Organize />} />
+                      <Route path="learning" element={<Learning />} />
+                      <Route path="library" element={<Library />} />
+                      <Route path="activity" element={<Activity />} />
+                      <Route path="settings" element={<Settings />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Route>
+                  </Routes>
+                </BrowserRouter>
+              </SelectionProvider>
+            </AppProvider>
+          </SettingsProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
