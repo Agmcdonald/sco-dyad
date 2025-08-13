@@ -29,7 +29,7 @@ const Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Files in Queue</CardTitle>
-          </Header>
+          </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{filesInQueue}</div>
           </CardContent>
@@ -37,7 +37,7 @@ const Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Comics in Library</CardTitle>
-          </Header>
+          </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{comicsInLibrary}</div>
           </CardContent>
@@ -45,7 +45,7 @@ const Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Needs Review</CardTitle>
-          </Header>
+          </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{unmapped}</div>
           </CardContent>
@@ -53,7 +53,7 @@ const Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Errors</CardTitle>
-          </Header>
+          </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-destructive">{errors}</div>
           </CardContent>
