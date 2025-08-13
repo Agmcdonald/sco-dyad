@@ -3,8 +3,16 @@ import { Button } from "@/components/ui/button";
 import { FolderPlus, GraduationCap, Plus } from "lucide-react";
 import ProgressStrip from "@/components/ProgressStrip";
 import RecentActions from "@/components/RecentActions";
+import { useAppContext } from "@/context/AppContext";
 
 const Dashboard = () => {
+  const { comics, files } = useAppContext();
+
+  const filesInQueue = files.filter(f => f.status === 'Pending').length;
+  const comicsInLibrary = comics.length;
+  const unmapped = files.filter(f => f.status === 'Warning').length;
+  const errors = files.filter(f => f.status === 'Error').length;
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
@@ -16,23 +24,23 @@ const Dashboard = () => {
             <CardTitle className="text-sm font-medium">Files in Queue</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
+            <div className="text-2xl font-bold">{filesInQueue}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Resolved Today</CardTitle>
+            <CardTitle className="text-sm font-medium">Comics in Library</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">42</div>
+            <div className="text-2xl font-bold">{comicsInLibrary}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unmapped</CardTitle>
+            <CardTitle className="text-sm font-medium">Needs Review</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3</div>
+            <div className="text-2xl font-bold">{unmapped}</div>
           </CardContent>
         </Card>
         <Card>
@@ -40,7 +48,7 @@ const Dashboard = () => {
             <CardTitle className="text-sm font-medium">Errors</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">1</div>
+            <div className="text-2xl font-bold text-destructive">{errors}</div>
           </CardContent>
         </Card>
       </div>

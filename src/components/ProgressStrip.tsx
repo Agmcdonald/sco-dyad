@@ -1,31 +1,24 @@
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const stages = ["Parse", "Match", "Rename", "Move"];
+import { useAppContext } from "@/context/AppContext";
 
 const ProgressStrip = () => {
-  const currentProgress = 66; // Example progress, 2/3 of the way
-  const activeStageIndex = 2; // "Rename" is the active stage
+  const { files } = useAppContext();
+
+  const totalFiles = files.length;
+  const processedFiles = files.filter(f => f.status !== 'Pending').length;
+  const progress = totalFiles > 0 ? (processedFiles / totalFiles) * 100 : 0;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Processing Status</CardTitle>
+        <CardTitle>Queue Progress</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          <Progress value={currentProgress} />
-          <div className="flex justify-between text-sm text-muted-foreground">
-            {stages.map((stage, index) => (
-              <span
-                key={stage}
-                className={
-                  index === activeStageIndex ? "font-semibold text-primary" : ""
-                }
-              >
-                {stage}
-              </span>
-            ))}
+        <div className="space-y-2">
+          <Progress value={progress} />
+          <div className="text-sm text-muted-foreground">
+            {processedFiles} of {totalFiles} files processed.
           </div>
         </div>
       </CardContent>
