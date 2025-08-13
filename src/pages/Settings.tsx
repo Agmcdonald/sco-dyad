@@ -94,7 +94,7 @@ const Settings = () => {
               <CardDescription>
                 Define the folder and file structure for your library.
               </CardDescription>
-            </CardHeader>
+            </Header>
             <CardContent className="space-y-4">
               <div className="space-y-1">
                 <Label htmlFor="folder-format">Folder Name Format</Label>
@@ -128,30 +128,21 @@ const Settings = () => {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
-                  <Label>On Success</Label>
+                  <Label htmlFor="keep-original" className="font-medium">Keep Original Files</Label>
                   <p className="text-sm text-muted-foreground">
-                    Action to take on the original file after it's successfully moved to the library.
+                    Enable to copy files to the library, leaving the originals in place. Disable to move them.
                   </p>
                 </div>
-                <Select defaultValue="trash">
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select action" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="trash">Move to Trash</SelectItem>
-                    <SelectItem value="delete">Delete Permanently</SelectItem>
-                    <SelectItem value="keep">Keep in Place</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Switch id="keep-original" defaultChecked />
               </div>
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
-                  <Label>Auto-Scan on Startup</Label>
+                  <Label htmlFor="auto-scan" className="font-medium">Auto-Scan on Startup</Label>
                   <p className="text-sm text-muted-foreground">
                     Automatically scan the "Organize" queue folder when the app starts.
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch id="auto-scan" defaultChecked />
               </div>
             </CardContent>
             <CardFooter className="border-t px-6 py-4">
