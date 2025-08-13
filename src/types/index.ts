@@ -15,6 +15,7 @@ export type Confidence = "High" | "Medium" | "Low";
 export interface QueuedFile {
   id: number;
   name: string;
+  path: string; // Full path of the file
   series: string | null;
   issue: string | null;
   year: number | null;
