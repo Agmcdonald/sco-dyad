@@ -17,7 +17,7 @@ const Dashboard = () => {
 
   const handleScanFolder = () => {
     addMockFiles();
-    navigate('/organize');
+    navigate('/app/organize');
   };
 
   return (
@@ -71,13 +71,13 @@ const Dashboard = () => {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-4">
-              <Button onClick={() => navigate('/organize')}>
+              <Button onClick={() => navigate('/app/organize')}>
                 <Plus className="mr-2 h-4 w-4" /> Add Files
               </Button>
               <Button variant="secondary" onClick={handleScanFolder}>
                 <FolderPlus className="mr-2 h-4 w-4" /> Scan Folder
               </Button>
-              <Button variant="secondary" onClick={() => navigate('/learning')}>
+              <Button variant="secondary" onClick={() => navigate('/app/learning')}>
                 <GraduationCap className="mr-2 h-4 w-4" /> Open Learning
               </Button>
             </CardContent>
