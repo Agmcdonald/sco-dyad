@@ -76,7 +76,7 @@ const Organize = () => {
                   publisher: currentFile.publisher!,
                   volume: String(currentFile.year!),
                   summary: `Added from file: ${currentFile.name}`
-                }, currentFile.name);
+                }, currentFile);
                 removeFile(currentFile.id);
                 setSelectedItem(null);
               }, 500);

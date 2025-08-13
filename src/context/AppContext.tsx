@@ -1,7 +1,8 @@
-import { createContext, useContext, ReactNode, useEffect } from 'react';
-import { Comic, QueuedFile, RecentAction, ActionType } from '@/types';
+import { createContext, useContext, ReactNode } from 'react';
+import { Comic, QueuedFile, RecentAction, ActionType, UndoableAction } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
 import useLocalStorage from '@/hooks/useLocalStorage';
+import { showSuccess } from '@/utils/toast';
 
 const initialComics: Comic[] = [
   { id: 1, coverUrl: "/placeholder.svg", series: "Saga", issue: "61", year: 2023, publisher: "Image Comics", volume: "1", summary: "The award-winning series returns with a new issue." },
@@ -32,8 +33,8 @@ interface AppContextType {
   comics: Comic[];
   files: QueuedFile[];
   recentActions: RecentAction[];
-  logAction: (type: ActionType, text: string) => void;
-  addComic: (comicData: Omit<Comic, 'id' | 'coverUrl'>, sourceFileName?: string) => void;
+  logAction: (type: ActionType, text: string, undoableAction?: UndoableAction) => void;
+  addComic: (comicData: Omit<Comic, 'id' | 'coverUrl'>, originalFile: QueuedFile) => void;
   updateComic: (updatedComic: Comic) => void;
   updateFile: (updatedFile: QueuedFile) => void;
   setFiles: React.Dispatch<React.SetStateAction<QueuedFile[]>>;
@@ -42,6 +43,8 @@ interface AppContextType {
   isProcessing: boolean;
   startProcessing: () => void;
   pauseProcessing: () => void;
+  lastUndoableAction: UndoableAction;
+  undoLastAction: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -51,8 +54,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [files, setFiles] = useLocalStorage<QueuedFile[]>('files', initialFiles);
   const [recentActions, setRecentActions] = useLocalStorage<RecentAction[]>('recentActions', []);
   const [isProcessing, setIsProcessing] = useLocalStorage('isProcessing', false);
+  const [lastUndoableAction, setLastUndoableAction] = useLocalStorage<UndoableAction>('lastUndoableAction', null);
 
-  const logAction = (type: ActionType, text: string) => {
+  const logAction = (type: ActionType, text: string, undoableAction: UndoableAction = null) => {
     const newAction: RecentAction = {
       id: Date.now(),
       type,
@@ -60,14 +64,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       time: formatDistanceToNow(new Date(), { addSuffix: true }),
     };
     setRecentActions(prev => [newAction, ...prev].slice(0, 5));
+    if (undoableAction) {
+      setLastUndoableAction(undoableAction);
+    }
   };
 
-  const addComic = (comicData: Omit<Comic, 'id' | 'coverUrl'>, sourceFileName?: string) => {
-    setComics(prev => [...prev, { ...comicData, id: Date.now(), coverUrl: '/placeholder.svg' }]);
-    const logText = sourceFileName 
-      ? `Moved '${sourceFileName}' to Library.`
-      : `'${comicData.series} #${comicData.issue}' added to Library.`;
-    logAction('success', logText);
+  const addComic = (comicData: Omit<Comic, 'id' | 'coverUrl'>, originalFile: QueuedFile) => {
+    const newComic = { ...comicData, id: Date.now(), coverUrl: '/placeholder.svg' };
+    setComics(prev => [...prev, newComic]);
+    logAction('success', `Moved '${originalFile.name}' to Library.`, { type: 'ADD_COMIC', comicId: newComic.id, originalFile });
   };
 
   const updateComic = (updatedComic: Comic) => {
@@ -82,7 +87,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const removeFile = (fileId: number, reason?: 'skip') => {
     const fileToRemove = files.find(f => f.id === fileId);
     if (fileToRemove && reason === 'skip') {
-      logAction('info', `Skipped file: ${fileToRemove.name}`);
+      logAction('info', `Skipped file: ${fileToRemove.name}`, { type: 'SKIP_FILE', skippedFile: fileToRemove });
     }
     setFiles(prev => prev.filter(f => f.id !== fileId));
   };
@@ -101,6 +106,23 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const startProcessing = () => setIsProcessing(true);
   const pauseProcessing = () => setIsProcessing(false);
 
+  const undoLastAction = () => {
+    if (!lastUndoableAction) return;
+
+    if (lastUndoableAction.type === 'ADD_COMIC') {
+      setComics(prev => prev.filter(c => c.id !== lastUndoableAction.comicId));
+      setFiles(prev => [lastUndoableAction.originalFile, ...prev]);
+      showSuccess("Action undone: Comic returned to queue.");
+    } else if (lastUndoableAction.type === 'SKIP_FILE') {
+      setFiles(prev => [lastUndoableAction.skippedFile, ...prev]);
+      showSuccess("Action undone: Skipped file returned to queue.");
+    }
+
+    setLastUndoableAction(null);
+    // Clear the log entry for the undone action
+    setRecentActions(prev => prev.slice(1));
+  };
+
   const value = {
     comics,
     files,
@@ -115,6 +137,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     isProcessing,
     startProcessing,
     pauseProcessing,
+    lastUndoableAction,
+    undoLastAction,
   };
 
   return (
