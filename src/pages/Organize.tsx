@@ -18,7 +18,9 @@ const Organize = () => {
     startProcessing, 
     pauseProcessing,
     logAction,
-    updateFile
+    updateFile,
+    lastUndoableAction,
+    undoLastAction
   } = useAppContext();
   const { settings } = useSettings();
   const { setSelectedItem } = useSelection();
@@ -104,7 +106,7 @@ const Organize = () => {
             <Button variant="outline" disabled>
               <SkipForward className="h-4 w-4 mr-2" /> Skip
             </Button>
-            <Button variant="ghost" disabled>
+            <Button variant="ghost" disabled={!lastUndoableAction} onClick={undoLastAction}>
               <Undo className="h-4 w-4 mr-2" /> Undo Last
             </Button>
           </div>
