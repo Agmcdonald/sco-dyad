@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -10,6 +10,7 @@ import { QueuedFile } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess } from "@/utils/toast";
 import { parseFilename } from "@/lib/parser";
+import Suggestions, { Suggestion } from "./Suggestions";
 
 interface LearningCardProps {
   file: QueuedFile;
@@ -39,16 +40,30 @@ const LearningCard = ({ file }: LearningCardProps) => {
     },
   });
 
+  const parsedInfo = useMemo(() => parseFilename(file.path), [file.path]);
+
   useEffect(() => {
-    const parsed = parseFilename(file.path);
     form.reset({
-      series: parsed.series || "",
-      issue: parsed.issue || "",
-      year: parsed.year || new Date().getFullYear(),
-      volume: parsed.volume || "",
+      series: parsedInfo.series || "",
+      issue: parsedInfo.issue || "",
+      year: parsedInfo.year || new Date().getFullYear(),
+      volume: parsedInfo.volume || "",
       publisher: "",
     });
-  }, [file, form]);
+  }, [parsedInfo, form]);
+
+  const suggestions: Suggestion[] = useMemo(() => {
+    const suggs: Suggestion[] = [];
+    if (parsedInfo.series) suggs.push({ label: "Series", value: parsedInfo.series, field: "series" });
+    if (parsedInfo.issue) suggs.push({ label: "Issue", value: parsedInfo.issue, field: "issue" });
+    if (parsedInfo.year) suggs.push({ label: "Year", value: String(parsedInfo.year), field: "year" });
+    if (parsedInfo.volume) suggs.push({ label: "Volume", value: parsedInfo.volume, field: "volume" });
+    return suggs;
+  }, [parsedInfo]);
+
+  const handleSuggestionClick = (field: string, value: string) => {
+    form.setValue(field as keyof FormSchemaType, value, { shouldValidate: true });
+  };
 
   const onSubmit = (values: FormSchemaType) => {
     addComic({
@@ -137,6 +152,7 @@ const LearningCard = ({ file }: LearningCardProps) => {
                   )}
                 />
               </div>
+              <Suggestions suggestions={suggestions} onSuggestionClick={handleSuggestionClick} />
             </div>
           </CardContent>
           <CardFooter className="flex justify-end gap-2">
