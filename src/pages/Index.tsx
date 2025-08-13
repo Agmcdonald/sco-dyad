@@ -10,7 +10,7 @@ const Index = () => {
   useEffect(() => {
     // Auto-redirect to dashboard after a brief moment
     const timer = setTimeout(() => {
-      navigate('/dashboard');
+      navigate('/app/dashboard');
     }, 100);
 
     return () => clearTimeout(timer);
@@ -28,7 +28,7 @@ const Index = () => {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/organize')}>
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/app/organize')}>
             <CardHeader className="text-center">
               <FolderPlus className="h-8 w-8 mx-auto text-primary" />
               <CardTitle className="text-lg">Organize</CardTitle>
@@ -40,7 +40,7 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/library')}>
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/app/library')}>
             <CardHeader className="text-center">
               <Library className="h-8 w-8 mx-auto text-primary" />
               <CardTitle className="text-lg">Library</CardTitle>
@@ -52,7 +52,7 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/learning')}>
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/app/learning')}>
             <CardHeader className="text-center">
               <GraduationCap className="h-8 w-8 mx-auto text-primary" />
               <CardTitle className="text-lg">Learning</CardTitle>
@@ -64,7 +64,7 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/dashboard')}>
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/app/dashboard')}>
             <CardHeader className="text-center">
               <BookOpen className="h-8 w-8 mx-auto text-primary" />
               <CardTitle className="text-lg">Dashboard</CardTitle>
@@ -78,7 +78,7 @@ const Index = () => {
         </div>
 
         <div className="text-center">
-          <Button size="lg" onClick={() => navigate('/dashboard')}>
+          <Button size="lg" onClick={() => navigate('/app/dashboard')}>
             Get Started
           </Button>
         </div>

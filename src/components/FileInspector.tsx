@@ -47,7 +47,7 @@ const FileInspector = ({ file }: FileInspectorProps) => {
   };
 
   const handleFindManually = () => {
-    navigate('/learning', { state: { fileId: file.id } });
+    navigate('/app/learning', { state: { fileId: file.id } });
   };
 
   return (
