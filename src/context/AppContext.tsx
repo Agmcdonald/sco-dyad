@@ -3,6 +3,8 @@ import { Comic, QueuedFile, RecentAction, ActionType, UndoableAction } from '@/t
 import { formatDistanceToNow } from 'date-fns';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { showSuccess } from '@/utils/toast';
+import { useSettings } from './SettingsContext';
+import { formatPath } from '@/lib/formatter';
 
 const initialComics: Comic[] = [
   { id: 1, coverUrl: "/placeholder.svg", series: "Saga", issue: "61", year: 2023, publisher: "Image Comics", volume: "1", summary: "The award-winning series returns with a new issue." },
@@ -55,6 +57,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [recentActions, setRecentActions] = useLocalStorage<RecentAction[]>('recentActions', []);
   const [isProcessing, setIsProcessing] = useLocalStorage('isProcessing', false);
   const [lastUndoableAction, setLastUndoableAction] = useLocalStorage<UndoableAction>('lastUndoableAction', null);
+  const { settings } = useSettings();
 
   const logAction = (type: ActionType, text: string, undoableAction: UndoableAction = null) => {
     const newAction: RecentAction = {
@@ -72,7 +75,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const addComic = (comicData: Omit<Comic, 'id' | 'coverUrl'>, originalFile: QueuedFile) => {
     const newComic = { ...comicData, id: Date.now(), coverUrl: '/placeholder.svg' };
     setComics(prev => [...prev, newComic]);
-    logAction('success', `Moved '${originalFile.name}' to Library.`, { type: 'ADD_COMIC', comicId: newComic.id, originalFile });
+    
+    const folderPath = formatPath(settings.folderNameFormat, newComic);
+    const fileName = formatPath(settings.fileNameFormat, newComic);
+    const fileExtension = originalFile.name.split('.').pop() || 'cbz';
+    const destination = `${folderPath}/${fileName}.${fileExtension}`;
+
+    logAction('success', `Moved '${originalFile.name}' to '${destination}'`, { type: 'ADD_COMIC', comicId: newComic.id, originalFile });
   };
 
   const updateComic = (updatedComic: Comic) => {
