@@ -7,6 +7,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { QueuedFile, FileStatus, Confidence } from "@/types";
 import { useSelection } from "@/context/SelectionContext";
@@ -24,7 +25,13 @@ const confidenceVariant: Record<Confidence, "default" | "secondary" | "destructi
   Low: "destructive",
 };
 
-const FileQueue = ({ files }: { files: QueuedFile[] }) => {
+interface FileQueueProps {
+  files: QueuedFile[];
+  selectedFiles?: string[];
+  onSelectionChange?: (fileIds: string[]) => void;
+}
+
+const FileQueue = ({ files, selectedFiles = [], onSelectionChange }: FileQueueProps) => {
   const { selectedItem, setSelectedItem } = useSelection();
 
   const handleSelect = (file: QueuedFile) => {
@@ -35,11 +42,22 @@ const FileQueue = ({ files }: { files: QueuedFile[] }) => {
     }
   };
 
+  const handleCheckboxChange = (fileId: string, checked: boolean) => {
+    if (!onSelectionChange) return;
+    
+    if (checked) {
+      onSelectionChange([...selectedFiles, fileId]);
+    } else {
+      onSelectionChange(selectedFiles.filter(id => id !== fileId));
+    }
+  };
+
   return (
     <div className="w-full h-full overflow-auto">
       <Table>
         <TableHeader>
           <TableRow>
+            {onSelectionChange && <TableHead className="w-12"></TableHead>}
             <TableHead>File</TableHead>
             <TableHead>Detected Series</TableHead>
             <TableHead>Issue</TableHead>
@@ -52,6 +70,8 @@ const FileQueue = ({ files }: { files: QueuedFile[] }) => {
         <TableBody>
           {files.map((file) => {
             const isSelected = selectedItem?.type === 'file' && selectedItem.id === file.id;
+            const isChecked = selectedFiles.includes(file.id);
+            
             return (
               <TableRow
                 key={file.id}
@@ -62,6 +82,14 @@ const FileQueue = ({ files }: { files: QueuedFile[] }) => {
                   isSelected ? "bg-accent" : `hover:bg-muted/50`
                 )}
               >
+                {onSelectionChange && (
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isChecked}
+                      onCheckedChange={(checked) => handleCheckboxChange(file.id, !!checked)}
+                    />
+                  </TableCell>
+                )}
                 <TableCell className="font-medium">{file.name}</TableCell>
                 <TableCell>{file.series || "—"}</TableCell>
                 <TableCell>{file.issue || "—"}</TableCell>

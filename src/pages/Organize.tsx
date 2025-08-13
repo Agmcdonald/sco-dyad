@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, SkipForward, Undo, Loader2 } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import FileQueue from "@/components/FileQueue";
+import BulkActions from "@/components/BulkActions";
 import { useSelection } from "@/context/SelectionContext";
 import { useAppContext } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
@@ -26,6 +27,7 @@ const Organize = () => {
   } = useAppContext();
   const { settings } = useSettings();
   const { selectedItem, setSelectedItem } = useSelection();
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const queueIndex = useRef(0);
 
   useEffect(() => {
@@ -121,11 +123,24 @@ const Organize = () => {
           </div>
         )}
       </div>
+
+      {files.length > 0 && (
+        <BulkActions 
+          files={files} 
+          selectedFiles={selectedFiles} 
+          onSelectionChange={setSelectedFiles} 
+        />
+      )}
+
       <div className="flex-1 rounded-lg border bg-card text-card-foreground shadow-sm">
         {files.length === 0 ? (
           <FileDropzone />
         ) : (
-          <FileQueue files={files} />
+          <FileQueue 
+            files={files} 
+            selectedFiles={selectedFiles}
+            onSelectionChange={setSelectedFiles}
+          />
         )}
       </div>
     </div>
