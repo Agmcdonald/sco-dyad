@@ -7,13 +7,18 @@ import RecentActions from "@/components/RecentActions";
 import { useAppContext } from "@/context/AppContext";
 
 const Dashboard = () => {
-  const { comics, files } = useAppContext();
+  const { comics, files, addMockFiles } = useAppContext();
   const navigate = useNavigate();
 
   const filesInQueue = files.filter(f => f.status === 'Pending').length;
   const comicsInLibrary = comics.length;
   const unmapped = files.filter(f => f.status === 'Warning').length;
   const errors = files.filter(f => f.status === 'Error').length;
+
+  const handleScanFolder = () => {
+    addMockFiles();
+    navigate('/organize');
+  };
 
   return (
     <div className="space-y-6">
@@ -24,7 +29,7 @@ const Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Files in Queue</CardTitle>
-          </CardHeader>
+          </Header>
           <CardContent>
             <div className="text-2xl font-bold">{filesInQueue}</div>
           </CardContent>
@@ -32,7 +37,7 @@ const Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Comics in Library</CardTitle>
-          </CardHeader>
+          </Header>
           <CardContent>
             <div className="text-2xl font-bold">{comicsInLibrary}</div>
           </CardContent>
@@ -40,7 +45,7 @@ const Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Needs Review</CardTitle>
-          </CardHeader>
+          </Header>
           <CardContent>
             <div className="text-2xl font-bold">{unmapped}</div>
           </CardContent>
@@ -48,7 +53,7 @@ const Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Errors</CardTitle>
-          </CardHeader>
+          </Header>
           <CardContent>
             <div className="text-2xl font-bold text-destructive">{errors}</div>
           </CardContent>
@@ -69,7 +74,7 @@ const Dashboard = () => {
               <Button onClick={() => navigate('/organize')}>
                 <Plus className="mr-2 h-4 w-4" /> Add Files
               </Button>
-              <Button variant="secondary" disabled>
+              <Button variant="secondary" onClick={handleScanFolder}>
                 <FolderPlus className="mr-2 h-4 w-4" /> Scan Folder
               </Button>
               <Button variant="secondary" onClick={() => navigate('/learning')}>

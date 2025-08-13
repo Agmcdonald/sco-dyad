@@ -4,7 +4,6 @@ import {
   Plus,
   FolderPlus,
   Play,
-  Pause,
   Eye,
   ArrowUpRightFromSquare,
   SidebarClose,
@@ -20,7 +19,7 @@ interface HeaderProps {
 
 const Header = ({ isInspectorOpen, toggleInspector }: HeaderProps) => {
   const navigate = useNavigate();
-  const { isProcessing, startProcessing, pauseProcessing, files } = useAppContext();
+  const { isProcessing, startProcessing, pauseProcessing, files, addMockFiles } = useAppContext();
   const hasPendingFiles = files.some(f => f.status === 'Pending');
 
   const handleStartPause = () => {
@@ -32,13 +31,18 @@ const Header = ({ isInspectorOpen, toggleInspector }: HeaderProps) => {
     }
   };
 
+  const handleScanFolder = () => {
+    addMockFiles();
+    navigate('/organize');
+  };
+
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-background px-6 sticky top-0 z-10">
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" onClick={() => navigate('/organize')}>
           <Plus className="h-4 w-4 mr-2" /> Add Files...
         </Button>
-        <Button variant="outline" size="sm" disabled>
+        <Button variant="outline" size="sm" onClick={handleScanFolder}>
           <FolderPlus className="h-4 w-4 mr-2" /> Scan Folder...
         </Button>
         <Button 

@@ -20,6 +20,12 @@ const initialFiles: QueuedFile[] = [
   { id: 7, name: "Corrupted_File.cbz", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
 ];
 
+const mockFilesToAdd: QueuedFile[] = [
+    { id: 100, name: "BlackScience_01.cbr", series: "Black Science", issue: "1", year: 2013, publisher: "Image Comics", confidence: "High", status: "Pending" },
+    { id: 101, name: "DeadlyClass_v1_1.cbz", series: "Deadly Class", issue: "1", year: 2014, publisher: "Image Comics", confidence: "Medium", status: "Pending" },
+    { id: 102, name: "unknown_comic.cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Warning" },
+];
+
 interface AppContextType {
   comics: Comic[];
   files: QueuedFile[];
@@ -28,6 +34,7 @@ interface AppContextType {
   updateFile: (updatedFile: QueuedFile) => void;
   setFiles: React.Dispatch<React.SetStateAction<QueuedFile[]>>;
   removeFile: (fileId: number) => void;
+  addMockFiles: () => void;
   isProcessing: boolean;
   startProcessing: () => void;
   pauseProcessing: () => void;
@@ -56,6 +63,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setFiles(prev => prev.filter(f => f.id !== fileId));
   };
 
+  const addMockFiles = () => {
+    setFiles(prev => {
+        const newFiles = mockFilesToAdd.map((file, index) => ({
+            ...file,
+            id: Date.now() + index // Ensure unique IDs
+        }));
+        return [...prev, ...newFiles];
+    });
+  };
+
   const startProcessing = () => setIsProcessing(true);
   const pauseProcessing = () => setIsProcessing(false);
 
@@ -67,6 +84,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     updateFile,
     setFiles,
     removeFile,
+    addMockFiles,
     isProcessing,
     startProcessing,
     pauseProcessing,
