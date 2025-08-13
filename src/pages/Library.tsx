@@ -9,21 +9,21 @@ import {
 } from "@/components/ui/select";
 import { Search } from "lucide-react";
 import LibraryGrid from "@/components/LibraryGrid";
+import { Comic } from "@/types";
 
-// Mock data for the library
-const mockComics = [
-  { id: 1, coverUrl: "/placeholder.svg", series: "Saga", issue: "61", year: 2023 },
-  { id: 2, coverUrl: "/placeholder.svg", series: "Batman: The Knight", issue: "3", year: 2022 },
-  { id: 3, coverUrl: "/placeholder.svg", series: "Weird Comic", issue: "4", year: 2021 },
-  { id: 4, coverUrl: "/placeholder.svg", series: "The Amazing Spider-Man", issue: "1", year: 1963 },
-  { id: 5, coverUrl: "/placeholder.svg", series: "Action Comics", issue: "1", year: 1938 },
-  { id: 6, coverUrl: "/placeholder.svg", series: "Detective Comics", issue: "27", year: 1939 },
-  { id: 7, coverUrl: "/placeholder.svg", series: "Radiant Black", issue: "1", year: 2021 },
-  { id: 8, coverUrl: "/placeholder.svg", series: "Invincible", issue: "1", year: 2003 },
-  { id: 9, coverUrl: "/placeholder.svg", series: "Monstress", issue: "1", year: 2015 },
-  { id: 10, coverUrl: "/placeholder.svg", series: "Paper Girls", issue: "1", year: 2015 },
-  { id: 11, coverUrl: "/placeholder.svg", series: "The Wicked + The Divine", issue: "1", year: 2014 },
-  { id: 12, coverUrl: "/placeholder.svg", series: "East of West", issue: "1", year: 2013 },
+const mockComics: Comic[] = [
+  { id: 1, coverUrl: "/placeholder.svg", series: "Saga", issue: "61", year: 2023, publisher: "Image Comics", volume: "1", summary: "The award-winning series returns with a new issue." },
+  { id: 2, coverUrl: "/placeholder.svg", series: "Batman: The Knight", issue: "3", year: 2022, publisher: "DC Comics", volume: "2022", summary: "Bruce Wayne's training continues." },
+  { id: 3, coverUrl: "/placeholder.svg", series: "Weird Comic", issue: "4", year: 2021, publisher: "Indie", volume: "2", summary: "Things get even weirder." },
+  { id: 4, coverUrl: "/placeholder.svg", series: "The Amazing Spider-Man", issue: "1", year: 1963, publisher: "Marvel Comics", volume: "1963", summary: "The first appearance of Spider-Man in his own series." },
+  { id: 5, coverUrl: "/placeholder.svg", series: "Action Comics", issue: "1", year: 1938, publisher: "DC Comics", volume: "1938", summary: "The first appearance of Superman." },
+  { id: 6, coverUrl: "/placeholder.svg", series: "Detective Comics", issue: "27", year: 1939, publisher: "DC Comics", volume: "1939", summary: "The first appearance of Batman." },
+  { id: 7, coverUrl: "/placeholder.svg", series: "Radiant Black", issue: "1", year: 2021, publisher: "Image Comics", volume: "2021", summary: "A new kind of superhero." },
+  { id: 8, coverUrl: "/placeholder.svg", series: "Invincible", issue: "1", year: 2003, publisher: "Image Comics", volume: "2003", summary: "Mark Grayson gets his powers." },
+  { id: 9, coverUrl: "/placeholder.svg", series: "Monstress", issue: "1", year: 2015, publisher: "Image Comics", volume: "2015", summary: "A story of magic and war." },
+  { id: 10, coverUrl: "/placeholder.svg", series: "Paper Girls", issue: "1", year: 2015, publisher: "Image Comics", volume: "2015", summary: "Four paper girls get caught in a conflict." },
+  { id: 11, coverUrl: "/placeholder.svg", series: "The Wicked + The Divine", issue: "1", year: 2014, publisher: "Image Comics", volume: "2014", summary: "Gods are reincarnated every 90 years." },
+  { id: 12, coverUrl: "/placeholder.svg", series: "East of West", issue: "1", year: 2013, publisher: "Image Comics", volume: "2013", summary: "A sci-fi western set in a dystopian America." },
 ];
 
 const Library = () => {

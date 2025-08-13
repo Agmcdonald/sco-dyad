@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, SkipForward, Undo } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
-import FileQueue, { QueuedFile } from "@/components/FileQueue";
+import FileQueue from "@/components/FileQueue";
+import { QueuedFile } from "@/types";
 
 const mockFiles: QueuedFile[] = [
   { id: 1, name: "Saga #61.cbz", series: "Saga", issue: "61", year: 2023, publisher: "Image Comics", confidence: "High", status: "Success" },

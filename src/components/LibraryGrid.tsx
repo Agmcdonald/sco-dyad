@@ -1,12 +1,5 @@
 import ComicCard from "./ComicCard";
-
-interface Comic {
-  id: number;
-  coverUrl: string;
-  series: string;
-  issue: string;
-  year: number;
-}
+import { Comic } from "@/types";
 
 interface LibraryGridProps {
   comics: Comic[];

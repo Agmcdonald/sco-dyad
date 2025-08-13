@@ -8,20 +8,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-export type FileStatus = "Pending" | "Success" | "Warning" | "Error";
-export type Confidence = "High" | "Medium" | "Low";
-
-export interface QueuedFile {
-  id: number;
-  name: string;
-  series: string | null;
-  issue: string | null;
-  year: number | null;
-  publisher: string | null;
-  confidence: Confidence | null;
-  status: FileStatus;
-}
+import { QueuedFile, FileStatus, Confidence } from "@/types";
 
 const statusStyles: Record<FileStatus, string> = {
   Success: "bg-green-500/10 hover:bg-green-500/20",
