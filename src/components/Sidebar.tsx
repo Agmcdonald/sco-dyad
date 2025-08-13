@@ -11,12 +11,12 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/organize", icon: ArrowDownToLine, label: "Organize" },
-  { to: "/learning", icon: GraduationCap, label: "Learning" },
-  { to: "/library", icon: Library, label: "Library" },
-  { to: "/activity", icon: History, label: "Activity" },
-  { to: "/settings", icon: Settings, label: "Settings" },
+  { to: "/app/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/app/organize", icon: ArrowDownToLine, label: "Organize" },
+  { to: "/app/learning", icon: GraduationCap, label: "Learning" },
+  { to: "/app/library", icon: Library, label: "Library" },
+  { to: "/app/activity", icon: History, label: "Activity" },
+  { to: "/app/settings", icon: Settings, label: "Settings" },
 ];
 
 const Sidebar = () => {

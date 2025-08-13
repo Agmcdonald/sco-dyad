@@ -27,19 +27,19 @@ const Header = ({ isInspectorOpen, toggleInspector }: HeaderProps) => {
       pauseProcessing();
     } else {
       startProcessing();
-      navigate('/organize');
+      navigate('/app/organize');
     }
   };
 
   const handleScanFolder = () => {
     addMockFiles();
-    navigate('/organize');
+    navigate('/app/organize');
   };
 
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-background px-6 sticky top-0 z-10">
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => navigate('/organize')}>
+        <Button variant="outline" size="sm" onClick={() => navigate('/app/organize')}>
           <Plus className="h-4 w-4 mr-2" /> Add Files...
         </Button>
         <Button variant="outline" size="sm" onClick={handleScanFolder}>
