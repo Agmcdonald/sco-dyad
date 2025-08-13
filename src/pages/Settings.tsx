@@ -94,7 +94,7 @@ const Settings = () => {
               <CardDescription>
                 Define the folder and file structure for your library.
               </CardDescription>
-            </Header>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1">
                 <Label htmlFor="folder-format">Folder Name Format</Label>
