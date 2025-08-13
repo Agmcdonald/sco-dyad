@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,16 +21,30 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettings } from "@/context/SettingsContext";
-import { showSuccess } from "@/utils/toast";
+import { showError, showSuccess } from "@/utils/toast";
+import { testApiConnection } from "@/lib/scraper";
+import { Loader2 } from "lucide-react";
 
 const Settings = () => {
   const { theme, setTheme } = useTheme();
   const { settings, setSettings } = useSettings();
+  const [isTesting, setIsTesting] = useState(false);
 
   const handleSave = () => {
     // The settings are already updated on change thanks to the context.
     // This button just provides user feedback.
     showSuccess("Settings saved successfully!");
+  };
+
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    const result = await testApiConnection(settings.comicVineApiKey);
+    if (result.success) {
+      showSuccess(result.message);
+    } else {
+      showError(result.message);
+    }
+    setIsTesting(false);
   };
 
   return (
@@ -192,7 +207,16 @@ const Settings = () => {
             </CardContent>
             <CardFooter className="border-t px-6 py-4 flex justify-between items-center">
               <Button onClick={handleSave}>Save</Button>
-              <Button variant="secondary" disabled>Test Connection</Button>
+              <Button variant="secondary" onClick={handleTestConnection} disabled={isTesting}>
+                {isTesting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Testing...
+                  </>
+                ) : (
+                  "Test Connection"
+                )}
+              </Button>
             </CardFooter>
           </Card>
         </TabsContent>
