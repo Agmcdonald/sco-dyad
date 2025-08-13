@@ -9,6 +9,7 @@ import {
   History,
   Settings,
   Search,
+  Wrench,
 } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 
@@ -18,6 +19,7 @@ const navItems = [
   { to: "/app/learning", icon: GraduationCap, label: "Learning" },
   { to: "/app/library", icon: Library, label: "Library" },
   { to: "/app/activity", icon: History, label: "Activity" },
+  { to: "/app/maintenance", icon: Wrench, label: "Maintenance" },
   { to: "/app/settings", icon: Settings, label: "Settings" },
 ];
 

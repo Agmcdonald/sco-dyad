@@ -11,6 +11,7 @@ import Learning from "./pages/Learning";
 import Library from "./pages/Library";
 import Activity from "./pages/Activity";
 import Settings from "./pages/Settings";
+import Maintenance from "./pages/Maintenance";
 import NotFound from "./pages/NotFound";
 import { SelectionProvider } from "./context/SelectionContext";
 import { AppProvider } from "./context/AppContext";
@@ -40,6 +41,7 @@ const App = () => {
                       <Route path="library" element={<Library />} />
                       <Route path="activity" element={<Activity />} />
                       <Route path="settings" element={<Settings />} />
+                      <Route path="maintenance" element={<Maintenance />} />
                     </Route>
                     <Route path="*" element={<NotFound />} />
                   </Routes>
