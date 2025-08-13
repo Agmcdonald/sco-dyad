@@ -3,16 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Play, Pause, SkipForward, Undo, Loader2 } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import FileQueue from "@/components/FileQueue";
-import { QueuedFile, Comic } from "@/types";
 import { useSelection } from "@/context/SelectionContext";
+import { useAppContext } from "@/context/AppContext";
 
-interface OrganizeProps {
-  files: QueuedFile[];
-  setFiles: React.Dispatch<React.SetStateAction<QueuedFile[]>>;
-  addComic: (comic: Omit<Comic, 'id' | 'coverUrl'>) => void;
-}
-
-const Organize = ({ files, setFiles, addComic }: OrganizeProps) => {
+const Organize = () => {
+  const { files, setFiles, addComic, removeFile } = useAppContext();
   const [isProcessing, setIsProcessing] = useState(false);
   const { setSelectedItem } = useSelection();
   const queueIndex = useRef(0);
@@ -22,32 +17,32 @@ const Organize = ({ files, setFiles, addComic }: OrganizeProps) => {
 
     if (isProcessing && queueIndex.current < files.length) {
       interval = setInterval(() => {
+        if (queueIndex.current >= files.length) {
+            setIsProcessing(false);
+            return;
+        }
+        
         const currentFile = files[queueIndex.current];
 
         // Simulate processing logic
         if (currentFile.name.toLowerCase().includes("corrupted")) {
-          // It's a failure
           setFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: "Error" } : f));
         } else if (currentFile.confidence === "Low") {
-          // It's a warning, needs manual intervention
           setFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: "Warning" } : f));
         } else if (currentFile.series && currentFile.issue && currentFile.year && currentFile.publisher) {
-          // It's a success
           setFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: "Success" } : f));
           
-          // Add to library after a short delay to see the status change
           setTimeout(() => {
             addComic({
               series: currentFile.series!,
               issue: currentFile.issue!,
               year: currentFile.year!,
               publisher: currentFile.publisher!,
-              volume: String(currentFile.year!), // Mock volume
+              volume: String(currentFile.year!),
               summary: `Added from file: ${currentFile.name}`
             });
-            // Remove from queue
-            setFiles(prev => prev.filter(f => f.id !== currentFile.id));
-            setSelectedItem(null); // Deselect if it was selected
+            removeFile(currentFile.id);
+            setSelectedItem(null);
           }, 500);
         }
 
@@ -56,11 +51,11 @@ const Organize = ({ files, setFiles, addComic }: OrganizeProps) => {
         if (queueIndex.current >= files.length) {
           setIsProcessing(false);
         }
-      }, 1500); // Process one file every 1.5 seconds
+      }, 1500);
     }
 
     return () => clearInterval(interval);
-  }, [isProcessing, files, setFiles, addComic, setSelectedItem]);
+  }, [isProcessing, files, setFiles, addComic, removeFile, setSelectedItem]);
 
   const handleStart = () => {
     queueIndex.current = 0;

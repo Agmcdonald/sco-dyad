@@ -3,6 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Edit, Search, ThumbsUp } from "lucide-react";
+import { useAppContext } from "@/context/AppContext";
+import { useSelection } from "@/context/SelectionContext";
+import { showError, showSuccess } from "@/utils/toast";
 
 interface FileInspectorProps {
   file: QueuedFile;
@@ -15,6 +18,29 @@ const confidenceVariant: Record<NonNullable<QueuedFile['confidence']>, "default"
 };
 
 const FileInspector = ({ file }: FileInspectorProps) => {
+  const { addComic, removeFile } = useAppContext();
+  const { setSelectedItem } = useSelection();
+
+  const handleConfirmMatch = () => {
+    if (!file.series || !file.issue || !file.year || !file.publisher) {
+      showError("Cannot confirm match: Missing required information.");
+      return;
+    }
+    
+    addComic({
+      series: file.series,
+      issue: file.issue,
+      year: file.year,
+      publisher: file.publisher,
+      volume: String(file.year), // Mock volume
+      summary: `Manually added from file: ${file.name}`
+    });
+
+    removeFile(file.id);
+    showSuccess(`'${file.series} #${file.issue}' added to library.`);
+    setSelectedItem(null);
+  };
+
   return (
     <div className="flex flex-col h-full bg-background border-l">
       <div className="p-4 border-b">
@@ -67,13 +93,13 @@ const FileInspector = ({ file }: FileInspectorProps) => {
         </div>
       </div>
       <div className="p-4 border-t mt-auto bg-background space-y-2">
-        <Button className="w-full" variant="outline">
+        <Button className="w-full" variant="outline" onClick={handleConfirmMatch} disabled={!file.series}>
           <ThumbsUp className="mr-2 h-4 w-4" /> Confirm Match
         </Button>
-        <Button className="w-full">
+        <Button className="w-full" disabled>
           <Edit className="mr-2 h-4 w-4" /> Correct Match
         </Button>
-        <Button className="w-full" variant="secondary">
+        <Button className="w-full" variant="secondary" disabled>
           <Search className="mr-2 h-4 w-4" /> Find Match Manually
         </Button>
       </div>

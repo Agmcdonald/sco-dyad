@@ -9,13 +9,10 @@ import {
 } from "@/components/ui/select";
 import { Search } from "lucide-react";
 import LibraryGrid from "@/components/LibraryGrid";
-import { Comic } from "@/types";
+import { useAppContext } from "@/context/AppContext";
 
-interface LibraryProps {
-  comics: Comic[];
-}
-
-const Library = ({ comics }: LibraryProps) => {
+const Library = () => {
+  const { comics } = useAppContext();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOption, setSortOption] = useState("series-asc");
 
