@@ -1,6 +1,7 @@
-import { createContext, useState, useContext, ReactNode } from 'react';
+import { createContext, useContext, ReactNode, useEffect } from 'react';
 import { Comic, QueuedFile, RecentAction, ActionType } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
+import useLocalStorage from '@/hooks/useLocalStorage';
 
 const initialComics: Comic[] = [
   { id: 1, coverUrl: "/placeholder.svg", series: "Saga", issue: "61", year: 2023, publisher: "Image Comics", volume: "1", summary: "The award-winning series returns with a new issue." },
@@ -12,12 +13,12 @@ const initialComics: Comic[] = [
 ];
 
 const initialFiles: QueuedFile[] = [
-  { id: 1, name: "Radiant Black 01.cbz", path: "/comics/incoming/Radiant Black 01.cbz", series: "Radiant Black", issue: "1", year: 2021, publisher: "Image Comics", confidence: "High", status: "Pending" },
-  { id: 2, name: "Invincible_v1_001.cbr", path: "/comics/incoming/Invincible_v1_001.cbr", series: "Invincible", issue: "1", year: 2003, publisher: "Image Comics", confidence: "High", status: "Pending" },
-  { id: 3, name: "Monstress-001.cbz", path: "/comics/incoming/Monstress-001.cbz", series: "Monstress", issue: "1", year: 2015, publisher: "Image Comics", confidence: "Medium", status: "Pending" },
+  { id: 1, name: "Radiant Black 01.cbz", path: "/comics/incoming/Radiant Black 01.cbz", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+  { id: 2, name: "Invincible_v1_001.cbr", path: "/comics/incoming/Invincible_v1_001.cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+  { id: 3, name: "Monstress-001.cbz", path: "/comics/incoming/Monstress-001.cbz", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
   { id: 4, name: "Paper Girls #1.zip", path: "/comics/incoming/Paper Girls #1.zip", series: "Paper Girls", issue: "1", year: 2015, publisher: "Image Comics", confidence: "High", status: "Pending" },
   { id: 5, name: "WicDiv_1.cbz", path: "/comics/incoming/The Wicked + The Divine/WicDiv_1.cbz", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
-  { id: 6, name: "East of West 01 (2013).cbr", path: "/comics/incoming/East of West 01 (2013).cbr", series: "East of West", issue: "1", year: 2013, publisher: "Image Comics", confidence: "High", status: "Pending" },
+  { id: 6, name: "East of West 01 (2013).cbr", path: "/comics/incoming/East of West 01 (2013).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
   { id: 7, name: "Corrupted_File.cbz", path: "/comics/incoming/Corrupted_File.cbz", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
 ];
 
@@ -46,10 +47,10 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-  const [comics, setComics] = useState<Comic[]>(initialComics);
-  const [files, setFiles] = useState<QueuedFile[]>(initialFiles);
-  const [recentActions, setRecentActions] = useState<RecentAction[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [comics, setComics] = useLocalStorage<Comic[]>('comics', initialComics);
+  const [files, setFiles] = useLocalStorage<QueuedFile[]>('files', initialFiles);
+  const [recentActions, setRecentActions] = useLocalStorage<RecentAction[]>('recentActions', []);
+  const [isProcessing, setIsProcessing] = useLocalStorage('isProcessing', false);
 
   const logAction = (type: ActionType, text: string) => {
     const newAction: RecentAction = {
