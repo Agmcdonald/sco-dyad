@@ -39,3 +39,11 @@ export type UndoableAction =
   | { type: 'ADD_COMIC'; comicId: number; originalFile: QueuedFile }
   | { type: 'SKIP_FILE'; skippedFile: QueuedFile }
   | null;
+
+export interface AppSettings {
+  comicVineApiKey: string;
+  keepOriginalFiles: boolean;
+  autoScanOnStartup: boolean;
+  folderNameFormat: string;
+  fileNameFormat: string;
+}

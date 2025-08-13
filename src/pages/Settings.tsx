@@ -19,9 +19,18 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSettings } from "@/context/SettingsContext";
+import { showSuccess } from "@/utils/toast";
 
 const Settings = () => {
   const { theme, setTheme } = useTheme();
+  const { settings, setSettings } = useSettings();
+
+  const handleSave = () => {
+    // The settings are already updated on change thanks to the context.
+    // This button just provides user feedback.
+    showSuccess("Settings saved successfully!");
+  };
 
   return (
     <div className="space-y-6">
@@ -83,8 +92,9 @@ const Settings = () => {
                 <Input
                   id="library-path"
                   defaultValue="/Users/You/Documents/Comics"
+                  disabled
                 />
-                <Button variant="outline">Choose...</Button>
+                <Button variant="outline" disabled>Choose...</Button>
               </div>
             </CardContent>
           </Card>
@@ -100,19 +110,21 @@ const Settings = () => {
                 <Label htmlFor="folder-format">Folder Name Format</Label>
                 <Input
                   id="folder-format"
-                  defaultValue="{publisher}/{series} ({volume})"
+                  value={settings.folderNameFormat}
+                  onChange={(e) => setSettings({ ...settings, folderNameFormat: e.target.value })}
                 />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="file-format">File Name Format</Label>
                 <Input
                   id="file-format"
-                  defaultValue="{series} #{issue} ({year})"
+                  value={settings.fileNameFormat}
+                  onChange={(e) => setSettings({ ...settings, fileNameFormat: e.target.value })}
                 />
               </div>
             </CardContent>
             <CardFooter className="border-t px-6 py-4">
-              <Button>Save</Button>
+              <Button onClick={handleSave}>Save</Button>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -133,7 +145,11 @@ const Settings = () => {
                     Enable to copy files to the library, leaving the originals in place. Disable to move them.
                   </p>
                 </div>
-                <Switch id="keep-original" defaultChecked />
+                <Switch 
+                  id="keep-original" 
+                  checked={settings.keepOriginalFiles}
+                  onCheckedChange={(checked) => setSettings({ ...settings, keepOriginalFiles: checked })}
+                />
               </div>
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
@@ -142,11 +158,15 @@ const Settings = () => {
                     Automatically scan the "Organize" queue folder when the app starts.
                   </p>
                 </div>
-                <Switch id="auto-scan" defaultChecked />
+                <Switch 
+                  id="auto-scan" 
+                  checked={settings.autoScanOnStartup}
+                  onCheckedChange={(checked) => setSettings({ ...settings, autoScanOnStartup: checked })}
+                />
               </div>
             </CardContent>
             <CardFooter className="border-t px-6 py-4">
-              <Button>Save</Button>
+              <Button onClick={handleSave}>Save</Button>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -162,12 +182,17 @@ const Settings = () => {
             <CardContent className="space-y-4">
               <div className="space-y-1">
                 <Label htmlFor="api-key">API Key</Label>
-                <Input id="api-key" type="password" defaultValue="supersecretapikey" />
+                <Input 
+                  id="api-key" 
+                  type="password" 
+                  value={settings.comicVineApiKey}
+                  onChange={(e) => setSettings({ ...settings, comicVineApiKey: e.target.value })}
+                />
               </div>
             </CardContent>
             <CardFooter className="border-t px-6 py-4 flex justify-between items-center">
-              <Button>Save</Button>
-              <Button variant="secondary">Test Connection</Button>
+              <Button onClick={handleSave}>Save</Button>
+              <Button variant="secondary" disabled>Test Connection</Button>
             </CardFooter>
           </Card>
         </TabsContent>
