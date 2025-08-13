@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { QueuedFile } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ const FileInspector = ({ file }: FileInspectorProps) => {
   const { addComic, removeFile } = useAppContext();
   const { setSelectedItem } = useSelection();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleConfirmMatch = () => {
     if (!file.series || !file.issue || !file.year || !file.publisher) {
@@ -42,6 +44,10 @@ const FileInspector = ({ file }: FileInspectorProps) => {
     removeFile(file.id);
     showSuccess(`'${file.series} #${file.issue}' added to library.`);
     setSelectedItem(null);
+  };
+
+  const handleFindManually = () => {
+    navigate('/learning', { state: { fileId: file.id } });
   };
 
   return (
@@ -103,7 +109,7 @@ const FileInspector = ({ file }: FileInspectorProps) => {
           <Button className="w-full" onClick={() => setIsModalOpen(true)}>
             <Edit className="mr-2 h-4 w-4" /> Correct Match
           </Button>
-          <Button className="w-full" variant="secondary" disabled>
+          <Button className="w-full" variant="secondary" onClick={handleFindManually}>
             <Search className="mr-2 h-4 w-4" /> Find Match Manually
           </Button>
         </div>
