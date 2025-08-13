@@ -25,6 +25,7 @@ interface AppContextType {
   files: QueuedFile[];
   addComic: (comicData: Omit<Comic, 'id' | 'coverUrl'>) => void;
   updateComic: (updatedComic: Comic) => void;
+  updateFile: (updatedFile: QueuedFile) => void;
   setFiles: React.Dispatch<React.SetStateAction<QueuedFile[]>>;
   removeFile: (fileId: number) => void;
 }
@@ -42,6 +43,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const updateComic = (updatedComic: Comic) => {
     setComics(prev => prev.map(c => c.id === updatedComic.id ? updatedComic : c));
   };
+
+  const updateFile = (updatedFile: QueuedFile) => {
+    setFiles(prev => prev.map(f => f.id === updatedFile.id ? updatedFile : f));
+  };
   
   const removeFile = (fileId: number) => {
     setFiles(prev => prev.filter(f => f.id !== fileId));
@@ -52,6 +57,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     files,
     addComic,
     updateComic,
+    updateFile,
     setFiles,
     removeFile,
   };
