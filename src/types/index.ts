@@ -24,3 +24,12 @@ export interface QueuedFile {
 }
 
 export type SelectableItem = (Comic & { type: 'comic' }) | (QueuedFile & { type: 'file' });
+
+export type ActionType = "success" | "error" | "info";
+
+export interface RecentAction {
+  id: number;
+  type: ActionType;
+  text: string;
+  time: string;
+}
