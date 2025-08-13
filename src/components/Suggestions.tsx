@@ -1,16 +1,18 @@
 import { Button } from "@/components/ui/button";
 import { Lightbulb } from "lucide-react";
 
-interface Suggestion {
+export interface Suggestion {
   label: string;
   value: string;
+  field: string;
 }
 
 interface SuggestionsProps {
   suggestions: Suggestion[];
+  onSuggestionClick: (field: string, value: string) => void;
 }
 
-const Suggestions = ({ suggestions }: SuggestionsProps) => {
+const Suggestions = ({ suggestions, onSuggestionClick }: SuggestionsProps) => {
   if (suggestions.length === 0) return null;
 
   return (
@@ -19,7 +21,14 @@ const Suggestions = ({ suggestions }: SuggestionsProps) => {
       <div className="flex flex-wrap gap-2">
         <span className="text-sm font-medium text-muted-foreground mr-2 mt-1">Suggestions:</span>
         {suggestions.map((suggestion) => (
-          <Button key={suggestion.value} variant="outline" size="sm" className="h-auto py-1 px-2 text-xs">
+          <Button
+            key={suggestion.field}
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-auto py-1 px-2 text-xs"
+            onClick={() => onSuggestionClick(suggestion.field, suggestion.value)}
+          >
             {suggestion.label}: <span className="font-semibold ml-1">{suggestion.value}</span>
           </Button>
         ))}
