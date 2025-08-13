@@ -28,6 +28,9 @@ interface AppContextType {
   updateFile: (updatedFile: QueuedFile) => void;
   setFiles: React.Dispatch<React.SetStateAction<QueuedFile[]>>;
   removeFile: (fileId: number) => void;
+  isProcessing: boolean;
+  startProcessing: () => void;
+  pauseProcessing: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -35,6 +38,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [comics, setComics] = useState<Comic[]>(initialComics);
   const [files, setFiles] = useState<QueuedFile[]>(initialFiles);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const addComic = (comicData: Omit<Comic, 'id' | 'coverUrl'>) => {
     setComics(prev => [...prev, { ...comicData, id: Date.now(), coverUrl: '/placeholder.svg' }]);
@@ -52,6 +56,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setFiles(prev => prev.filter(f => f.id !== fileId));
   };
 
+  const startProcessing = () => setIsProcessing(true);
+  const pauseProcessing = () => setIsProcessing(false);
+
   const value = {
     comics,
     files,
@@ -60,6 +67,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     updateFile,
     setFiles,
     removeFile,
+    isProcessing,
+    startProcessing,
+    pauseProcessing,
   };
 
   return (

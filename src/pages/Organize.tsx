@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, SkipForward, Undo, Loader2 } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
@@ -7,10 +7,26 @@ import { useSelection } from "@/context/SelectionContext";
 import { useAppContext } from "@/context/AppContext";
 
 const Organize = () => {
-  const { files, setFiles, addComic, removeFile } = useAppContext();
-  const [isProcessing, setIsProcessing] = useState(false);
+  const { 
+    files, 
+    setFiles, 
+    addComic, 
+    removeFile, 
+    isProcessing, 
+    startProcessing, 
+    pauseProcessing 
+  } = useAppContext();
   const { setSelectedItem } = useSelection();
   const queueIndex = useRef(0);
+
+  useEffect(() => {
+    if (isProcessing) {
+      // Reset index if we are at the end of the queue
+      if (queueIndex.current >= files.length) {
+        queueIndex.current = 0;
+      }
+    }
+  }, [isProcessing, files.length]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -18,18 +34,16 @@ const Organize = () => {
     if (isProcessing && queueIndex.current < files.length) {
       interval = setInterval(() => {
         if (queueIndex.current >= files.length) {
-            setIsProcessing(false);
+            pauseProcessing();
             return;
         }
         
         const currentFile = files[queueIndex.current];
 
-        // Only process files that are still pending
-        if (currentFile.status === 'Pending') {
+        if (currentFile && currentFile.status === 'Pending') {
             if (currentFile.name.toLowerCase().includes("corrupted")) {
               setFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: "Error" } : f));
             } else if (currentFile.confidence === "Low") {
-              // Flag for manual review on the Learning page
               setFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: "Warning" } : f));
             } else if (currentFile.series && currentFile.issue && currentFile.year && currentFile.publisher) {
               setFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: "Success" } : f));
@@ -52,22 +66,13 @@ const Organize = () => {
         queueIndex.current++;
 
         if (queueIndex.current >= files.length) {
-          setIsProcessing(false);
+          pauseProcessing();
         }
       }, 1500);
     }
 
     return () => clearInterval(interval);
-  }, [isProcessing, files, setFiles, addComic, removeFile, setSelectedItem]);
-
-  const handleStart = () => {
-    queueIndex.current = 0;
-    setIsProcessing(true);
-  };
-
-  const handlePause = () => {
-    setIsProcessing(false);
-  };
+  }, [isProcessing, files, setFiles, addComic, removeFile, setSelectedItem, pauseProcessing]);
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -75,17 +80,17 @@ const Organize = () => {
         <h1 className="text-3xl font-bold tracking-tight">Organize</h1>
         {files.length > 0 && (
           <div className="flex items-center gap-2">
-            <Button onClick={handleStart} disabled={isProcessing}>
-              {isProcessing ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
+            {!isProcessing ? (
+              <Button onClick={startProcessing}>
                 <Play className="h-4 w-4 mr-2" />
-              )}
-              Start
-            </Button>
-            <Button variant="outline" onClick={handlePause} disabled={!isProcessing}>
-              <Pause className="h-4 w-4 mr-2" /> Pause
-            </Button>
+                Start
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={pauseProcessing}>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Pause
+              </Button>
+            )}
             <Button variant="outline" disabled>
               <SkipForward className="h-4 w-4 mr-2" /> Skip
             </Button>
