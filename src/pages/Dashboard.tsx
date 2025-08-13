@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { FolderPlus, GraduationCap, Plus } from "lucide-react";
 import ProgressStrip from "@/components/ProgressStrip";
 import RecentActions from "@/components/RecentActions";
+import LibraryStats from "@/components/LibraryStats";
 import { useAppContext } from "@/context/AppContext";
 
 const Dashboard = () => {
@@ -60,7 +61,7 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6">
           {/* Progress Strip */}
           <ProgressStrip />
@@ -83,6 +84,9 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Library Statistics */}
+        <LibraryStats />
 
         {/* Recent Actions */}
         <RecentActions />
