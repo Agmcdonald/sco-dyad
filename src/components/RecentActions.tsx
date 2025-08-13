@@ -6,24 +6,26 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileCheck2, FileX2, Info, Undo } from "lucide-react";
+import { FileCheck2, FileX2, Info, Undo, AlertTriangle } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
-import { ActionType } from "@/types";
+import { Action } from "@/context/AppContext";
 
-const actionIcons: Record<ActionType, React.ElementType> = {
+const actionIcons: Record<Action['type'], React.ElementType> = {
   success: FileCheck2,
   error: FileX2,
   info: Info,
+  warning: AlertTriangle,
 };
 
-const actionColors: Record<ActionType, string> = {
+const actionColors: Record<Action['type'], string> = {
   success: "text-green-500",
   error: "text-red-500",
   info: "text-blue-500",
+  warning: "text-yellow-500",
 };
 
 const RecentActions = () => {
-  const { recentActions, lastUndoableAction, undoLastAction } = useAppContext();
+  const { actions, lastUndoableAction, undoLastAction } = useAppContext();
 
   return (
     <Card className="h-full">
@@ -32,17 +34,19 @@ const RecentActions = () => {
         <CardDescription>A log of the latest file operations.</CardDescription>
       </CardHeader>
       <CardContent>
-        {recentActions.length > 0 ? (
+        {actions.length > 0 ? (
           <div className="space-y-4">
-            {recentActions.map((action, index) => {
+            {actions.map((action) => {
               const Icon = actionIcons[action.type];
-              const isUndoable = index === 0 && !!lastUndoableAction;
+              const isUndoable = lastUndoableAction?.id === action.id;
               return (
                 <div key={action.id} className="flex items-center gap-4">
                   <Icon className={`h-5 w-5 ${actionColors[action.type]}`} />
                   <div className="flex-1">
-                    <p className="text-sm font-medium">{action.text}</p>
-                    <p className="text-xs text-muted-foreground">{action.time}</p>
+                    <p className="text-sm font-medium">{action.message}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {action.timestamp.toLocaleTimeString()}
+                    </p>
                   </div>
                   <Button 
                     variant="outline" 
