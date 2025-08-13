@@ -31,8 +31,8 @@ export const fetchComicMetadata = async (
     // Simulate network delay
     await new Promise(res => setTimeout(res, 500));
 
-    if (!apiKey) {
-        return { success: false, error: "API Key is missing. Please set it in Settings." };
+    if (!apiKey || apiKey.length < 10) {
+        return { success: false, error: "API Key is missing or invalid. Please set it in Settings." };
     }
 
     if (!parsed.series) {
@@ -53,4 +53,21 @@ export const fetchComicMetadata = async (
     }
 
     return { success: false, error: `No match found for "${parsed.series}" in the remote database.` };
+};
+
+export const testApiConnection = async (apiKey: string): Promise<{ success: boolean; message: string }> => {
+    // Simulate network delay
+    await new Promise(res => setTimeout(res, 750));
+
+    if (!apiKey) {
+        return { success: false, message: "API Key is missing." };
+    }
+
+    // In a real app, you'd make a lightweight API call here to validate the key.
+    // For our mock, we'll just check for a reasonable length.
+    if (apiKey.length < 10) {
+        return { success: false, message: "Invalid API Key provided." };
+    }
+
+    return { success: true, message: "Connection successful!" };
 };
