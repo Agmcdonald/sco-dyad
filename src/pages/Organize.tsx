@@ -14,14 +14,14 @@ const Organize = () => {
     removeFile, 
     isProcessing, 
     startProcessing, 
-    pauseProcessing 
+    pauseProcessing,
+    logAction
   } = useAppContext();
   const { setSelectedItem } = useSelection();
   const queueIndex = useRef(0);
 
   useEffect(() => {
     if (isProcessing) {
-      // Reset index if we are at the end of the queue
       if (queueIndex.current >= files.length) {
         queueIndex.current = 0;
       }
@@ -43,6 +43,7 @@ const Organize = () => {
         if (currentFile && currentFile.status === 'Pending') {
             if (currentFile.name.toLowerCase().includes("corrupted")) {
               setFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: "Error" } : f));
+              logAction('error', `Failed to process '${currentFile.name}'.`);
             } else if (currentFile.confidence === "Low") {
               setFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: "Warning" } : f));
             } else if (currentFile.series && currentFile.issue && currentFile.year && currentFile.publisher) {
@@ -56,7 +57,7 @@ const Organize = () => {
                   publisher: currentFile.publisher!,
                   volume: String(currentFile.year!),
                   summary: `Added from file: ${currentFile.name}`
-                });
+                }, currentFile.name);
                 removeFile(currentFile.id);
                 setSelectedItem(null);
               }, 500);
@@ -72,7 +73,7 @@ const Organize = () => {
     }
 
     return () => clearInterval(interval);
-  }, [isProcessing, files, setFiles, addComic, removeFile, setSelectedItem, pauseProcessing]);
+  }, [isProcessing, files, setFiles, addComic, removeFile, setSelectedItem, pauseProcessing, logAction]);
 
   return (
     <div className="h-full flex flex-col space-y-4">

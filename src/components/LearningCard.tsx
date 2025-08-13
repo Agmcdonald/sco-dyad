@@ -48,13 +48,13 @@ const LearningCard = ({ file }: LearningCardProps) => {
     addComic({
       ...values,
       summary: `Manually mapped from file: ${file.name}`,
-    });
+    }, file.name);
     removeFile(file.id);
     showSuccess(`'${values.series} #${values.issue}' added to library.`);
   };
 
   const handleSkip = () => {
-    removeFile(file.id);
+    removeFile(file.id, 'skip');
     showSuccess(`Skipped file: ${file.name}`);
   };
 

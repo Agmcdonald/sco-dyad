@@ -1,5 +1,6 @@
 import { createContext, useState, useContext, ReactNode } from 'react';
-import { Comic, QueuedFile } from '@/types';
+import { Comic, QueuedFile, RecentAction, ActionType } from '@/types';
+import { formatDistanceToNow } from 'date-fns';
 
 const initialComics: Comic[] = [
   { id: 1, coverUrl: "/placeholder.svg", series: "Saga", issue: "61", year: 2023, publisher: "Image Comics", volume: "1", summary: "The award-winning series returns with a new issue." },
@@ -29,11 +30,13 @@ const mockFilesToAdd: QueuedFile[] = [
 interface AppContextType {
   comics: Comic[];
   files: QueuedFile[];
-  addComic: (comicData: Omit<Comic, 'id' | 'coverUrl'>) => void;
+  recentActions: RecentAction[];
+  logAction: (type: ActionType, text: string) => void;
+  addComic: (comicData: Omit<Comic, 'id' | 'coverUrl'>, sourceFileName?: string) => void;
   updateComic: (updatedComic: Comic) => void;
   updateFile: (updatedFile: QueuedFile) => void;
   setFiles: React.Dispatch<React.SetStateAction<QueuedFile[]>>;
-  removeFile: (fileId: number) => void;
+  removeFile: (fileId: number, reason?: 'skip') => void;
   addMockFiles: () => void;
   isProcessing: boolean;
   startProcessing: () => void;
@@ -45,21 +48,41 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [comics, setComics] = useState<Comic[]>(initialComics);
   const [files, setFiles] = useState<QueuedFile[]>(initialFiles);
+  const [recentActions, setRecentActions] = useState<RecentAction[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const addComic = (comicData: Omit<Comic, 'id' | 'coverUrl'>) => {
+  const logAction = (type: ActionType, text: string) => {
+    const newAction: RecentAction = {
+      id: Date.now(),
+      type,
+      text,
+      time: formatDistanceToNow(new Date(), { addSuffix: true }),
+    };
+    setRecentActions(prev => [newAction, ...prev].slice(0, 5));
+  };
+
+  const addComic = (comicData: Omit<Comic, 'id' | 'coverUrl'>, sourceFileName?: string) => {
     setComics(prev => [...prev, { ...comicData, id: Date.now(), coverUrl: '/placeholder.svg' }]);
+    const logText = sourceFileName 
+      ? `Moved '${sourceFileName}' to Library.`
+      : `'${comicData.series} #${comicData.issue}' added to Library.`;
+    logAction('success', logText);
   };
 
   const updateComic = (updatedComic: Comic) => {
     setComics(prev => prev.map(c => c.id === updatedComic.id ? updatedComic : c));
+    logAction('info', `Updated metadata for '${updatedComic.series} #${updatedComic.issue}'.`);
   };
 
   const updateFile = (updatedFile: QueuedFile) => {
     setFiles(prev => prev.map(f => f.id === updatedFile.id ? updatedFile : f));
   };
   
-  const removeFile = (fileId: number) => {
+  const removeFile = (fileId: number, reason?: 'skip') => {
+    const fileToRemove = files.find(f => f.id === fileId);
+    if (fileToRemove && reason === 'skip') {
+      logAction('info', `Skipped file: ${fileToRemove.name}`);
+    }
     setFiles(prev => prev.filter(f => f.id !== fileId));
   };
 
@@ -67,10 +90,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setFiles(prev => {
         const newFiles = mockFilesToAdd.map((file, index) => ({
             ...file,
-            id: Date.now() + index // Ensure unique IDs
+            id: Date.now() + index
         }));
         return [...prev, ...newFiles];
     });
+    logAction('info', `Added ${mockFilesToAdd.length} files to the queue.`);
   };
 
   const startProcessing = () => setIsProcessing(true);
@@ -79,6 +103,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const value = {
     comics,
     files,
+    recentActions,
+    logAction,
     addComic,
     updateComic,
     updateFile,
