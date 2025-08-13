@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FolderPlus, GraduationCap, Plus } from "lucide-react";
@@ -7,6 +8,7 @@ import { useAppContext } from "@/context/AppContext";
 
 const Dashboard = () => {
   const { comics, files } = useAppContext();
+  const navigate = useNavigate();
 
   const filesInQueue = files.filter(f => f.status === 'Pending').length;
   const comicsInLibrary = comics.length;
@@ -64,13 +66,13 @@ const Dashboard = () => {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-4">
-              <Button>
+              <Button onClick={() => navigate('/organize')}>
                 <Plus className="mr-2 h-4 w-4" /> Add Files
               </Button>
-              <Button variant="secondary">
+              <Button variant="secondary" disabled>
                 <FolderPlus className="mr-2 h-4 w-4" /> Scan Folder
               </Button>
-              <Button variant="secondary">
+              <Button variant="secondary" onClick={() => navigate('/learning')}>
                 <GraduationCap className="mr-2 h-4 w-4" /> Open Learning
               </Button>
             </CardContent>
