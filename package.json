@@ -1,14 +1,25 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "dyad-comic-sorter-desktop",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
+  "main": "electron.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "build:dev": "vite build --mode development",
-    "lint": "eslint .",
+    "dev": "concurrently -k \"vite\" \"wait-on http://localhost:8080 && cross-env ELECTRON_START_URL=http://localhost:8080 electron .\"",
+    "build": "vite build && electron-builder",
     "preview": "vite preview"
+  },
+  "build": {
+    "appId": "com.dyad.comicsorter",
+    "productName": "Dyad Comic Sorter",
+    "files": [
+      "dist/**/*",
+      "electron.js"
+    ],
+    "directories": {
+      "buildResources": "assets",
+      "output": "release"
+    }
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
