@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -8,15 +9,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search } from "lucide-react";
+import { Search, Grid3X3, List } from "lucide-react";
 import LibraryGrid from "@/components/LibraryGrid";
+import SeriesView from "@/components/SeriesView";
 import { useAppContext } from "@/context/AppContext";
+
+type ViewMode = "grid" | "series";
 
 const Library = () => {
   const { comics } = useAppContext();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOption, setSortOption] = useState("series-asc");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   // Handle search from sidebar
   useEffect(() => {
@@ -83,10 +88,32 @@ const Library = () => {
               <SelectItem value="year-asc">Year (Oldest)</SelectItem>
             </SelectContent>
           </Select>
+          <div className="flex border rounded-md">
+            <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("grid")}
+              className="rounded-r-none"
+            >
+              <Grid3X3 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "series" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("series")}
+              className="rounded-l-none"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
       <div className="flex-1 overflow-auto pb-4">
-        <LibraryGrid comics={sortedComics} />
+        {viewMode === "grid" ? (
+          <LibraryGrid comics={sortedComics} />
+        ) : (
+          <SeriesView comics={sortedComics} />
+        )}
       </div>
     </div>
   );
