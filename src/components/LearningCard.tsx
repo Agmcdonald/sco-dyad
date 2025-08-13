@@ -1,68 +1,143 @@
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import Suggestions from "./Suggestions";
+import { QueuedFile } from "@/types";
+import { useAppContext } from "@/context/AppContext";
+import { showSuccess } from "@/utils/toast";
 
 interface LearningCardProps {
-  fileName: string;
-  coverUrl?: string;
+  file: QueuedFile;
 }
 
+const formSchema = z.object({
+  publisher: z.string().min(1, "Publisher is required"),
+  series: z.string().min(1, "Series is required"),
+  volume: z.string().min(1, "Volume is required"),
+  issue: z.string().min(1, "Issue is required"),
+  year: z.coerce.number().min(1900, "Invalid year"),
+});
+
 const mockSuggestions = [
-    { label: "Series", value: "The Amazing Spider-Man" },
-    { label: "Publisher", value: "Marvel Comics" },
-    { label: "Year", value: "1963" },
+    { label: "Series", value: "The Wicked + The Divine" },
+    { label: "Publisher", value: "Image Comics" },
+    { label: "Year", value: "2014" },
 ];
 
-const LearningCard = ({ fileName, coverUrl }: LearningCardProps) => {
+const LearningCard = ({ file }: LearningCardProps) => {
+  const { addComic, removeFile } = useAppContext();
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      publisher: "",
+      series: "",
+      volume: "",
+      issue: "",
+      year: new Date().getFullYear(),
+    },
+  });
+
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
+    addComic({
+      ...values,
+      summary: `Manually mapped from file: ${file.name}`,
+    });
+    removeFile(file.id);
+    showSuccess(`'${values.series} #${values.issue}' added to library.`);
+  };
+
+  const handleSkip = () => {
+    removeFile(file.id);
+    showSuccess(`Skipped file: ${file.name}`);
+  };
+
   return (
     <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle>{fileName}</CardTitle>
-      </CardHeader>
-      <CardContent className="grid md:grid-cols-3 gap-6">
-        <div className="md:col-span-1">
-          <div className="aspect-w-2 aspect-h-3 rounded-lg bg-muted flex items-center justify-center">
-            {coverUrl ? (
-              <img src={coverUrl} alt={fileName} className="object-cover w-full h-full rounded-lg" />
-            ) : (
-              <span className="text-sm text-muted-foreground">No Preview</span>
-            )}
-          </div>
-        </div>
-        <div className="md:col-span-2 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="publisher">Publisher</Label>
-              <Input id="publisher" placeholder="e.g., DC Comics" />
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <CardHeader>
+            <CardTitle>{file.name}</CardTitle>
+          </CardHeader>
+          <CardContent className="grid md:grid-cols-3 gap-6">
+            <div className="md:col-span-1">
+              <div className="aspect-w-2 aspect-h-3 rounded-lg bg-muted flex items-center justify-center">
+                <span className="text-sm text-muted-foreground">No Preview</span>
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="series">Series</Label>
-              <Input id="series" placeholder="e.g., Batman" />
+            <div className="md:col-span-2 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="publisher"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Publisher</FormLabel>
+                      <FormControl><Input placeholder="e.g., DC Comics" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="series"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Series</FormLabel>
+                      <FormControl><Input placeholder="e.g., Batman" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="volume"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Volume</FormLabel>
+                      <FormControl><Input placeholder="e.g., 2016" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="issue"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Issue</FormLabel>
+                      <FormControl><Input placeholder="e.g., 125" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="year"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Year</FormLabel>
+                      <FormControl><Input type="number" placeholder="e.g., 2022" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <Suggestions suggestions={mockSuggestions} />
             </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="volume">Volume</Label>
-              <Input id="volume" placeholder="e.g., 2016" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="issue">Issue</Label>
-              <Input id="issue" placeholder="e.g., 125" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="year">Year</Label>
-              <Input id="year" placeholder="e.g., 2022" />
-            </div>
-          </div>
-          <Suggestions suggestions={mockSuggestions} />
-        </div>
-      </CardContent>
-      <CardFooter className="flex justify-end gap-2">
-        <Button variant="outline">Skip</Button>
-        <Button>Save Mapping</Button>
-      </CardFooter>
+          </CardContent>
+          <CardFooter className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={handleSkip}>Skip</Button>
+            <Button type="submit">Save Mapping</Button>
+          </CardFooter>
+        </form>
+      </Form>
     </Card>
   );
 };

@@ -24,26 +24,29 @@ const Organize = () => {
         
         const currentFile = files[queueIndex.current];
 
-        // Simulate processing logic
-        if (currentFile.name.toLowerCase().includes("corrupted")) {
-          setFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: "Error" } : f));
-        } else if (currentFile.confidence === "Low") {
-          setFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: "Warning" } : f));
-        } else if (currentFile.series && currentFile.issue && currentFile.year && currentFile.publisher) {
-          setFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: "Success" } : f));
-          
-          setTimeout(() => {
-            addComic({
-              series: currentFile.series!,
-              issue: currentFile.issue!,
-              year: currentFile.year!,
-              publisher: currentFile.publisher!,
-              volume: String(currentFile.year!),
-              summary: `Added from file: ${currentFile.name}`
-            });
-            removeFile(currentFile.id);
-            setSelectedItem(null);
-          }, 500);
+        // Only process files that are still pending
+        if (currentFile.status === 'Pending') {
+            if (currentFile.name.toLowerCase().includes("corrupted")) {
+              setFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: "Error" } : f));
+            } else if (currentFile.confidence === "Low") {
+              // Flag for manual review on the Learning page
+              setFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: "Warning" } : f));
+            } else if (currentFile.series && currentFile.issue && currentFile.year && currentFile.publisher) {
+              setFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: "Success" } : f));
+              
+              setTimeout(() => {
+                addComic({
+                  series: currentFile.series!,
+                  issue: currentFile.issue!,
+                  year: currentFile.year!,
+                  publisher: currentFile.publisher!,
+                  volume: String(currentFile.year!),
+                  summary: `Added from file: ${currentFile.name}`
+                });
+                removeFile(currentFile.id);
+                setSelectedItem(null);
+              }, 500);
+            }
         }
 
         queueIndex.current++;
