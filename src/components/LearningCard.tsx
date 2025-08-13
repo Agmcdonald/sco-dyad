@@ -27,7 +27,7 @@ const formSchema = z.object({
 type FormSchemaType = z.infer<typeof formSchema>;
 
 const LearningCard = ({ file }: LearningCardProps) => {
-  const { addComic, removeFile } = useAppContext();
+  const { addComic, removeFile, skipFile } = useAppContext();
 
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
@@ -75,7 +75,7 @@ const LearningCard = ({ file }: LearningCardProps) => {
   };
 
   const handleSkip = () => {
-    removeFile(file.id, 'skip');
+    skipFile(file);
     showSuccess(`Skipped file: ${file.name}`);
   };
 

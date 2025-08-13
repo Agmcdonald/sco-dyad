@@ -8,16 +8,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { FileCheck2, FileX2, Info, Undo, AlertTriangle } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
-import { Action } from "@/context/AppContext";
+import { RecentAction } from "@/types";
 
-const actionIcons: Record<Action['type'], React.ElementType> = {
+const actionIcons: Record<RecentAction['type'], React.ElementType> = {
   success: FileCheck2,
   error: FileX2,
   info: Info,
   warning: AlertTriangle,
 };
 
-const actionColors: Record<Action['type'], string> = {
+const actionColors: Record<RecentAction['type'], string> = {
   success: "text-green-500",
   error: "text-red-500",
   info: "text-blue-500",
@@ -25,7 +25,7 @@ const actionColors: Record<Action['type'], string> = {
 };
 
 const RecentActions = () => {
-  const { actions, lastUndoableAction, undoLastAction } = useAppContext();
+  const { actions, undoLastAction } = useAppContext();
 
   return (
     <Card className="h-full">
@@ -38,7 +38,6 @@ const RecentActions = () => {
           <div className="space-y-4">
             {actions.map((action) => {
               const Icon = actionIcons[action.type];
-              const isUndoable = lastUndoableAction?.id === action.id;
               return (
                 <div key={action.id} className="flex items-center gap-4">
                   <Icon className={`h-5 w-5 ${actionColors[action.type]}`} />
@@ -48,16 +47,17 @@ const RecentActions = () => {
                       {action.timestamp.toLocaleTimeString()}
                     </p>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="ml-auto" 
-                    disabled={!isUndoable}
-                    onClick={undoLastAction}
-                  >
-                    <Undo className="h-3 w-3 mr-1.5" />
-                    Undo
-                  </Button>
+                  {action.undo && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="ml-auto" 
+                      onClick={undoLastAction}
+                    >
+                      <Undo className="h-3 w-3 mr-1.5" />
+                      Undo
+                    </Button>
+                  )}
                 </div>
               );
             })}

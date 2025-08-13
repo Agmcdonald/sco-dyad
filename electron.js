@@ -1,33 +1,37 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const installExtension = require('electron-devtools-installer');
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
     },
   });
 
-  // In development, load from the Vite dev server.
-  // In production, load the built index.html file.
   const startURL = process.env.ELECTRON_START_URL || `file://${path.join(__dirname, 'dist/index.html')}`;
 
   mainWindow.loadURL(startURL);
 
-  // Open DevTools automatically in development.
   if (process.env.ELECTRON_START_URL) {
     mainWindow.webContents.openDevTools();
   }
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  if (process.env.ELECTRON_START_URL) {
+    installExtension.default(installExtension.REACT_DEVELOPER_TOOLS)
+      .then((name) => console.log(`Added Extension:  ${name}`))
+      .catch((err) => console.log('An error occurred: ', err));
+  }
+  
+  createWindow();
+});
 
-// Quit when all windows are closed, except on macOS.
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
@@ -35,8 +39,6 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-  // On macOS it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
-import { QueuedFile, Comic, ActionType, RecentAction, Confidence } from '@/types'; // Import QueuedFile and Confidence
+import { QueuedFile, Comic, RecentAction, NewComic, UndoPayload } from '@/types';
 
 interface AppContextType {
   files: QueuedFile[];
@@ -9,20 +9,21 @@ interface AppContextType {
   updateFile: (file: QueuedFile) => void;
   skipFile: (file: QueuedFile) => void;
   comics: Comic[];
-  addComic: (comic: Comic, originalFile: QueuedFile) => void;
+  addComic: (comicData: NewComic, originalFile: QueuedFile) => void;
   isProcessing: boolean;
   startProcessing: () => void;
   pauseProcessing: () => void;
   actions: RecentAction[];
-  logAction: (type: RecentAction['type'], message: string, undo?: RecentAction['undo']) => void;
+  logAction: (type: RecentAction['type'], message: string, undo?: UndoPayload) => void;
   lastUndoableAction: RecentAction | null;
   undoLastAction: () => void;
-  addMockFiles: () => void; // Add this to the interface
+  addMockFiles: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-let fileIdCounter = 0; // Simple counter for unique mock file IDs
+let fileIdCounter = 0;
+let comicIdCounter = 0;
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [files, setFiles] = useState<QueuedFile[]>([]);
@@ -30,16 +31,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [actions, setActions] = useState<RecentAction[]>([]);
 
-  const logAction = useCallback((type: RecentAction['type'], message: string, undo?: RecentAction['undo']) => {
+  const logAction = useCallback((type: RecentAction['type'], message: string, undo?: UndoPayload) => {
     const newAction: RecentAction = {
       id: Date.now(),
       type,
-      text: message, // Changed message to text to match RecentAction interface
-      time: new Date().toLocaleTimeString(), // Use time string
-      undoable: !!undo,
+      message,
+      timestamp: new Date(),
       undo,
     };
-    setActions(prev => [newAction, ...prev]);
+    setActions(prev => [newAction, ...prev].slice(0, 10)); // Keep last 10 actions
   }, []);
 
   const addFile = (file: QueuedFile) => {
@@ -55,29 +55,34 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const skipFile = (file: QueuedFile) => {
+    removeFile(file.id);
     logAction('info', `Skipped file: ${file.name}`, {
       type: 'SKIP_FILE',
-      payload: { file }
+      payload: { skippedFile: file }
     });
-    removeFile(file.id);
   };
 
   const updateFile = (updatedFile: QueuedFile) => {
     setFiles(prev => prev.map(f => f.id === updatedFile.id ? updatedFile : f));
   };
 
-  const addComic = (comic: Comic, originalFile: QueuedFile) => {
-    setComics(prev => [comic, ...prev]);
-    logAction('success', `Organized '${originalFile.name}' as '${comic.series} #${comic.issue}'`, {
+  const addComic = (comicData: NewComic, originalFile: QueuedFile) => {
+    const newComic: Comic = {
+      ...comicData,
+      id: `comic-${comicIdCounter++}`,
+      coverUrl: 'placeholder.svg'
+    };
+    setComics(prev => [newComic, ...prev]);
+    logAction('success', `Organized '${originalFile.name}' as '${newComic.series} #${newComic.issue}'`, {
       type: 'ADD_COMIC',
-      payload: { comic, originalFile }
+      payload: { comicId: newComic.id, originalFile }
     });
   };
 
   const startProcessing = () => setIsProcessing(true);
   const pauseProcessing = () => setIsProcessing(false);
 
-  const lastUndoableAction = actions.find(a => a.undoable) || null;
+  const lastUndoableAction = actions.find(a => !!a.undo) || null;
 
   const undoLastAction = () => {
     if (!lastUndoableAction || !lastUndoableAction.undo) return;
@@ -86,96 +91,36 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     switch (type) {
       case 'ADD_COMIC':
-        setComics(prev => prev.filter(c => c.series !== payload.comic.series || c.issue !== payload.comic.issue));
+        setComics(prev => prev.filter(c => c.id !== payload.comicId));
         addFile(payload.originalFile);
         break;
       case 'SKIP_FILE':
-        addFile(payload.file);
+        addFile(payload.skippedFile);
         break;
     }
 
-    logAction('info', `Undo: ${lastUndoableAction.text}`); // Use text here
-    setActions(prev => prev.map(a => a.id === lastUndoableAction.id ? { ...a, undoable: false } : a));
+    logAction('info', `Undo: ${lastUndoableAction.message}`);
+    setActions(prev => prev.map(a => a.id === lastUndoableAction.id ? { ...a, undo: undefined } : a));
   };
 
   const addMockFiles = useCallback(() => {
     const newMockFiles: QueuedFile[] = [
-      {
-        id: `file-${fileIdCounter++}`,
-        name: "Saga #1 (2012).cbr",
-        path: "/incoming/Saga #1 (2012).cbr",
-        series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending",
-      },
-      {
-        id: `file-${fileIdCounter++}`,
-        name: "Batman The Knight #1 (2022).cbr",
-        path: "/incoming/Batman The Knight #1 (2022).cbr",
-        series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending",
-      },
-      {
-        id: `file-${fileIdCounter++}`,
-        name: "The Amazing Spider-Man #300 (1988).cbr",
-        path: "/incoming/The Amazing Spider-Man #300 (1988).cbr",
-        series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending",
-      },
-      {
-        id: `file-${fileIdCounter++}`,
-        name: "Action Comics #1 (1938).cbr",
-        path: "/incoming/Action Comics #1 (1938).cbr",
-        series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending",
-      },
-      {
-        id: `file-${fileIdCounter++}`,
-        name: "Radiant Black #1 (2021).cbr",
-        path: "/incoming/Radiant Black #1 (2021).cbr",
-        series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending",
-      },
-      {
-        id: `file-${fileIdCounter++}`,
-        name: "Invincible #1 (2003).cbr",
-        path: "/incoming/Invincible #1 (2003).cbr",
-        series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending",
-      },
-      {
-        id: `file-${fileIdCounter++}`,
-        name: "Monstress #1 (2015).cbr",
-        path: "/incoming/Monstress #1 (2015).cbr",
-        series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending",
-      },
-      {
-        id: `file-${fileIdCounter++}`,
-        name: "Paper Girls #1 (2015).cbr",
-        path: "/incoming/Paper Girls #1 (2015).cbr",
-        series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending",
-      },
-      {
-        id: `file-${fileIdCounter++}`,
-        name: "The Wicked The Divine #1 (2014).cbr",
-        path: "/incoming/The Wicked The Divine #1 (2014).cbr",
-        series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending",
-      },
-      {
-        id: `file-${fileIdCounter++}`,
-        name: "East of West #1 (2013).cbr",
-        path: "/incoming/East of West #1 (2013).cbr",
-        series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending",
-      },
-      {
-        id: `file-${fileIdCounter++}`,
-        name: "Unknown Comic.cbr",
-        path: "/incoming/Unknown Comic.cbr",
-        series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending",
-      },
-      {
-        id: `file-${fileIdCounter++}`,
-        name: "Another Unknown Comic.cbr",
-        path: "/incoming/Another Unknown Comic.cbr",
-        series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending",
-      },
+      { id: `file-${fileIdCounter++}`, name: "Saga #1 (2012).cbr", path: "/incoming/Saga #1 (2012).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+      { id: `file-${fileIdCounter++}`, name: "Batman The Knight #1 (2022).cbr", path: "/incoming/Batman The Knight #1 (2022).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+      { id: `file-${fileIdCounter++}`, name: "The Amazing Spider-Man #300 (1988).cbr", path: "/incoming/The Amazing Spider-Man #300 (1988).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+      { id: `file-${fileIdCounter++}`, name: "Action Comics #1 (1938).cbr", path: "/incoming/Action Comics #1 (1938).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+      { id: `file-${fileIdCounter++}`, name: "Radiant Black #1 (2021).cbr", path: "/incoming/Radiant Black #1 (2021).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+      { id: `file-${fileIdCounter++}`, name: "Invincible #1 (2003).cbr", path: "/incoming/Invincible #1 (2003).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+      { id: `file-${fileIdCounter++}`, name: "Monstress #1 (2015).cbr", path: "/incoming/Monstress #1 (2015).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+      { id: `file-${fileIdCounter++}`, name: "Paper Girls #1 (2015).cbr", path: "/incoming/Paper Girls #1 (2015).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+      { id: `file-${fileIdCounter++}`, name: "The Wicked The Divine #1 (2014).cbr", path: "/incoming/The Wicked The Divine #1 (2014).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+      { id: `file-${fileIdCounter++}`, name: "East of West #1 (2013).cbr", path: "/incoming/East of West #1 (2013).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+      { id: `file-${fileIdCounter++}`, name: "Unknown Comic.cbr", path: "/incoming/Unknown Comic.cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+      { id: `file-${fileIdCounter++}`, name: "Another Unknown Comic.cbr", path: "/incoming/Another Unknown Comic.cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
     ];
     addFiles(newMockFiles);
     logAction('info', `Added ${newMockFiles.length} mock files to the queue.`);
-  }, [addFiles, logAction]);
+  }, [logAction]);
 
   return (
     <AppContext.Provider value={{ 
@@ -184,7 +129,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       isProcessing, startProcessing, pauseProcessing,
       actions, logAction,
       lastUndoableAction, undoLastAction,
-      addMockFiles // Provide the new function
+      addMockFiles
     }}>
       {children}
     </AppContext.Provider>
