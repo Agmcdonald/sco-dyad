@@ -1,6 +1,4 @@
-export interface Comic {
-  id: number;
-  coverUrl: string;
+export interface NewComic {
   series: string;
   issue: string;
   year: number;
@@ -9,13 +7,18 @@ export interface Comic {
   summary?: string;
 }
 
+export interface Comic extends NewComic {
+  id: string;
+  coverUrl: string;
+}
+
 export type FileStatus = "Pending" | "Success" | "Warning" | "Error";
 export type Confidence = "High" | "Medium" | "Low";
 
 export interface QueuedFile {
-  id: number;
+  id: string;
   name: string;
-  path: string; // Full path of the file
+  path: string;
   series: string | null;
   issue: string | null;
   year: number | null;
@@ -26,19 +29,19 @@ export interface QueuedFile {
 
 export type SelectableItem = (Comic & { type: 'comic' }) | (QueuedFile & { type: 'file' });
 
-export type ActionType = "success" | "error" | "info";
+export type ActionType = "success" | "error" | "info" | "warning";
+
+export type UndoPayload =
+  | { type: 'ADD_COMIC'; payload: { comicId: string, originalFile: QueuedFile } }
+  | { type: 'SKIP_FILE'; payload: { skippedFile: QueuedFile } };
 
 export interface RecentAction {
   id: number;
   type: ActionType;
-  text: string;
-  time: string;
+  message: string;
+  timestamp: Date;
+  undo?: UndoPayload;
 }
-
-export type UndoableAction =
-  | { type: 'ADD_COMIC'; comicId: number; originalFile: QueuedFile }
-  | { type: 'SKIP_FILE'; skippedFile: QueuedFile }
-  | null;
 
 export interface AppSettings {
   comicVineApiKey: string;

@@ -8,6 +8,7 @@ import { useAppContext } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
 import { parseFilename } from "@/lib/parser";
 import { fetchComicMetadata } from "@/lib/scraper";
+import { QueuedFile } from "@/types";
 
 const Organize = () => {
   const { 
@@ -50,11 +51,11 @@ const Organize = () => {
         const parsed = parseFilename(currentFile.path);
         const scraperResult = await fetchComicMetadata(parsed, settings.comicVineApiKey);
 
-        if (scraperResult.success && scraperResult.data) {
+        if (scraperResult.success && scraperResult.data && parsed.series && parsed.issue && parsed.year) {
           const finalData = {
-            series: parsed.series!,
-            issue: parsed.issue!,
-            year: parsed.year!,
+            series: parsed.series,
+            issue: parsed.issue,
+            year: parsed.year,
             publisher: scraperResult.data.publisher,
             volume: scraperResult.data.volume,
             summary: scraperResult.data.summary,
@@ -70,7 +71,7 @@ const Organize = () => {
 
         } else {
           updateFile({ ...currentFile, status: "Warning", series: parsed.series, issue: parsed.issue, year: parsed.year });
-          logAction('info', `'${currentFile.name}': ${scraperResult.error}`);
+          logAction('warning', `'${currentFile.name}': ${scraperResult.error || 'Could not parse required fields.'}`);
         }
       }
 
@@ -88,8 +89,8 @@ const Organize = () => {
   }, [isProcessing, files, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile, settings.comicVineApiKey]);
 
   const handleSkip = () => {
-    if (selectedItem) {
-      skipFile(selectedItem);
+    if (selectedItem?.type === 'file') {
+      skipFile(selectedItem as QueuedFile);
       setSelectedItem(null);
     }
   };
