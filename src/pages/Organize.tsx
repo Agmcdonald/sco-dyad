@@ -20,10 +20,11 @@ const Organize = () => {
     logAction,
     updateFile,
     lastUndoableAction,
-    undoLastAction
+    undoLastAction,
+    skipFile
   } = useAppContext();
   const { settings } = useSettings();
-  const { setSelectedItem } = useSelection();
+  const { selectedItem, setSelectedItem } = useSelection();
   const queueIndex = useRef(0);
 
   useEffect(() => {
@@ -86,6 +87,13 @@ const Organize = () => {
     return () => clearInterval(interval);
   }, [isProcessing, files, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile, settings.comicVineApiKey]);
 
+  const handleSkip = () => {
+    if (selectedItem) {
+      skipFile(selectedItem);
+      setSelectedItem(null);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
@@ -103,7 +111,7 @@ const Organize = () => {
                 Pause
               </Button>
             )}
-            <Button variant="outline" disabled>
+            <Button variant="outline" disabled={!selectedItem} onClick={handleSkip}>
               <SkipForward className="h-4 w-4 mr-2" /> Skip
             </Button>
             <Button variant="ghost" disabled={!lastUndoableAction} onClick={undoLastAction}>
