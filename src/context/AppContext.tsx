@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { QueuedFile, Comic, RecentAction, NewComic, UndoPayload } from '@/types';
 
 interface AppContextType {
@@ -10,6 +10,7 @@ interface AppContextType {
   skipFile: (file: QueuedFile) => void;
   comics: Comic[];
   addComic: (comicData: NewComic, originalFile: QueuedFile) => void;
+  updateComic: (comic: Comic) => void;
   isProcessing: boolean;
   startProcessing: () => void;
   pauseProcessing: () => void;
@@ -25,11 +26,69 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 let fileIdCounter = 0;
 let comicIdCounter = 0;
 
+const sampleComics: Comic[] = [
+  {
+    id: `comic-${comicIdCounter++}`,
+    series: "Saga",
+    issue: "1",
+    year: 2012,
+    publisher: "Image Comics",
+    volume: "1",
+    coverUrl: "placeholder.svg",
+    summary: "An epic space opera/fantasy comic about star-crossed lovers from enemy species."
+  },
+  {
+    id: `comic-${comicIdCounter++}`,
+    series: "The Walking Dead",
+    issue: "1",
+    year: 2003,
+    publisher: "Image Comics",
+    volume: "1",
+    coverUrl: "placeholder.svg",
+    summary: "A post-apocalyptic horror comic following survivors in a zombie-infested world."
+  },
+  {
+    id: `comic-${comicIdCounter++}`,
+    series: "Batman",
+    issue: "1",
+    year: 2016,
+    publisher: "DC Comics",
+    volume: "3",
+    coverUrl: "placeholder.svg",
+    summary: "The Dark Knight's adventures in Gotham City continue in this acclaimed series."
+  },
+  {
+    id: `comic-${comicIdCounter++}`,
+    series: "The Amazing Spider-Man",
+    issue: "1",
+    year: 2018,
+    publisher: "Marvel Comics",
+    volume: "5",
+    coverUrl: "placeholder.svg",
+    summary: "Your friendly neighborhood Spider-Man swings into action in New York City."
+  },
+  {
+    id: `comic-${comicIdCounter++}`,
+    series: "Invincible",
+    issue: "1",
+    year: 2003,
+    publisher: "Image Comics",
+    volume: "1",
+    coverUrl: "placeholder.svg",
+    summary: "A teenage superhero discovers his powers and the complex world of heroes and villains."
+  }
+];
+
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [files, setFiles] = useState<QueuedFile[]>([]);
-  const [comics, setComics] = useState<Comic[]>([]);
+  const [comics, setComics] = useState<Comic[]>(sampleComics);
   const [isProcessing, setIsProcessing] = useState(false);
   const [actions, setActions] = useState<RecentAction[]>([]);
+
+  useEffect(() => {
+    // Log initial setup
+    logAction('info', `Comic Organizer initialized with ${sampleComics.length} sample comics.`);
+  }, []);
 
   const logAction = useCallback((type: RecentAction['type'], message: string, undo?: UndoPayload) => {
     const newAction: RecentAction = {
@@ -79,6 +138,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  const updateComic = (updatedComic: Comic) => {
+    setComics(prev => prev.map(c => c.id === updatedComic.id ? updatedComic : c));
+    logAction('info', `Updated metadata for '${updatedComic.series} #${updatedComic.issue}'`);
+  };
+
   const startProcessing = () => setIsProcessing(true);
   const pauseProcessing = () => setIsProcessing(false);
 
@@ -105,12 +169,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const addMockFiles = useCallback(() => {
     const newMockFiles: QueuedFile[] = [
-      { id: `file-${fileIdCounter++}`, name: "Saga #1 (2012).cbr", path: "/incoming/Saga #1 (2012).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+      { id: `file-${fileIdCounter++}`, name: "Saga #2 (2012).cbr", path: "/incoming/Saga #2 (2012).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
       { id: `file-${fileIdCounter++}`, name: "Batman The Knight #1 (2022).cbr", path: "/incoming/Batman The Knight #1 (2022).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
       { id: `file-${fileIdCounter++}`, name: "The Amazing Spider-Man #300 (1988).cbr", path: "/incoming/The Amazing Spider-Man #300 (1988).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
-      { id: `file-${fileIdCounter++}`, name: "Action Comics #1 (1938).cbr", path: "/incoming/Action Comics #1 (1938).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+      { id: `file-${fileIdCounter++}`, name: "Action Comics #1000 (2018).cbr", path: "/incoming/Action Comics #1000 (2018).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
       { id: `file-${fileIdCounter++}`, name: "Radiant Black #1 (2021).cbr", path: "/incoming/Radiant Black #1 (2021).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
-      { id: `file-${fileIdCounter++}`, name: "Invincible #1 (2003).cbr", path: "/incoming/Invincible #1 (2003).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+      { id: `file-${fileIdCounter++}`, name: "Invincible #144 (2018).cbr", path: "/incoming/Invincible #144 (2018).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
       { id: `file-${fileIdCounter++}`, name: "Monstress #1 (2015).cbr", path: "/incoming/Monstress #1 (2015).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
       { id: `file-${fileIdCounter++}`, name: "Paper Girls #1 (2015).cbr", path: "/incoming/Paper Girls #1 (2015).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
       { id: `file-${fileIdCounter++}`, name: "The Wicked The Divine #1 (2014).cbr", path: "/incoming/The Wicked The Divine #1 (2014).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
@@ -125,7 +189,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AppContext.Provider value={{ 
       files, addFile, addFiles, removeFile, updateFile, skipFile,
-      comics, addComic, 
+      comics, addComic, updateComic,
       isProcessing, startProcessing, pauseProcessing,
       actions, logAction,
       lastUndoableAction, undoLastAction,
