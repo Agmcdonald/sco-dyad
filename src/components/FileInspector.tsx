@@ -39,7 +39,7 @@ const FileInspector = ({ file }: FileInspectorProps) => {
       publisher: file.publisher,
       volume: String(file.year), // Mock volume
       summary: `Manually added from file: ${file.name}`
-    }, file.name);
+    }, file);
 
     removeFile(file.id);
     showSuccess(`'${file.series} #${file.issue}' added to library.`);

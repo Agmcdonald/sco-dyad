@@ -34,3 +34,8 @@ export interface RecentAction {
   text: string;
   time: string;
 }
+
+export type UndoableAction =
+  | { type: 'ADD_COMIC'; comicId: number; originalFile: QueuedFile }
+  | { type: 'SKIP_FILE'; skippedFile: QueuedFile }
+  | null;

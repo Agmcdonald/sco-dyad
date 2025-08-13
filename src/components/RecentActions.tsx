@@ -6,7 +6,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileCheck2, FileX2, Info } from "lucide-react";
+import { FileCheck2, FileX2, Info, Undo } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import { ActionType } from "@/types";
 
@@ -23,7 +23,7 @@ const actionColors: Record<ActionType, string> = {
 };
 
 const RecentActions = () => {
-  const { recentActions } = useAppContext();
+  const { recentActions, lastUndoableAction, undoLastAction } = useAppContext();
 
   return (
     <Card className="h-full">
@@ -34,8 +34,9 @@ const RecentActions = () => {
       <CardContent>
         {recentActions.length > 0 ? (
           <div className="space-y-4">
-            {recentActions.map((action) => {
+            {recentActions.map((action, index) => {
               const Icon = actionIcons[action.type];
+              const isUndoable = index === 0 && !!lastUndoableAction;
               return (
                 <div key={action.id} className="flex items-center gap-4">
                   <Icon className={`h-5 w-5 ${actionColors[action.type]}`} />
@@ -43,7 +44,14 @@ const RecentActions = () => {
                     <p className="text-sm font-medium">{action.text}</p>
                     <p className="text-xs text-muted-foreground">{action.time}</p>
                   </div>
-                  <Button variant="outline" size="sm" className="ml-auto" disabled>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="ml-auto" 
+                    disabled={!isUndoable}
+                    onClick={undoLastAction}
+                  >
+                    <Undo className="h-3 w-3 mr-1.5" />
                     Undo
                   </Button>
                 </div>

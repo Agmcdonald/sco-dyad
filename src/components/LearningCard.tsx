@@ -69,7 +69,7 @@ const LearningCard = ({ file }: LearningCardProps) => {
     addComic({
       ...values,
       summary: `Manually mapped from file: ${file.name}`,
-    }, file.name);
+    }, file);
     removeFile(file.id);
     showSuccess(`'${values.series} #${values.issue}' added to library.`);
   };
