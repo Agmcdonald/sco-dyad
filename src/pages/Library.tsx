@@ -28,10 +28,25 @@ const mockComics = [
 
 const Library = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortOption, setSortOption] = useState("series-asc");
 
   const filteredComics = mockComics.filter((comic) =>
     comic.series.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const sortedComics = [...filteredComics].sort((a, b) => {
+    switch (sortOption) {
+      case "series-desc":
+        return b.series.localeCompare(a.series);
+      case "year-desc":
+        return b.year - a.year;
+      case "year-asc":
+        return a.year - b.year;
+      case "series-asc":
+      default:
+        return a.series.localeCompare(b.series);
+    }
+  });
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -52,7 +67,7 @@ const Library = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Select defaultValue="series-asc">
+          <Select value={sortOption} onValueChange={setSortOption}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
@@ -66,7 +81,7 @@ const Library = () => {
         </div>
       </div>
       <div className="flex-1 overflow-auto pb-4">
-        <LibraryGrid comics={filteredComics} />
+        <LibraryGrid comics={sortedComics} />
       </div>
     </div>
   );
