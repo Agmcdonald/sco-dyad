@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { QueuedFile, Comic, RecentAction, NewComic, UndoPayload } from '@/types';
+import { useElectronDatabaseService } from '@/services/electronDatabaseService';
 
 interface AppContextType {
   files: QueuedFile[];
@@ -84,11 +85,55 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [comics, setComics] = useState<Comic[]>(sampleComics);
   const [isProcessing, setIsProcessing] = useState(false);
   const [actions, setActions] = useState<RecentAction[]>([]);
+  const databaseService = useElectronDatabaseService();
 
+  // Load comics from Electron database on startup
   useEffect(() => {
-    // Log initial setup
-    logAction('info', `Comic Organizer initialized with ${sampleComics.length} sample comics.`);
-  }, []);
+    const loadComicsFromDatabase = async () => {
+      if (databaseService) {
+        try {
+          const dbComics = await databaseService.getComics();
+          if (dbComics.length > 0) {
+            // Convert database comics to app format
+            const appComics = dbComics.map(dbComic => ({
+              id: dbComic.id,
+              series: dbComic.series,
+              issue: dbComic.issue,
+              year: dbComic.year,
+              publisher: dbComic.publisher,
+              volume: dbComic.volume,
+              summary: dbComic.summary,
+              coverUrl: dbComic.coverUrl || 'placeholder.svg'
+            }));
+            setComics(appComics);
+            logAction('info', `Loaded ${appComics.length} comics from database.`);
+          } else {
+            // If no comics in database, add sample comics
+            for (const comic of sampleComics) {
+              try {
+                await databaseService.saveComic({
+                  ...comic,
+                  filePath: `sample/${comic.series.replace(/\s+/g, '_')}_${comic.issue}.cbz`,
+                  fileSize: 25000000 // 25MB sample size
+                });
+              } catch (error) {
+                console.warn('Could not save sample comic to database:', error);
+              }
+            }
+            logAction('info', `Initialized database with ${sampleComics.length} sample comics.`);
+          }
+        } catch (error) {
+          console.error('Error loading comics from database:', error);
+          logAction('error', 'Failed to load comics from database, using sample data.');
+        }
+      } else {
+        // Web mode - use sample data
+        logAction('info', `Comic Organizer initialized with ${sampleComics.length} sample comics.`);
+      }
+    };
+
+    loadComicsFromDatabase();
+  }, [databaseService]);
 
   const logAction = useCallback((type: RecentAction['type'], message: string, undo?: UndoPayload) => {
     const newAction: RecentAction = {
@@ -125,12 +170,31 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setFiles(prev => prev.map(f => f.id === updatedFile.id ? updatedFile : f));
   };
 
-  const addComic = (comicData: NewComic, originalFile: QueuedFile) => {
+  const addComic = async (comicData: NewComic, originalFile: QueuedFile) => {
     const newComic: Comic = {
       ...comicData,
       id: `comic-${comicIdCounter++}`,
       coverUrl: 'placeholder.svg'
     };
+
+    // Save to database if available
+    if (databaseService) {
+      try {
+        const savedComic = await databaseService.saveComic({
+          ...comicData,
+          filePath: originalFile.path,
+          fileSize: 25000000 // Default size, would be actual file size in real implementation
+        });
+        
+        // Update comic with database info
+        newComic.id = savedComic.id;
+        newComic.coverUrl = savedComic.coverUrl || 'placeholder.svg';
+      } catch (error) {
+        console.error('Error saving comic to database:', error);
+        logAction('warning', `Comic added to memory only: ${error.message}`);
+      }
+    }
+
     setComics(prev => [newComic, ...prev]);
     logAction('success', `Organized '${originalFile.name}' as '${newComic.series} #${newComic.issue}'`, {
       type: 'ADD_COMIC',
@@ -138,7 +202,23 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const updateComic = (updatedComic: Comic) => {
+  const updateComic = async (updatedComic: Comic) => {
+    // Update in database if available
+    if (databaseService) {
+      try {
+        await databaseService.updateComic({
+          ...updatedComic,
+          filePath: `library/${updatedComic.series}/${updatedComic.series}_${updatedComic.issue}.cbz`,
+          fileSize: 25000000,
+          dateAdded: new Date().toISOString(),
+          lastModified: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('Error updating comic in database:', error);
+        logAction('warning', `Comic updated in memory only: ${error.message}`);
+      }
+    }
+
     setComics(prev => prev.map(c => c.id === updatedComic.id ? updatedComic : c));
     logAction('info', `Updated metadata for '${updatedComic.series} #${updatedComic.issue}'`);
   };
@@ -157,6 +237,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       case 'ADD_COMIC':
         setComics(prev => prev.filter(c => c.id !== payload.comicId));
         addFile(payload.originalFile);
+        // TODO: Remove from database if available
         break;
       case 'SKIP_FILE':
         addFile(payload.skippedFile);
