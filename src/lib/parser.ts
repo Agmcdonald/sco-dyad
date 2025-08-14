@@ -3,12 +3,83 @@ export interface ParsedComicInfo {
   issue: string | null;
   year: number | null;
   volume: string | null;
+  publisher?: string | null; // Add publisher detection
 }
 
 // Enhanced regex patterns for better parsing
 const issueRegex = /(?:#|issue|\s)(\d{1,4}(?:\.\d{1,2})?)/i;
 const yearRegex = /\((20\d{2}|19\d{2})\)/;
 const volumeRegex = /(?:v|vol|volume)\s*(\d{1,3})/i;
+
+// Character to publisher mapping
+const characterPublisherMap: Record<string, string> = {
+  // DC Comics characters
+  'superman': 'DC Comics',
+  'batman': 'DC Comics',
+  'wonder woman': 'DC Comics',
+  'flash': 'DC Comics',
+  'green lantern': 'DC Comics',
+  'aquaman': 'DC Comics',
+  'cyborg': 'DC Comics',
+  'green arrow': 'DC Comics',
+  'martian manhunter': 'DC Comics',
+  'shazam': 'DC Comics',
+  'captain marvel': 'DC Comics', // Shazam
+  'nightwing': 'DC Comics',
+  'robin': 'DC Comics',
+  'batgirl': 'DC Comics',
+  'supergirl': 'DC Comics',
+  'harley quinn': 'DC Comics',
+  'joker': 'DC Comics',
+  'catwoman': 'DC Comics',
+  'poison ivy': 'DC Comics',
+  'lex luthor': 'DC Comics',
+  'deathstroke': 'DC Comics',
+  'teen titans': 'DC Comics',
+  'justice league': 'DC Comics',
+  'birds of prey': 'DC Comics',
+  'suicide squad': 'DC Comics',
+  
+  // Marvel Comics characters
+  'spider-man': 'Marvel Comics',
+  'spiderman': 'Marvel Comics',
+  'iron man': 'Marvel Comics',
+  'captain america': 'Marvel Comics',
+  'thor': 'Marvel Comics',
+  'hulk': 'Marvel Comics',
+  'black widow': 'Marvel Comics',
+  'hawkeye': 'Marvel Comics',
+  'ant-man': 'Marvel Comics',
+  'wasp': 'Marvel Comics',
+  'captain marvel': 'Marvel Comics', // Carol Danvers
+  'ms marvel': 'Marvel Comics',
+  'daredevil': 'Marvel Comics',
+  'punisher': 'Marvel Comics',
+  'deadpool': 'Marvel Comics',
+  'wolverine': 'Marvel Comics',
+  'x-men': 'Marvel Comics',
+  'fantastic four': 'Marvel Comics',
+  'avengers': 'Marvel Comics',
+  'guardians of the galaxy': 'Marvel Comics',
+  'doctor strange': 'Marvel Comics',
+  'scarlet witch': 'Marvel Comics',
+  'vision': 'Marvel Comics',
+  'falcon': 'Marvel Comics',
+  'winter soldier': 'Marvel Comics',
+  'black panther': 'Marvel Comics',
+  'storm': 'Marvel Comics',
+  'cyclops': 'Marvel Comics',
+  'jean grey': 'Marvel Comics',
+  'magneto': 'Marvel Comics',
+  'professor x': 'Marvel Comics',
+  'venom': 'Marvel Comics',
+  'carnage': 'Marvel Comics',
+  'green goblin': 'Marvel Comics',
+  'doctor octopus': 'Marvel Comics',
+  'thanos': 'Marvel Comics',
+  'loki': 'Marvel Comics',
+  'galactus': 'Marvel Comics',
+};
 
 // Patterns to remove common metadata that clutters series names
 const metadataPatterns = [
@@ -23,29 +94,43 @@ const metadataPatterns = [
   /\([^)]*rip[^)]*\)/gi,  // Remove any rip-related tags
   /\([^)]*scan[^)]*\)/gi,  // Remove scan-related tags
   /\(\d+\)$/gi,  // Remove trailing numbers like "(1)" at the end
-  /\s*-\s*\d+\s*$/, // Remove trailing " - 1" patterns
 ];
 
-const clean = (name: string) => {
-    let cleaned = name
-        .replace(/_/g, ' ') // Replace underscores with spaces
-        .replace(/\.[^/.]+$/, "") // Remove file extension
-        .replace(/[-.]/g, ' ') // Replace remaining separators with spaces
-        .replace(/\s+/g, ' ') // Collapse multiple spaces
-        .trim();
-    
-    // Remove metadata patterns
-    metadataPatterns.forEach(pattern => {
-        cleaned = cleaned.replace(pattern, '');
-    });
-    
-    // Final cleanup
-    cleaned = cleaned
-        .replace(/\s+/g, ' ') // Collapse spaces again
-        .trim();
-    
-    return cleaned;
-}
+const clean = (name: string): string => {
+  let cleaned = name
+    .replace(/_/g, ' ') // Replace underscores with spaces
+    .replace(/\.[^/.]+$/, "") // Remove file extension
+    .trim();
+  
+  // Remove metadata patterns first
+  metadataPatterns.forEach(pattern => {
+    cleaned = cleaned.replace(pattern, '');
+  });
+  
+  // Clean up separators but preserve hyphens in series names like "Spider-Man"
+  cleaned = cleaned
+    .replace(/\s*-\s*/g, ' - ') // Normalize hyphens with spaces
+    .replace(/\s+/g, ' ') // Collapse multiple spaces
+    .trim();
+  
+  return cleaned;
+};
+
+// Detect publisher based on character names in the series title
+const detectPublisherFromCharacters = (seriesName: string): string | null => {
+  if (!seriesName) return null;
+  
+  const lowerSeries = seriesName.toLowerCase();
+  
+  // Check for character matches
+  for (const [character, publisher] of Object.entries(characterPublisherMap)) {
+    if (lowerSeries.includes(character)) {
+      return publisher;
+    }
+  }
+  
+  return null;
+};
 
 export const parseFilename = (path: string): ParsedComicInfo => {
   const pathParts = path.split(/[\\/]/);
@@ -62,21 +147,11 @@ export const parseFilename = (path: string): ParsedComicInfo => {
     cleanedFilename = cleanedFilename.replace(yearRegex, '').trim();
   }
 
-  // Extract issue number
-  const issueMatch = cleanedFilename.match(issueRegex);
+  // Extract issue number - look for patterns like "001", "#1", "issue 1"
+  const issueMatch = cleanedFilename.match(/\b(\d{1,4}(?:\.\d{1,2})?)\b/);
   let issue = issueMatch ? issueMatch[1] : null;
   if (issueMatch) {
-    cleanedFilename = cleanedFilename.replace(issueRegex, '').trim();
-  }
-
-  // Try to find issue number in different formats if not found
-  if (!issue) {
-    // Look for standalone numbers that might be issues
-    const standaloneNumberMatch = cleanedFilename.match(/\b(\d{1,4})\b/);
-    if (standaloneNumberMatch) {
-      issue = standaloneNumberMatch[1];
-      cleanedFilename = cleanedFilename.replace(standaloneNumberMatch[0], '').trim();
-    }
+    cleanedFilename = cleanedFilename.replace(issueMatch[0], '').trim();
   }
   
   // Extract volume
@@ -98,7 +173,7 @@ export const parseFilename = (path: string): ParsedComicInfo => {
     ? seriesFromFolder 
     : seriesFromFilename;
 
-  // Format issue number with leading zeros and # prefix for display
+  // Format issue number with leading zeros for display
   if (issue) {
     // Pad with leading zeros if it's a simple number
     if (/^\d+$/.test(issue)) {
@@ -106,11 +181,15 @@ export const parseFilename = (path: string): ParsedComicInfo => {
     }
   }
 
+  // Detect publisher based on character names
+  const detectedPublisher = detectPublisherFromCharacters(series);
+
   return { 
     series: series || null, 
     issue: issue || null, 
     year, 
-    volume 
+    volume,
+    publisher: detectedPublisher
   };
 };
 
