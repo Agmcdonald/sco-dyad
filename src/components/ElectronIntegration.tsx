@@ -4,6 +4,7 @@ import { useElectron, useElectronFileHandlers, useElectronNavigation } from '@/h
 import { useElectronFileService } from '@/services/electronFileService';
 import { useAppContext } from '@/context/AppContext';
 import { showSuccess, showError } from '@/utils/toast';
+import ElectronTesting from './ElectronTesting';
 
 const ElectronIntegration = () => {
   const { isElectron, electronAPI } = useElectron();
@@ -96,22 +97,25 @@ const ElectronIntegration = () => {
     };
   }, [electronAPI, fileService, addFiles, navigate]);
 
-  // Show Electron status in development
-  if (process.env.NODE_ENV === 'development') {
-    return (
-      <div className="fixed bottom-4 right-4 z-50">
-        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-          isElectron 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-yellow-100 text-yellow-800'
-        }`}>
-          {isElectron ? 'Electron Mode' : 'Web Mode'}
+  return (
+    <>
+      {/* Show Electron status in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+            isElectron 
+              ? 'bg-green-100 text-green-800' 
+              : 'bg-yellow-100 text-yellow-800'
+          }`}>
+            {isElectron ? 'Electron Mode' : 'Web Mode'}
+          </div>
         </div>
-      </div>
-    );
-  }
-
-  return null;
+      )}
+      
+      {/* Testing tools in development */}
+      <ElectronTesting />
+    </>
+  );
 };
 
 export default ElectronIntegration;
