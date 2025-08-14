@@ -10,6 +10,7 @@ import { QueuedFile } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess } from "@/utils/toast";
 import { parseFilename } from "@/lib/parser";
+import { getKnowledgeSuggestions, searchKnowledgeBase } from "@/lib/knowledgeBase";
 import Suggestions, { Suggestion } from "./Suggestions";
 
 interface LearningCardProps {
@@ -43,21 +44,32 @@ const LearningCard = ({ file }: LearningCardProps) => {
   const parsedInfo = useMemo(() => parseFilename(file.path), [file.path]);
 
   useEffect(() => {
+    // Get knowledge base suggestions
+    const knowledgeMatches = searchKnowledgeBase(parsedInfo);
+    const bestMatch = knowledgeMatches.length > 0 ? knowledgeMatches[0] : null;
+
     form.reset({
       series: parsedInfo.series || "",
       issue: parsedInfo.issue || "",
       year: parsedInfo.year || new Date().getFullYear(),
-      volume: parsedInfo.volume || "",
-      publisher: "",
+      volume: parsedInfo.volume || (bestMatch?.volume) || "",
+      publisher: bestMatch?.publisher || "",
     });
   }, [parsedInfo, form]);
 
   const suggestions: Suggestion[] = useMemo(() => {
     const suggs: Suggestion[] = [];
+    
+    // Add parsed suggestions
     if (parsedInfo.series) suggs.push({ label: "Series", value: parsedInfo.series, field: "series" });
     if (parsedInfo.issue) suggs.push({ label: "Issue", value: parsedInfo.issue, field: "issue" });
     if (parsedInfo.year) suggs.push({ label: "Year", value: String(parsedInfo.year), field: "year" });
     if (parsedInfo.volume) suggs.push({ label: "Volume", value: parsedInfo.volume, field: "volume" });
+    
+    // Add knowledge base suggestions
+    const knowledgeSuggestions = getKnowledgeSuggestions(parsedInfo);
+    suggs.push(...knowledgeSuggestions);
+    
     return suggs;
   }, [parsedInfo]);
 
@@ -79,18 +91,51 @@ const LearningCard = ({ file }: LearningCardProps) => {
     showSuccess(`Skipped file: ${file.name}`);
   };
 
+  // Get knowledge base matches for display
+  const knowledgeMatches = useMemo(() => searchKnowledgeBase(parsedInfo), [parsedInfo]);
+
   return (
     <Card className="w-full max-w-4xl mx-auto">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardHeader>
-            <CardTitle>{file.name}</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              <span>{file.name}</span>
+              {knowledgeMatches.length > 0 && (
+                <div className="text-sm font-normal text-muted-foreground">
+                  {knowledgeMatches.length} potential match{knowledgeMatches.length !== 1 ? 'es' : ''} found
+                </div>
+              )}
+            </CardTitle>
           </CardHeader>
           <CardContent className="grid md:grid-cols-3 gap-6">
             <div className="md:col-span-1">
-              <div className="aspect-w-2 aspect-h-3 rounded-lg bg-muted flex items-center justify-center">
+              <div className="aspect-w-2 aspect-h-3 rounded-lg bg-muted flex items-center justify-center mb-4">
                 <span className="text-sm text-muted-foreground">No Preview</span>
               </div>
+              
+              {/* Knowledge Base Matches */}
+              {knowledgeMatches.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold">Knowledge Base Matches:</h4>
+                  {knowledgeMatches.slice(0, 3).map((match, index) => (
+                    <div key={index} className="p-2 bg-muted/50 rounded text-xs">
+                      <div className="font-medium">{match.series}</div>
+                      <div className="text-muted-foreground">{match.publisher}</div>
+                      <div className="text-muted-foreground">Vol: {match.volume}</div>
+                      <div className="text-right">
+                        <span className={`px-1 py-0.5 rounded text-xs ${
+                          match.confidence === 'High' ? 'bg-green-100 text-green-800' :
+                          match.confidence === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {match.confidence}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="md:col-span-2 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
