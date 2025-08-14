@@ -225,16 +225,32 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const savedComic = await databaseService.saveComic(comicToSave);
 
         // 3. Update UI state with the final comic object from the database
-        setComics(prev => [savedComic, ...prev]);
+        // The savedComic should have the coverUrl with the custom protocol
+        const uiComic: Comic = {
+          id: savedComic.id,
+          series: savedComic.series,
+          issue: savedComic.issue,
+          year: savedComic.year,
+          publisher: savedComic.publisher,
+          volume: savedComic.volume,
+          summary: savedComic.summary,
+          coverUrl: savedComic.coverUrl || 'placeholder.svg'
+        };
+
+        setComics(prev => [uiComic, ...prev]);
         logAction('success', `Organized '${originalFile.name}' as '${savedComic.series} #${savedComic.issue}'`, {
           type: 'ADD_COMIC',
           payload: { comicId: savedComic.id, originalFile }
         });
 
+        // Log cover URL for debugging
+        console.log('Comic added with cover URL:', savedComic.coverUrl);
+
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         showError(`An error occurred while organizing ${originalFile.name}`);
         logAction('error', `Error organizing ${originalFile.name}: ${errorMessage}`);
+        console.error('Error in addComic:', error);
       }
     } else {
       // Web mode (mock behavior)
@@ -311,6 +327,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       { id: `file-${fileIdCounter++}`, name: "East of West #1 (2013).cbr", path: "/incoming/East of West #1 (2013).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
       { id: `file-${fileIdCounter++}`, name: "Unknown Comic.cbr", path: "/incoming/Unknown Comic.cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
       { id: `file-${fileIdCounter++}`, name: "Another Unknown Comic.cbr", path: "/incoming/Another Unknown Comic.cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+      { id: `file-${fileIdCounter++}`, name: "Superman - The Kryptonite Spectrum 001 (2025) (Webrip) (The Last Kryptonian-DCP) (1).cbr", path: "/incoming/Superman - The Kryptonite Spectrum 001 (2025) (Webrip) (The Last Kryptonian-DCP) (1).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
     ];
     addFiles(newMockFiles);
     logAction('info', `Added ${newMockFiles.length} mock files to the queue.`);
