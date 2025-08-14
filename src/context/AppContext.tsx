@@ -108,7 +108,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
               publisher: dbComic.publisher,
               volume: dbComic.volume,
               summary: dbComic.summary,
-              coverUrl: dbComic.coverUrl || 'placeholder.svg'
+              coverUrl: dbComic.coverUrl ? `file://${dbComic.coverUrl}` : 'placeholder.svg'
             }));
             setComics(appComics);
             logAction('info', `Loaded ${appComics.length} comics from database.`);
@@ -202,18 +202,28 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       coverUrl: 'placeholder.svg'
     };
 
+    if (isElectron && electronAPI) {
+      try {
+        const coverPath = await electronAPI.extractCover(originalFile.path);
+        newComic.coverUrl = `file://${coverPath}`;
+      } catch (error) {
+        console.error('Failed to extract cover:', error);
+        showError(`Could not extract cover for ${originalFile.name}`);
+      }
+    }
+
     // Save to database if available
     if (databaseService) {
       try {
         const savedComic = await databaseService.saveComic({
           ...comicData,
           filePath: originalFile.path,
-          fileSize: 25000000 // Default size, would be actual file size in real implementation
+          fileSize: 25000000, // Default size, would be actual file size in real implementation
+          coverPath: newComic.coverUrl.startsWith('file://') ? newComic.coverUrl.substring(7) : null
         });
         
         // Update comic with database info
         newComic.id = savedComic.id;
-        newComic.coverUrl = savedComic.coverUrl || 'placeholder.svg';
       } catch (error) {
         console.error('Error saving comic to database:', error);
         logAction('warning', `Comic added to memory only: ${error.message}`);
