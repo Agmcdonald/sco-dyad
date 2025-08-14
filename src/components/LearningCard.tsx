@@ -9,11 +9,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { QueuedFile } from "@/types";
 import { useAppContext } from "@/context/AppContext";
+import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 import { showSuccess } from "@/utils/toast";
 import { parseFilename } from "@/lib/parser";
 import { getKnowledgeSuggestions, searchKnowledgeBase } from "@/lib/knowledgeBase";
 import Suggestions, { Suggestion } from "./Suggestions";
-import { comicsKnowledgeData } from "@/data/comicsKnowledge";
 
 interface LearningCardProps {
   file: QueuedFile;
@@ -31,6 +31,7 @@ type FormSchemaType = z.infer<typeof formSchema>;
 
 const LearningCard = ({ file }: LearningCardProps) => {
   const { addComic, removeFile, skipFile, comics } = useAppContext();
+  const { knowledgeBase } = useKnowledgeBase();
 
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
@@ -48,7 +49,7 @@ const LearningCard = ({ file }: LearningCardProps) => {
   // Generate publisher options from existing comics and knowledge base
   const publisherOptions: ComboboxOption[] = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
-    const publishersFromKnowledge = [...new Set(comicsKnowledgeData.map(entry => entry.publisher))];
+    const publishersFromKnowledge = [...new Set(knowledgeBase.map(entry => entry.publisher))];
     
     const allPublishers = [...new Set([...publishersFromComics, ...publishersFromKnowledge])];
     
@@ -56,12 +57,12 @@ const LearningCard = ({ file }: LearningCardProps) => {
       label: publisher,
       value: publisher
     })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [comics]);
+  }, [comics, knowledgeBase]);
 
   // Generate series options from existing comics and knowledge base
   const seriesOptions: ComboboxOption[] = useMemo(() => {
     const seriesFromComics = [...new Set(comics.map(c => c.series))];
-    const seriesFromKnowledge = [...new Set(comicsKnowledgeData.map(entry => entry.series))];
+    const seriesFromKnowledge = [...new Set(knowledgeBase.map(entry => entry.series))];
     
     const allSeries = [...new Set([...seriesFromComics, ...seriesFromKnowledge])];
     
@@ -69,7 +70,7 @@ const LearningCard = ({ file }: LearningCardProps) => {
       label: series,
       value: series
     })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [comics]);
+  }, [comics, knowledgeBase]);
 
   useEffect(() => {
     // Get knowledge base suggestions

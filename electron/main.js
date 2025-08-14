@@ -1,5 +1,6 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
+const fs = require('fs').promises;
 const ComicFileHandler = require('./fileHandler');
 const ComicDatabase = require('./database');
 
@@ -9,6 +10,7 @@ const isDev = process.env.NODE_ENV === 'development';
 let mainWindow;
 let fileHandler;
 let database;
+let knowledgeBasePath;
 
 function createWindow() {
   // Create the browser window
@@ -66,10 +68,40 @@ async function initializeServices() {
     // Initialize database
     database = new ComicDatabase();
     await database.initialize();
+
+    // Initialize knowledge base
+    const userDataPath = app.getPath('userData');
+    knowledgeBasePath = path.join(userDataPath, 'userKnowledgeBase.json');
+    await initializeKnowledgeBase();
     
     console.log('Services initialized successfully');
   } catch (error) {
     console.error('Error initializing services:', error);
+  }
+}
+
+// Initialize knowledge base file
+async function initializeKnowledgeBase() {
+  try {
+    await fs.access(knowledgeBasePath);
+  } catch (error) {
+    // File doesn't exist, create it from default
+    const defaultKBPath = path.join(__dirname, '../dist/assets/comicsKnowledge.json');
+    try {
+      const defaultData = await fs.readFile(defaultKBPath, 'utf-8');
+      await fs.writeFile(knowledgeBasePath, defaultData, 'utf-8');
+      console.log('User knowledge base created from default.');
+    } catch (readError) {
+      // Fallback if dist asset is not found (e.g. in dev)
+      const devDefaultKBPath = path.join(__dirname, '../src/data/comicsKnowledge.json');
+      try {
+        const devDefaultData = await fs.readFile(devDefaultKBPath, 'utf-8');
+        await fs.writeFile(knowledgeBasePath, devDefaultData, 'utf-8');
+        console.log('User knowledge base created from dev default.');
+      } catch (devReadError) {
+        console.error('Could not find default knowledge base file:', devReadError);
+      }
+    }
   }
 }
 
@@ -402,6 +434,27 @@ ipcMain.handle('save-settings', async (event, settings) => {
     }
     return true;
   } catch (error) {
+    throw error;
+  }
+});
+
+// Knowledge Base operations
+ipcMain.handle('get-knowledge-base', async () => {
+  try {
+    const data = await fs.readFile(knowledgeBasePath, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error reading knowledge base:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('save-knowledge-base', async (event, data) => {
+  try {
+    await fs.writeFile(knowledgeBasePath, JSON.stringify(data, null, 2), 'utf-8');
+    return true;
+  } catch (error) {
+    console.error('Error saving knowledge base:', error);
     throw error;
   }
 });
