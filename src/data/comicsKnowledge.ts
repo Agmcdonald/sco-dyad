@@ -1,4 +1,5 @@
 import { ComicKnowledge } from "@/lib/knowledgeBase";
+import { comicsKnowledgeData2 } from "./comicsKnowledge2";
 
 // This data structure matches the comics_training_format.json structure
 export const comicsKnowledgeData: ComicKnowledge[] = [
@@ -195,5 +196,7 @@ export const comicsKnowledgeData: ComicKnowledge[] = [
       { "volume": "2009", "year": 2009 },
       { "volume": "2019", "year": 2019 }
     ]
-  }
+  },
+  // Merge the new data
+  ...comicsKnowledgeData2
 ];
