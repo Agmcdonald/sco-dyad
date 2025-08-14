@@ -1,9 +1,14 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
+const ComicFileHandler = require('./fileHandler');
+const ComicDatabase = require('./database');
+
 const isDev = process.env.NODE_ENV === 'development';
 
 // Keep a global reference of the window object
 let mainWindow;
+let fileHandler;
+let database;
 
 function createWindow() {
   // Create the browser window
@@ -52,8 +57,25 @@ function createWindow() {
   });
 }
 
+// Initialize services
+async function initializeServices() {
+  try {
+    // Initialize file handler
+    fileHandler = new ComicFileHandler();
+    
+    // Initialize database
+    database = new ComicDatabase();
+    await database.initialize();
+    
+    console.log('Services initialized successfully');
+  } catch (error) {
+    console.error('Error initializing services:', error);
+  }
+}
+
 // App event handlers
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await initializeServices();
   createWindow();
   createMenu();
 
@@ -66,6 +88,11 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  // Close database connection
+  if (database) {
+    database.close();
+  }
+  
   // On macOS, keep app running even when all windows are closed
   if (process.platform !== 'darwin') {
     app.quit();
@@ -257,7 +284,9 @@ async function selectComicFolder() {
   }
 }
 
-// IPC handlers will be added here as we implement file operations
+// IPC Handlers
+
+// App info
 ipcMain.handle('get-app-version', () => {
   return app.getVersion();
 });
@@ -265,6 +294,116 @@ ipcMain.handle('get-app-version', () => {
 ipcMain.handle('show-message-box', async (event, options) => {
   const result = await dialog.showMessageBox(mainWindow, options);
   return result;
+});
+
+// File operations
+ipcMain.handle('read-comic-file', async (event, filePath) => {
+  try {
+    return await fileHandler.readComicFile(filePath);
+  } catch (error) {
+    throw error;
+  }
+});
+
+ipcMain.handle('extract-cover', async (event, filePath) => {
+  try {
+    const coversDir = path.join(app.getPath('userData'), 'covers');
+    return await fileHandler.extractCover(filePath, coversDir);
+  } catch (error) {
+    throw error;
+  }
+});
+
+ipcMain.handle('scan-folder', async (event, folderPath) => {
+  try {
+    const files = await fileHandler.scanFolder(folderPath);
+    return files.map(file => file.path);
+  } catch (error) {
+    throw error;
+  }
+});
+
+ipcMain.handle('organize-file', async (event, sourcePath, targetPath) => {
+  try {
+    const settings = database.getAllSettings();
+    const keepOriginal = settings.keepOriginalFiles !== false;
+    return await fileHandler.organizeFile(sourcePath, targetPath, keepOriginal);
+  } catch (error) {
+    throw error;
+  }
+});
+
+// Database operations
+ipcMain.handle('init-database', async () => {
+  // Database is already initialized in app startup
+  return true;
+});
+
+ipcMain.handle('save-comic', async (event, comic) => {
+  try {
+    // Generate ID if not provided
+    if (!comic.id) {
+      comic.id = `comic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    }
+    
+    // Extract cover if file path is provided
+    if (comic.filePath && !comic.coverPath) {
+      try {
+        const coversDir = path.join(app.getPath('userData'), 'covers');
+        comic.coverPath = await fileHandler.extractCover(comic.filePath, coversDir);
+      } catch (error) {
+        console.warn('Could not extract cover for', comic.filePath, error.message);
+      }
+    }
+    
+    return database.saveComic(comic);
+  } catch (error) {
+    throw error;
+  }
+});
+
+ipcMain.handle('get-comics', async () => {
+  try {
+    return database.getComics();
+  } catch (error) {
+    throw error;
+  }
+});
+
+ipcMain.handle('update-comic', async (event, comic) => {
+  try {
+    return database.updateComic(comic);
+  } catch (error) {
+    throw error;
+  }
+});
+
+ipcMain.handle('delete-comic', async (event, comicId) => {
+  try {
+    return database.deleteComic(comicId);
+  } catch (error) {
+    throw error;
+  }
+});
+
+// Settings operations
+ipcMain.handle('get-settings', async () => {
+  try {
+    return database.getAllSettings();
+  } catch (error) {
+    throw error;
+  }
+});
+
+ipcMain.handle('save-settings', async (event, settings) => {
+  try {
+    for (const [key, value] of Object.entries(settings)) {
+      database.saveSetting(key, value);
+    }
+    return true;
+  } catch (error) {
+    throw error;
+  }
 });
 
 // Prevent navigation to external URLs
