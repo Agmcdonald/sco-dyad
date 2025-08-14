@@ -26,6 +26,7 @@ import { showError, showSuccess } from "@/utils/toast";
 import { testApiConnection } from "@/lib/scraper";
 import { comicsKnowledgeData } from "@/data/comicsKnowledge";
 import { Loader2, Database, Upload, Download } from "lucide-react";
+import KnowledgeBaseManager from "@/components/KnowledgeBaseManager";
 
 const Settings = () => {
   const { theme, setTheme } = useTheme();
@@ -108,6 +109,7 @@ const Settings = () => {
           <TabsTrigger value="file-handling">File Handling</TabsTrigger>
           <TabsTrigger value="scrapers">Scrapers</TabsTrigger>
           <TabsTrigger value="knowledge">Knowledge Base</TabsTrigger>
+          <TabsTrigger value="advanced">Advanced</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-4">
@@ -273,10 +275,10 @@ const Settings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Database className="h-5 w-5" />
-                Knowledge Base
+                Knowledge Base Overview
               </CardTitle>
               <CardDescription>
-                Manage the preseeded comic knowledge database used for intelligent suggestions.
+                Quick overview of the preseeded comic knowledge database.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -296,9 +298,9 @@ const Settings = () => {
               </div>
               
               <div>
-                <Label className="text-sm font-medium">Publishers in Knowledge Base:</Label>
+                <Label className="text-sm font-medium">Top Publishers:</Label>
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {Array.from(publishers).map(publisher => (
+                  {Array.from(publishers).slice(0, 8).map(publisher => (
                     <Badge key={publisher} variant="secondary">{publisher}</Badge>
                   ))}
                 </div>
@@ -320,6 +322,10 @@ const Settings = () => {
               </p>
             </CardFooter>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="advanced" className="space-y-4">
+          <KnowledgeBaseManager />
         </TabsContent>
       </Tabs>
     </div>
