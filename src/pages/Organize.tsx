@@ -6,6 +6,9 @@ import { Play, Pause, SkipForward, Undo, Loader2 } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import FileQueue from "@/components/FileQueue";
 import BulkActions from "@/components/BulkActions";
+import ProcessingStats from "@/components/ProcessingStats";
+import SmartSuggestions from "@/components/SmartSuggestions";
+import FilePreview from "@/components/FilePreview";
 import { useSelection } from "@/context/SelectionContext";
 import { useAppContext } from "@/context/AppContext";
 import { QueuedFile } from "@/types";
@@ -107,7 +110,7 @@ const Organize = () => {
     };
 
     if (isProcessing) {
-      interval = setInterval(processNextFile, 1000); // Slightly faster processing
+      interval = setInterval(processNextFile, 1000);
     }
 
     return () => clearInterval(interval);
@@ -121,8 +124,6 @@ const Organize = () => {
   };
 
   const pendingCount = files.filter(f => f.status === 'Pending').length;
-  const processingCount = files.filter(f => f.status === 'Success').length;
-  const needsReviewCount = files.filter(f => f.status === 'Warning' || f.status === 'Error').length;
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -172,33 +173,15 @@ const Organize = () => {
         </Card>
       )}
 
-      {/* Statistics */}
+      {/* Statistics and Suggestions */}
       {files.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold">{pendingCount}</div>
-              <div className="text-sm text-muted-foreground">Pending</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-green-600">{processingCount}</div>
-              <div className="text-sm text-muted-foreground">Processed</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-yellow-600">{needsReviewCount}</div>
-              <div className="text-sm text-muted-foreground">Needs Review</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold">{files.length}</div>
-              <div className="text-sm text-muted-foreground">Total Files</div>
-            </CardContent>
-          </Card>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <ProcessingStats />
+          </div>
+          <div>
+            <SmartSuggestions />
+          </div>
         </div>
       )}
 
@@ -210,15 +193,23 @@ const Organize = () => {
         />
       )}
 
-      <div className="flex-1 rounded-lg border bg-card text-card-foreground shadow-sm">
-        {files.length === 0 ? (
-          <FileDropzone />
-        ) : (
-          <FileQueue 
-            files={files} 
-            selectedFiles={selectedFiles}
-            onSelectionChange={setSelectedFiles}
-          />
+      <div className="flex-1 grid gap-4 lg:grid-cols-4">
+        <div className="lg:col-span-3 rounded-lg border bg-card text-card-foreground shadow-sm">
+          {files.length === 0 ? (
+            <FileDropzone />
+          ) : (
+            <FileQueue 
+              files={files} 
+              selectedFiles={selectedFiles}
+              onSelectionChange={setSelectedFiles}
+            />
+          )}
+        </div>
+        
+        {selectedItem?.type === 'file' && (
+          <div className="lg:col-span-1">
+            <FilePreview file={selectedItem as QueuedFile} />
+          </div>
         )}
       </div>
     </div>
