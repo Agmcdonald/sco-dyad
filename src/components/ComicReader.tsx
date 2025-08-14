@@ -1,19 +1,40 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, useCallback } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  ZoomIn, 
-  ZoomOut, 
-  RotateCw, 
-  Maximize, 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  Maximize,
+  Minimize,
   BookOpen,
-  Settings
+  Columns2,
+  PanelBottom,
+  X,
 } from "lucide-react";
 import { Comic } from "@/types";
+import { cn } from "@/lib/utils";
 
 interface ComicReaderProps {
   comic: Comic;
@@ -24,229 +45,262 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [zoom, setZoom] = useState(100);
   const [rotation, setRotation] = useState(0);
-  const [fitMode, setFitMode] = useState<'width' | 'height' | 'page'>('width');
+  const [viewMode, setViewMode] = useState<"single" | "double">("single");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [showThumbnails, setShowThumbnails] = useState(false);
 
-  // Mock pages - in a real app, these would come from the comic file
+  // Mock pages
   const totalPages = 22;
   const mockPages = Array.from({ length: totalPages }, (_, i) => ({
     id: i + 1,
-    url: 'placeholder.svg', // In reality, this would be extracted from the comic file
-    width: 1200,
-    height: 1800
+    url: "placeholder.svg",
   }));
 
-  const currentPageData = mockPages[currentPage - 1];
+  // --- Core Navigation Logic ---
+  const goToPage = useCallback((page: number) => {
+    const newPage = Math.max(1, Math.min(totalPages, page));
+    setCurrentPage(newPage);
+  }, [totalPages]);
 
-  const nextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
+  const nextPage = useCallback(() => {
+    goToPage(currentPage + (viewMode === "double" ? 2 : 1));
+  }, [currentPage, goToPage, viewMode]);
+
+  const prevPage = useCallback(() => {
+    goToPage(currentPage - (viewMode === "double" ? 2 : 1));
+  }, [currentPage, goToPage, viewMode]);
+
+  // --- Keyboard Shortcuts ---
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight" || e.key === " ") nextPage();
+      if (e.key === "ArrowLeft") prevPage();
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [nextPage, prevPage, onClose]);
+
+  // --- Control Visibility ---
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    const handleMouseMove = () => {
+      setShowControls(true);
+      clearTimeout(timer);
+      timer = setTimeout(() => setShowControls(false), 3000);
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      clearTimeout(timer);
+    };
+  }, []);
+
+  // --- Fullscreen Handling ---
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+        setIsFullscreen(false);
+      }
     }
   };
 
-  const prevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const handleZoomIn = () => {
-    setZoom(Math.min(300, zoom + 25));
-  };
-
-  const handleZoomOut = () => {
-    setZoom(Math.max(50, zoom - 25));
-  };
-
-  const handleRotate = () => {
-    setRotation((rotation + 90) % 360);
-  };
-
-  const handleFitMode = () => {
-    const modes: Array<'width' | 'height' | 'page'> = ['width', 'height', 'page'];
-    const currentIndex = modes.indexOf(fitMode);
-    setFitMode(modes[(currentIndex + 1) % modes.length]);
+  const renderPage = (pageNumber: number) => {
+    if (pageNumber < 1 || pageNumber > totalPages) return null;
+    return (
+      <img
+        src={mockPages[pageNumber - 1].url}
+        alt={`Page ${pageNumber}`}
+        className="max-w-full max-h-full object-contain shadow-lg"
+      />
+    );
   };
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col">
-      {/* Header */}
-      <div className="bg-gray-900 text-white p-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={onClose} className="text-white hover:bg-gray-800">
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            Back to Library
-          </Button>
-          <div>
-            <h2 className="font-semibold">{comic.series} #{comic.issue}</h2>
-            <p className="text-sm text-gray-300">{comic.publisher} • {comic.year}</p>
+    <TooltipProvider>
+      <div className="fixed inset-0 bg-background z-50 flex flex-col">
+        {/* Header */}
+        <header
+          className={cn(
+            "bg-background/80 backdrop-blur-sm text-foreground p-2 flex items-center justify-between transition-transform duration-300 absolute top-0 left-0 right-0 z-20",
+            !showControls && "-translate-y-full"
+          )}
+        >
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <div>
+              <h2 className="font-semibold text-sm truncate">
+                {comic.series} #{comic.issue}
+              </h2>
+            </div>
           </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary">
-            Page {currentPage} of {totalPages}
-          </Badge>
-          <Button variant="ghost" size="sm" className="text-white hover:bg-gray-800">
-            <Settings className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary">
+              Page {currentPage} / {totalPages}
+            </Badge>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </header>
 
-      {/* Main Reader Area */}
-      <div className="flex-1 flex">
-        {/* Comic Page Display */}
-        <div className="flex-1 bg-gray-100 flex items-center justify-center overflow-hidden">
-          <div 
-            className="transition-transform duration-200"
+        {/* Main Reader Area */}
+        <main className="flex-1 flex items-center justify-center overflow-hidden p-4">
+          <div
+            className="transition-transform duration-200 flex gap-4 items-center justify-center"
             style={{
               transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
-              maxWidth: fitMode === 'width' ? '100%' : 'auto',
-              maxHeight: fitMode === 'height' ? '100%' : 'auto',
+              width: "100%",
+              height: "100%",
             }}
           >
-            <img
-              src={currentPageData.url}
-              alt={`Page ${currentPage}`}
-              className="max-w-full max-h-full object-contain"
-              style={{
-                width: fitMode === 'page' ? 'auto' : '100%',
-                height: fitMode === 'page' ? '100vh' : 'auto',
-              }}
+            {viewMode === "double" && renderPage(currentPage)}
+            {renderPage(viewMode === "double" ? currentPage + 1 : currentPage)}
+          </div>
+        </main>
+
+        {/* Thumbnail Strip */}
+        <div
+          className={cn(
+            "bg-background/80 backdrop-blur-sm absolute bottom-0 left-0 right-0 z-20 transition-transform duration-300",
+            !showThumbnails && "translate-y-full"
+          )}
+        >
+          <div className="flex overflow-x-auto p-2 gap-2">
+            {mockPages.map((page) => (
+              <img
+                key={page.id}
+                src={page.url}
+                alt={`Thumbnail ${page.id}`}
+                className={cn(
+                  "h-24 w-auto rounded-sm cursor-pointer border-2",
+                  currentPage === page.id
+                    ? "border-primary"
+                    : "border-transparent hover:border-muted-foreground"
+                )}
+                onClick={() => goToPage(page.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Footer Controls */}
+        <footer
+          className={cn(
+            "bg-background/80 backdrop-blur-sm flex items-center justify-center gap-4 p-2 absolute bottom-0 left-0 right-0 z-20 transition-transform duration-300",
+            !showControls && "translate-y-full",
+            showThumbnails && "-translate-y-[112px]" // Adjust based on thumbnail height
+          )}
+        >
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={prevPage}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center gap-2">
+            <Slider
+              value={[currentPage]}
+              onValueChange={([value]) => goToPage(value)}
+              max={totalPages}
+              min={1}
+              step={1}
+              className="w-48"
             />
           </div>
-        </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={nextPage}
+            disabled={currentPage >= totalPages}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
 
-        {/* Side Panel */}
-        <div className="w-80 bg-white border-l flex flex-col">
-          <div className="p-4 border-b">
-            <h3 className="font-semibold mb-2">Reading Controls</h3>
-            
-            {/* Navigation */}
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Page Navigation</label>
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={prevPage}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm flex-1 text-center">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={nextPage}
-                    disabled={currentPage === totalPages}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+          <div className="h-6 border-l mx-2" />
 
-              {/* Page Slider */}
-              <div>
-                <Slider
-                  value={[currentPage]}
-                  onValueChange={([value]) => setCurrentPage(value)}
-                  max={totalPages}
-                  min={1}
-                  step={1}
-                  className="w-full"
-                />
-              </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  setViewMode(viewMode === "single" ? "double" : "single")
+                }
+              >
+                {viewMode === "single" ? (
+                  <BookOpen className="h-4 w-4" />
+                ) : (
+                  <Columns2 className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>
+                {viewMode === "single"
+                  ? "Two-Page View"
+                  : "Single Page View"}
+              </p>
+            </TooltipContent>
+          </Tooltip>
 
-              {/* Zoom Controls */}
-              <div>
-                <label className="text-sm font-medium mb-2 block">Zoom: {zoom}%</label>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={handleZoomOut}>
-                    <ZoomOut className="h-4 w-4" />
-                  </Button>
-                  <Slider
-                    value={[zoom]}
-                    onValueChange={([value]) => setZoom(value)}
-                    max={300}
-                    min={50}
-                    step={25}
-                    className="flex-1"
-                  />
-                  <Button variant="outline" size="sm" onClick={handleZoomIn}>
-                    <ZoomIn className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setRotation((r) => (r + 90) % 360)}
+              >
+                <RotateCw className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Rotate</p>
+            </TooltipContent>
+          </Tooltip>
 
-              {/* View Controls */}
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handleRotate}>
-                  <RotateCw className="h-4 w-4 mr-2" />
-                  Rotate
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleFitMode}>
-                  <Maximize className="h-4 w-4 mr-2" />
-                  Fit {fitMode}
-                </Button>
-              </div>
-            </div>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setShowThumbnails(!showThumbnails)}
+              >
+                <PanelBottom className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Toggle Thumbnails</p>
+            </TooltipContent>
+          </Tooltip>
 
-          {/* Comic Info */}
-          <div className="p-4 flex-1">
-            <h4 className="font-semibold mb-2">Comic Information</h4>
-            <div className="space-y-2 text-sm">
-              <div>
-                <span className="font-medium">Series:</span> {comic.series}
-              </div>
-              <div>
-                <span className="font-medium">Issue:</span> #{comic.issue}
-              </div>
-              <div>
-                <span className="font-medium">Publisher:</span> {comic.publisher}
-              </div>
-              <div>
-                <span className="font-medium">Year:</span> {comic.year}
-              </div>
-              <div>
-                <span className="font-medium">Volume:</span> {comic.volume}
-              </div>
-            </div>
-
-            {comic.summary && (
-              <div className="mt-4">
-                <h5 className="font-medium mb-2">Summary</h5>
-                <p className="text-sm text-muted-foreground">{comic.summary}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Reading Progress */}
-          <div className="p-4 border-t">
-            <div className="flex items-center justify-between text-sm mb-2">
-              <span>Reading Progress</span>
-              <span>{Math.round((currentPage / totalPages) * 100)}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(currentPage / totalPages) * 100}%` }}
-              />
-            </div>
-          </div>
-        </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" onClick={toggleFullscreen}>
+                {isFullscreen ? (
+                  <Minimize className="h-4 w-4" />
+                ) : (
+                  <Maximize className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</p>
+            </TooltipContent>
+          </Tooltip>
+        </footer>
       </div>
-
-      {/* Keyboard Shortcuts Info */}
-      <div className="bg-gray-900 text-white px-4 py-2 text-xs text-center">
-        <span className="text-gray-400">
-          Use arrow keys to navigate • Space for next page • ESC to exit
-        </span>
-      </div>
-    </div>
+    </TooltipProvider>
   );
 };
 
