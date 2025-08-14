@@ -11,7 +11,7 @@ import { QueuedFile } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 import { showSuccess } from "@/utils/toast";
-import { parseFilename } from "@/lib/parser";
+import { parseFilename, generateSuggestedFilename } from "@/lib/parser";
 import { getKnowledgeSuggestions, searchKnowledgeBase } from "@/lib/knowledgeBase";
 import Suggestions, { Suggestion } from "./Suggestions";
 
@@ -102,6 +102,11 @@ const LearningCard = ({ file }: LearningCardProps) => {
     return suggs;
   }, [parsedInfo]);
 
+  // Generate suggested clean filename
+  const suggestedFilename = useMemo(() => {
+    return generateSuggestedFilename(parsedInfo);
+  }, [parsedInfo]);
+
   const handleSuggestionClick = (field: string, value: string) => {
     form.setValue(field as keyof FormSchemaType, value, { shouldValidate: true });
   };
@@ -129,13 +134,19 @@ const LearningCard = ({ file }: LearningCardProps) => {
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>{file.name}</span>
+              <span className="truncate">{file.name}</span>
               {knowledgeMatches.length > 0 && (
                 <div className="text-sm font-normal text-muted-foreground">
                   {knowledgeMatches.length} potential match{knowledgeMatches.length !== 1 ? 'es' : ''} found
                 </div>
               )}
             </CardTitle>
+            {/* Show suggested clean filename */}
+            {suggestedFilename && (
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium">Suggested format:</span> {suggestedFilename}
+              </div>
+            )}
           </CardHeader>
           <CardContent className="grid md:grid-cols-3 gap-6">
             <div className="md:col-span-1">
@@ -225,7 +236,7 @@ const LearningCard = ({ file }: LearningCardProps) => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Issue</FormLabel>
-                      <FormControl><Input placeholder="e.g., 125" {...field} /></FormControl>
+                      <FormControl><Input placeholder="e.g., 001" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -236,7 +247,7 @@ const LearningCard = ({ file }: LearningCardProps) => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Year</FormLabel>
-                      <FormControl><Input type="number" placeholder="e.g., 2022" {...field} /></FormControl>
+                      <FormControl><Input type="number" placeholder="e.g., 2025" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
