@@ -17,6 +17,7 @@ import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { Comic } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess } from "@/utils/toast";
+import { comicsKnowledgeData } from "@/data/comicsKnowledge";
 
 const formSchema = z.object({
   series: z.string().min(1, "Series is required"),
@@ -46,21 +47,25 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
     },
   });
 
-  // Generate publisher options from existing comics
+  // Generate publisher options from existing comics and knowledge base
   const publisherOptions: ComboboxOption[] = useMemo(() => {
-    const publishers = [...new Set(comics.map(c => c.publisher))];
+    const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
+    const publishersFromKnowledge = [...new Set(comicsKnowledgeData.map(entry => entry.publisher))];
+    const allPublishers = [...new Set([...publishersFromComics, ...publishersFromKnowledge])];
     
-    return publishers.map(publisher => ({
+    return allPublishers.map(publisher => ({
       label: publisher,
       value: publisher
     })).sort((a, b) => a.label.localeCompare(b.label));
   }, [comics]);
 
-  // Generate series options from existing comics
+  // Generate series options from existing comics and knowledge base
   const seriesOptions: ComboboxOption[] = useMemo(() => {
-    const series = [...new Set(comics.map(c => c.series))];
+    const seriesFromComics = [...new Set(comics.map(c => c.series))];
+    const seriesFromKnowledge = [...new Set(comicsKnowledgeData.map(entry => entry.series))];
+    const allSeries = [...new Set([...seriesFromComics, ...seriesFromKnowledge])];
     
-    return series.map(s => ({
+    return allSeries.map(s => ({
       label: s,
       value: s
     })).sort((a, b) => a.label.localeCompare(b.label));
