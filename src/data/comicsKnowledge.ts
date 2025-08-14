@@ -1,199 +1,59 @@
 import { ComicKnowledge } from "@/lib/knowledgeBase";
 
-// This data structure matches the comics_training_format.json structure
+// This data is generated from the user-provided comics_by_publisher.json
+// Placeholders are used for startYear and volumes as this data was not in the source file.
 export const comicsKnowledgeData: ComicKnowledge[] = [
-  {
-    "series": "Action Comics",
-    "publisher": "DC Comics",
-    "startYear": 1938,
-    "volumes": [
-      { "volume": "1938", "year": 1938 },
-      { "volume": "2011", "year": 2011 },
-      { "volume": "2016", "year": 2016 }
-    ]
-  },
-  {
-    "series": "The Amazing Spider-Man",
-    "publisher": "Marvel Comics",
-    "startYear": 1963,
-    "volumes": [
-      { "volume": "1963", "year": 1963 },
-      { "volume": "1999", "year": 1999 },
-      { "volume": "2014", "year": 2014 },
-      { "volume": "2018", "year": 2018 }
-    ]
-  },
-  {
-    "series": "Batman",
-    "publisher": "DC Comics",
-    "startYear": 1940,
-    "volumes": [
-      { "volume": "1940", "year": 1940 },
-      { "volume": "2011", "year": 2011 },
-      { "volume": "2016", "year": 2016 }
-    ]
-  },
-  {
-    "series": "Detective Comics",
-    "publisher": "DC Comics",
-    "startYear": 1937,
-    "volumes": [
-      { "volume": "1937", "year": 1937 },
-      { "volume": "2011", "year": 2011 },
-      { "volume": "2016", "year": 2016 }
-    ]
-  },
-  {
-    "series": "Superman",
-    "publisher": "DC Comics",
-    "startYear": 1939,
-    "volumes": [
-      { "volume": "1939", "year": 1939 },
-      { "volume": "1987", "year": 1987 },
-      { "volume": "2006", "year": 2006 },
-      { "volume": "2011", "year": 2011 },
-      { "volume": "2016", "year": 2016 }
-    ]
-  },
-  {
-    "series": "X-Men",
-    "publisher": "Marvel Comics",
-    "startYear": 1963,
-    "volumes": [
-      { "volume": "1963", "year": 1963 },
-      { "volume": "1991", "year": 1991 },
-      { "volume": "2004", "year": 2004 },
-      { "volume": "2010", "year": 2010 },
-      { "volume": "2013", "year": 2013 }
-    ]
-  },
-  {
-    "series": "Fantastic Four",
-    "publisher": "Marvel Comics",
-    "startYear": 1961,
-    "volumes": [
-      { "volume": "1961", "year": 1961 },
-      { "volume": "1996", "year": 1996 },
-      { "volume": "1998", "year": 1998 },
-      { "volume": "2003", "year": 2003 },
-      { "volume": "2014", "year": 2014 },
-      { "volume": "2018", "year": 2018 }
-    ]
-  },
-  {
-    "series": "The Avengers",
-    "publisher": "Marvel Comics",
-    "startYear": 1963,
-    "volumes": [
-      { "volume": "1963", "year": 1963 },
-      { "volume": "1996", "year": 1996 },
-      { "volume": "1998", "year": 1998 },
-      { "volume": "2010", "year": 2010 },
-      { "volume": "2012", "year": 2012 },
-      { "volume": "2018", "year": 2018 }
-    ]
-  },
-  {
-    "series": "Wonder Woman",
-    "publisher": "DC Comics",
-    "startYear": 1942,
-    "volumes": [
-      { "volume": "1942", "year": 1942 },
-      { "volume": "1987", "year": 1987 },
-      { "volume": "2006", "year": 2006 },
-      { "volume": "2011", "year": 2011 },
-      { "volume": "2016", "year": 2016 }
-    ]
-  },
-  {
-    "series": "The Flash",
-    "publisher": "DC Comics",
-    "startYear": 1940,
-    "volumes": [
-      { "volume": "1940", "year": 1940 },
-      { "volume": "1959", "year": 1959 },
-      { "volume": "1987", "year": 1987 },
-      { "volume": "2010", "year": 2010 },
-      { "volume": "2011", "year": 2011 },
-      { "volume": "2016", "year": 2016 }
-    ]
-  },
-  {
-    "series": "Green Lantern",
-    "publisher": "DC Comics",
-    "startYear": 1941,
-    "volumes": [
-      { "volume": "1941", "year": 1941 },
-      { "volume": "1960", "year": 1960 },
-      { "volume": "1990", "year": 1990 },
-      { "volume": "2005", "year": 2005 },
-      { "volume": "2011", "year": 2011 }
-    ]
-  },
-  {
-    "series": "Saga",
-    "publisher": "Image Comics",
-    "startYear": 2012,
-    "volumes": [
-      { "volume": "2012", "year": 2012 }
-    ]
-  },
-  {
-    "series": "The Walking Dead",
-    "publisher": "Image Comics",
-    "startYear": 2003,
-    "volumes": [
-      { "volume": "2003", "year": 2003 }
-    ]
-  },
-  {
-    "series": "Invincible",
-    "publisher": "Image Comics",
-    "startYear": 2003,
-    "volumes": [
-      { "volume": "2003", "year": 2003 }
-    ]
-  },
-  {
-    "series": "Spawn",
-    "publisher": "Image Comics",
-    "startYear": 1992,
-    "volumes": [
-      { "volume": "1992", "year": 1992 }
-    ]
-  },
-  {
-    "series": "Hellboy",
-    "publisher": "Dark Horse Comics",
-    "startYear": 1994,
-    "volumes": [
-      { "volume": "1994", "year": 1994 }
-    ]
-  },
-  {
-    "series": "Sin City",
-    "publisher": "Dark Horse Comics",
-    "startYear": 1991,
-    "volumes": [
-      { "volume": "1991", "year": 1991 }
-    ]
-  },
-  {
-    "series": "Teenage Mutant Ninja Turtles",
-    "publisher": "IDW Publishing",
-    "startYear": 2011,
-    "volumes": [
-      { "volume": "2011", "year": 2011 }
-    ]
-  },
-  {
-    "series": "Transformers",
-    "publisher": "IDW Publishing",
-    "startYear": 2005,
-    "volumes": [
-      { "volume": "2005", "year": 2005 },
-      { "volume": "2009", "year": 2009 },
-      { "volume": "2019", "year": 2019 }
-    ]
-  }
-]
+  { series: 'Action Comics', publisher: 'DC Comics', startYear: 1938, volumes: [ { volume: '1938', year: 1938 }, { volume: '2011', year: 2011 }, { volume: '2016', year: 2016 } ] },
+  { series: 'Adventure Comics', publisher: 'DC Comics', startYear: 1938, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'All-Star Comics', publisher: 'DC Comics', startYear: 1940, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Aquaman', publisher: 'DC Comics', startYear: 1962, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Batman', publisher: 'DC Comics', startYear: 1940, volumes: [ { volume: '1940', year: 1940 }, { volume: '2011', year: 2011 }, { volume: '2016', year: 2016 } ] },
+  { series: 'Detective Comics', publisher: 'DC Comics', startYear: 1937, volumes: [ { volume: '1937', year: 1937 }, { volume: '2011', year: 2011 }, { volume: '2016', year: 2016 } ] },
+  { series: 'The Flash', publisher: 'DC Comics', startYear: 1959, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Green Lantern', publisher: 'DC Comics', startYear: 1960, volumes: [ { volume: '1941', year: 1941 }, { volume: '1960', year: 1960 }, { volume: '1990', year: 1990 }, { volume: '2005', year: 2005 }, { volume: '2011', year: 2011 } ] },
+  { series: 'Justice League of America', publisher: 'DC Comics', startYear: 1960, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Superman', publisher: 'DC Comics', startYear: 1939, volumes: [ { volume: '1939', year: 1939 }, { volume: '1987', year: 1987 }, { volume: '2006', year: 2006 }, { volume: '2011', year: 2011 }, { volume: '2016', year: 2016 } ] },
+  { series: 'Wonder Woman', publisher: 'DC Comics', startYear: 1942, volumes: [ { volume: '1942', year: 1942 }, { volume: '1987', year: 1987 }, { volume: '2006', year: 2006 }, { volume: '2011', year: 2011 }, { volume: '2016', year: 2016 } ] },
+  { series: 'The Avengers', publisher: 'Marvel Comics', startYear: 1963, volumes: [ { volume: '1963', year: 1963 }, { volume: '1996', year: 1996 }, { volume: '1998', year: 1998 }, { volume: '2010', year: 2010 }, { volume: '2012', year: 2012 }, { volume: '2018', year: 2018 } ] },
+  { series: 'Captain America', publisher: 'Marvel Comics', startYear: 1941, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Daredevil', publisher: 'Marvel Comics', startYear: 1964, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Fantastic Four', publisher: 'Marvel Comics', startYear: 1961, volumes: [ { volume: '1961', year: 1961 }, { volume: '1996', year: 1996 }, { volume: '1998', year: 1998 }, { volume: '2003', year: 2003 }, { volume: '2014', year: 2014 }, { volume: '2018', year: 2018 } ] },
+  { series: 'The Incredible Hulk', publisher: 'Marvel Comics', startYear: 1962, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Iron Man', publisher: 'Marvel Comics', startYear: 1968, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'The Amazing Spider-Man', publisher: 'Marvel Comics', startYear: 1963, volumes: [ { volume: '1963', year: 1963 }, { volume: '1999', year: 1999 }, { volume: '2014', year: 2014 }, { volume: '2018', year: 2018 } ] },
+  { series: 'Thor', publisher: 'Marvel Comics', startYear: 1966, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'X-Men', publisher: 'Marvel Comics', startYear: 1963, volumes: [ { volume: '1963', year: 1963 }, { volume: '1991', year: 1991 }, { volume: '2004', year: 2004 }, { volume: '2010', year: 2010 }, { volume: '2013', year: 2013 } ] },
+  { series: 'Saga', publisher: 'Image Comics', startYear: 2012, volumes: [ { volume: '2012', year: 2012 } ] },
+  { series: 'The Walking Dead', publisher: 'Image Comics', startYear: 2003, volumes: [ { volume: '2003', year: 2003 } ] },
+  { series: 'Invincible', publisher: 'Image Comics', startYear: 2003, volumes: [ { volume: '2003', year: 2003 } ] },
+  { series: 'Spawn', publisher: 'Image Comics', startYear: 1992, volumes: [ { volume: '1992', year: 1992 } ] },
+  { series: 'Chew', publisher: 'Image Comics', startYear: 2009, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Monstress', publisher: 'Image Comics', startYear: 2015, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Paper Girls', publisher: 'Image Comics', startYear: 2015, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Hellboy', publisher: 'Dark Horse Comics', startYear: 1994, volumes: [ { volume: '1994', year: 1994 } ] },
+  { series: 'Sin City', publisher: 'Dark Horse Comics', startYear: 1991, volumes: [ { volume: '1991', year: 1991 } ] },
+  { series: 'Usagi Yojimbo', publisher: 'Dark Horse Comics', startYear: 1987, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Black Hammer', publisher: 'Dark Horse Comics', startYear: 2016, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'The Umbrella Academy', publisher: 'Dark Horse Comics', startYear: 2007, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Teenage Mutant Ninja Turtles', publisher: 'IDW Publishing', startYear: 2011, volumes: [ { volume: '2011', year: 2011 } ] },
+  { series: 'Locke & Key', publisher: 'IDW Publishing', startYear: 2008, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Transformers', publisher: 'IDW Publishing', startYear: 2005, volumes: [ { volume: '2005', year: 2005 }, { volume: '2009', year: 2009 }, { volume: '2019', year: 2019 } ] },
+  { series: 'My Little Pony: Friendship is Magic', publisher: 'IDW Publishing', startYear: 2012, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'G.I. Joe', publisher: 'IDW Publishing', startYear: 2008, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'The Boys', publisher: 'Dynamite Entertainment', startYear: 2006, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Red Sonja', publisher: 'Dynamite Entertainment', startYear: 2005, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Vampirella', publisher: 'Dynamite Entertainment', startYear: 2010, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'The Green Hornet', publisher: 'Dynamite Entertainment', startYear: 2010, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Archer & Armstrong', publisher: 'Valiant Comics', startYear: 1992, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Bloodshot', publisher: 'Valiant Comics', startYear: 1993, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Harbinger', publisher: 'Valiant Comics', startYear: 1992, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'X-O Manowar', publisher: 'Valiant Comics', startYear: 1992, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Fables', publisher: 'Vertigo', startYear: 2002, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Preacher', publisher: 'Vertigo', startYear: 1995, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'The Sandman', publisher: 'Vertigo', startYear: 1989, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Y: The Last Man', publisher: 'Vertigo', startYear: 2002, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Lumberjanes', publisher: 'BOOM! Studios', startYear: 2014, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Something is Killing the Children', publisher: 'BOOM! Studios', startYear: 2019, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Once & Future', publisher: 'BOOM! Studios', startYear: 2019, volumes: [ { volume: '1', year: 0 } ] },
+  { series: 'Mighty Morphin Power Rangers', publisher: 'BOOM! Studios', startYear: 2016, volumes: [ { volume: '1', year: 0 } ] }
+];
