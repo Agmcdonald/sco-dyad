@@ -6,6 +6,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // App info
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   
+  // Dialogs
+  selectFilesDialog: () => ipcRenderer.invoke('dialog:select-files'),
+  selectFolderDialog: () => ipcRenderer.invoke('dialog:select-folder'),
+
   // Navigation
   onNavigateTo: (callback) => {
     ipcRenderer.on('navigate-to', (event, path) => callback(path));
