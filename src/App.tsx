@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,10 +18,17 @@ import { SelectionProvider } from "./context/SelectionContext";
 import { AppProvider } from "./context/AppContext";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { SettingsProvider } from "./context/SettingsContext";
+import { initializeKnowledgeBase } from "./lib/knowledgeBase";
+import { comicsKnowledgeData } from "./data/comicsKnowledge";
 
 const queryClient = new QueryClient();
 
 const App = () => {
+  useEffect(() => {
+    // Initialize the knowledge base with preseeded data
+    initializeKnowledgeBase(comicsKnowledgeData);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

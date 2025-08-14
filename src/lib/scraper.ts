@@ -1,4 +1,5 @@
 import { ParsedComicInfo } from "./parser";
+import { searchKnowledgeBase, KnowledgeMatch } from "./knowledgeBase";
 
 interface ScraperResult {
     success: boolean;
@@ -6,6 +7,8 @@ interface ScraperResult {
         publisher: string;
         volume: string;
         summary: string;
+        confidence: 'High' | 'Medium' | 'Low';
+        source: 'knowledge' | 'api';
     };
     error?: string;
 }
@@ -28,6 +31,42 @@ export const fetchComicMetadata = async (
     parsed: ParsedComicInfo,
     apiKey: string
 ): Promise<ScraperResult> => {
+    // First, try the knowledge base
+    const knowledgeMatches = searchKnowledgeBase(parsed);
+    
+    if (knowledgeMatches.length > 0) {
+        const bestMatch = knowledgeMatches[0];
+        
+        // If we have a high confidence match, use it
+        if (bestMatch.confidence === 'High') {
+            return {
+                success: true,
+                data: {
+                    publisher: bestMatch.publisher,
+                    volume: bestMatch.volume,
+                    summary: `Matched from knowledge base: ${bestMatch.series} (${bestMatch.publisher})`,
+                    confidence: bestMatch.confidence,
+                    source: 'knowledge'
+                }
+            };
+        }
+        
+        // For medium confidence, we could still use it but mark it differently
+        if (bestMatch.confidence === 'Medium') {
+            return {
+                success: true,
+                data: {
+                    publisher: bestMatch.publisher,
+                    volume: bestMatch.volume,
+                    summary: `Probable match from knowledge base: ${bestMatch.series} (${bestMatch.publisher})`,
+                    confidence: bestMatch.confidence,
+                    source: 'knowledge'
+                }
+            };
+        }
+    }
+    
+    // If no good knowledge base match, fall back to API
     // Simulate network delay
     await new Promise(res => setTimeout(res, 500));
 
@@ -47,12 +86,14 @@ export const fetchComicMetadata = async (
             data: {
                 publisher: match.publisher,
                 volume: parsed.volume || match.volume,
-                summary: `Successfully scraped metadata for ${parsed.series} #${parsed.issue}.`
+                summary: `Successfully scraped metadata for ${parsed.series} #${parsed.issue} from Comic Vine API.`,
+                confidence: 'High',
+                source: 'api'
             }
         };
     }
 
-    return { success: false, error: `No match found for "${parsed.series}" in the remote database.` };
+    return { success: false, error: `No match found for "${parsed.series}" in knowledge base or remote database.` };
 };
 
 export const testApiConnection = async (apiKey: string): Promise<{ success: boolean; message: string }> => {
