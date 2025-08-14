@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, shell, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const ComicFileHandler = require('./fileHandler');
@@ -107,6 +107,13 @@ async function initializeKnowledgeBase() {
 
 // App event handlers
 app.whenReady().then(async () => {
+  // Register custom protocol for serving cover images securely
+  protocol.registerFileProtocol('comic-cover', (request, callback) => {
+    const url = request.url.substr('comic-cover://'.length);
+    const coverPath = path.join(app.getPath('userData'), 'covers', url);
+    callback({ path: path.normalize(coverPath) });
+  });
+
   await initializeServices();
   createWindow();
   createMenu();

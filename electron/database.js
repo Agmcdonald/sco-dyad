@@ -341,7 +341,7 @@ class ComicDatabase {
       fileSize: comic.file_size,
       fileType: comic.file_type,
       pageCount: comic.page_count,
-      coverUrl: comic.cover_path,
+      coverUrl: comic.cover_path ? `comic-cover://${path.basename(comic.cover_path)}` : 'placeholder.svg',
       dateAdded: comic.date_added,
       lastModified: comic.last_modified
     };
