@@ -108,11 +108,19 @@ async function initializeKnowledgeBase() {
 // App event handlers
 app.whenReady().then(async () => {
   // Register custom protocol for serving cover images securely
-  protocol.registerFileProtocol('comic-cover', (request, callback) => {
-    const url = request.url.substr('comic-cover://'.length);
+  protocol.registerFileProtocol('comic-cover', async (request, callback) => {
+    const url = decodeURI(request.url.substr('comic-cover://'.length));
     const coverPath = path.join(app.getPath('userData'), 'covers', url);
-    console.log('Cover protocol request:', url, '-> Full path:', coverPath);
-    callback({ path: path.normalize(coverPath) });
+    
+    try {
+      // Check if the file exists before calling back
+      await fs.access(coverPath);
+      console.log('[PROTOCOL] Success: Serving cover from', coverPath);
+      callback({ path: path.normalize(coverPath) });
+    } catch (error) {
+      console.error('[PROTOCOL] Error: Cover not found at', coverPath, error.message);
+      callback({ error: -6 }); // net::ERR_FILE_NOT_FOUND
+    }
   });
 
   await initializeServices();
@@ -423,28 +431,27 @@ ipcMain.handle('init-database', async () => {
 
 ipcMain.handle('save-comic', async (event, comic) => {
   try {
-    // Generate ID if not provided
     if (!comic.id) {
       comic.id = `comic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     }
     
-    // Extract cover if file path is provided
-    if (comic.filePath && !comic.coverPath) {
+    comic.coverPath = null; // Default to null
+    if (comic.filePath) {
       try {
         const coversDir = path.join(app.getPath('userData'), 'covers');
-        const coverPath = await fileHandler.extractCover(comic.filePath, coversDir);
-        comic.coverPath = coverPath;
-        console.log('Cover extracted and saved for comic:', comic.series, 'at:', coverPath);
+        const extractedPath = await fileHandler.extractCover(comic.filePath, coversDir);
+        comic.coverPath = extractedPath;
+        console.log('[SAVE-COMIC] Cover extracted to:', comic.coverPath);
       } catch (error) {
-        console.warn('Could not extract cover for', comic.filePath, error.message);
+        console.error('[SAVE-COMIC] Could not extract cover for', comic.filePath, error.message);
       }
     }
     
     const savedComic = database.saveComic(comic);
-    console.log('Comic saved with cover URL:', savedComic.coverUrl);
+    console.log('[SAVE-COMIC] Saved comic. Returned coverUrl:', savedComic.coverUrl);
     return savedComic;
   } catch (error) {
-    console.error('Error saving comic:', error);
+    console.error('[SAVE-COMIC] Error:', error);
     throw error;
   }
 });

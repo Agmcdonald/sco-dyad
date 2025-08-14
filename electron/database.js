@@ -329,6 +329,12 @@ class ComicDatabase {
 
   // Format comic data for frontend
   formatComic(comic) {
+    const coverUrl = comic.cover_path 
+      ? `comic-cover://${encodeURI(path.basename(comic.cover_path))}` 
+      : 'placeholder.svg';
+      
+    console.log(`[FORMAT-COMIC] ID: ${comic.id}, Cover Path: ${comic.cover_path}, Generated URL: ${coverUrl}`);
+
     return {
       id: comic.id,
       series: comic.series,
@@ -341,7 +347,7 @@ class ComicDatabase {
       fileSize: comic.file_size,
       fileType: comic.file_type,
       pageCount: comic.page_count,
-      coverUrl: comic.cover_path ? `comic-cover://${path.basename(comic.cover_path)}` : 'placeholder.svg',
+      coverUrl: coverUrl,
       dateAdded: comic.date_added,
       lastModified: comic.last_modified
     };
