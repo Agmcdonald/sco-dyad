@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -13,9 +13,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { QueuedFile } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess } from "@/utils/toast";
+import { parseFilename } from "@/lib/parser";
+import { searchKnowledgeBase } from "@/lib/knowledgeBase";
 
 const formSchema = z.object({
   series: z.string().min(1, "Series is required"),
@@ -31,7 +34,7 @@ interface EditFileModalProps {
 }
 
 const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
-  const { updateFile } = useAppContext();
+  const { updateFile, comics } = useAppContext();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -42,6 +45,36 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
       publisher: file.publisher || "",
     },
   });
+
+  const parsedInfo = useMemo(() => parseFilename(file.path), [file.path]);
+
+  // Generate publisher options from existing comics and knowledge base
+  const publisherOptions: ComboboxOption[] = useMemo(() => {
+    const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
+    const knowledgeMatches = searchKnowledgeBase(parsedInfo);
+    const publishersFromKnowledge = knowledgeMatches.map(m => m.publisher);
+    
+    const allPublishers = [...new Set([...publishersFromComics, ...publishersFromKnowledge])];
+    
+    return allPublishers.map(publisher => ({
+      label: publisher,
+      value: publisher
+    })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [comics, parsedInfo]);
+
+  // Generate series options from existing comics and knowledge base
+  const seriesOptions: ComboboxOption[] = useMemo(() => {
+    const seriesFromComics = [...new Set(comics.map(c => c.series))];
+    const knowledgeMatches = searchKnowledgeBase(parsedInfo);
+    const seriesFromKnowledge = knowledgeMatches.map(m => m.series);
+    
+    const allSeries = [...new Set([...seriesFromComics, ...seriesFromKnowledge])];
+    
+    return allSeries.map(series => ({
+      label: series,
+      value: series
+    })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [comics, parsedInfo]);
 
   useEffect(() => {
     form.reset({
@@ -83,7 +116,13 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
                 <FormItem>
                   <FormLabel>Series</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Combobox
+                      options={seriesOptions}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Select or type series..."
+                      emptyText="No series found."
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -124,7 +163,13 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
                 <FormItem>
                   <FormLabel>Publisher</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Combobox
+                      options={publisherOptions}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Select or type publisher..."
+                      emptyText="No publishers found."
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
