@@ -39,8 +39,8 @@ const App = () => {
               <SelectionProvider>
                 <Toaster />
                 <Sonner />
-                <ElectronIntegration />
                 <BrowserRouter>
+                  <ElectronIntegration />
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/app" element={<Layout />}>
