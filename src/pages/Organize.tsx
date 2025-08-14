@@ -9,6 +9,8 @@ import BulkActions from "@/components/BulkActions";
 import ProcessingStats from "@/components/ProcessingStats";
 import SmartSuggestions from "@/components/SmartSuggestions";
 import FilePreview from "@/components/FilePreview";
+import BatchProcessor from "@/components/BatchProcessor";
+import AdvancedFilters from "@/components/AdvancedFilters";
 import { useSelection } from "@/context/SelectionContext";
 import { useAppContext } from "@/context/AppContext";
 import { QueuedFile } from "@/types";
@@ -30,9 +32,15 @@ const Organize = () => {
   } = useAppContext();
   const { selectedItem, setSelectedItem } = useSelection();
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [filteredFiles, setFilteredFiles] = useState<QueuedFile[]>(files);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [currentProcessingFile, setCurrentProcessingFile] = useState<string>("");
   const queueIndex = useRef(0);
+
+  // Update filtered files when files change
+  useEffect(() => {
+    setFilteredFiles(files);
+  }, [files]);
 
   useEffect(() => {
     if (isProcessing) {
@@ -185,9 +193,17 @@ const Organize = () => {
         </div>
       )}
 
+      {/* Advanced Tools */}
+      {files.length > 0 && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <BatchProcessor files={files} selectedFiles={selectedFiles} />
+          <AdvancedFilters files={files} onFiltersChange={setFilteredFiles} />
+        </div>
+      )}
+
       {files.length > 0 && (
         <BulkActions 
-          files={files} 
+          files={filteredFiles} 
           selectedFiles={selectedFiles} 
           onSelectionChange={setSelectedFiles} 
         />
@@ -199,7 +215,7 @@ const Organize = () => {
             <FileDropzone />
           ) : (
             <FileQueue 
-              files={files} 
+              files={filteredFiles} 
               selectedFiles={selectedFiles}
               onSelectionChange={setSelectedFiles}
             />
