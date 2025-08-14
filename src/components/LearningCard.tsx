@@ -6,6 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { QueuedFile } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess } from "@/utils/toast";
@@ -28,7 +29,7 @@ const formSchema = z.object({
 type FormSchemaType = z.infer<typeof formSchema>;
 
 const LearningCard = ({ file }: LearningCardProps) => {
-  const { addComic, removeFile, skipFile } = useAppContext();
+  const { addComic, removeFile, skipFile, comics } = useAppContext();
 
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
@@ -42,6 +43,34 @@ const LearningCard = ({ file }: LearningCardProps) => {
   });
 
   const parsedInfo = useMemo(() => parseFilename(file.path), [file.path]);
+
+  // Generate publisher options from existing comics and knowledge base
+  const publisherOptions: ComboboxOption[] = useMemo(() => {
+    const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
+    const knowledgeMatches = searchKnowledgeBase(parsedInfo);
+    const publishersFromKnowledge = knowledgeMatches.map(m => m.publisher);
+    
+    const allPublishers = [...new Set([...publishersFromComics, ...publishersFromKnowledge])];
+    
+    return allPublishers.map(publisher => ({
+      label: publisher,
+      value: publisher
+    })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [comics, parsedInfo]);
+
+  // Generate series options from existing comics and knowledge base
+  const seriesOptions: ComboboxOption[] = useMemo(() => {
+    const seriesFromComics = [...new Set(comics.map(c => c.series))];
+    const knowledgeMatches = searchKnowledgeBase(parsedInfo);
+    const seriesFromKnowledge = knowledgeMatches.map(m => m.series);
+    
+    const allSeries = [...new Set([...seriesFromComics, ...seriesFromKnowledge])];
+    
+    return allSeries.map(series => ({
+      label: series,
+      value: series
+    })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [comics, parsedInfo]);
 
   useEffect(() => {
     // Get knowledge base suggestions
@@ -145,7 +174,15 @@ const LearningCard = ({ file }: LearningCardProps) => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Publisher</FormLabel>
-                      <FormControl><Input placeholder="e.g., DC Comics" {...field} /></FormControl>
+                      <FormControl>
+                        <Combobox
+                          options={publisherOptions}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder="Select or type publisher..."
+                          emptyText="No publishers found."
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -156,7 +193,15 @@ const LearningCard = ({ file }: LearningCardProps) => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Series</FormLabel>
-                      <FormControl><Input placeholder="e.g., Batman" {...field} /></FormControl>
+                      <FormControl>
+                        <Combobox
+                          options={seriesOptions}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder="Select or type series..."
+                          emptyText="No series found."
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

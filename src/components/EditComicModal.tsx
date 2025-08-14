@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { Comic } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess } from "@/utils/toast";
@@ -32,7 +33,7 @@ interface EditComicModalProps {
 }
 
 const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
-  const { updateComic } = useAppContext();
+  const { updateComic, comics } = useAppContext();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -44,6 +45,26 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
       volume: comic.volume,
     },
   });
+
+  // Generate publisher options from existing comics
+  const publisherOptions: ComboboxOption[] = useMemo(() => {
+    const publishers = [...new Set(comics.map(c => c.publisher))];
+    
+    return publishers.map(publisher => ({
+      label: publisher,
+      value: publisher
+    })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [comics]);
+
+  // Generate series options from existing comics
+  const seriesOptions: ComboboxOption[] = useMemo(() => {
+    const series = [...new Set(comics.map(c => c.series))];
+    
+    return series.map(s => ({
+      label: s,
+      value: s
+    })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [comics]);
 
   useEffect(() => {
     form.reset({
@@ -79,7 +100,13 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                 <FormItem>
                   <FormLabel>Series</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Combobox
+                      options={seriesOptions}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Select or type series..."
+                      emptyText="No series found."
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -120,7 +147,13 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                 <FormItem>
                   <FormLabel>Publisher</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Combobox
+                      options={publisherOptions}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Select or type publisher..."
+                      emptyText="No publishers found."
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
