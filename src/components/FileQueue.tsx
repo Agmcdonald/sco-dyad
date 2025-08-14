@@ -62,7 +62,7 @@ const FileQueue = ({ files, selectedFiles = [], onSelectionChange }: FileQueuePr
             <TableHead>Detected Series</TableHead>
             <TableHead>Issue</TableHead>
             <TableHead>Year</TableHead>
-            <TableHead>Publisher</TableHead>
+            <TableHead>Pages</TableHead>
             <TableHead>Confidence</TableHead>
             <TableHead>Status</TableHead>
           </TableRow>
@@ -94,7 +94,7 @@ const FileQueue = ({ files, selectedFiles = [], onSelectionChange }: FileQueuePr
                 <TableCell>{file.series || "—"}</TableCell>
                 <TableCell>{file.issue || "—"}</TableCell>
                 <TableCell>{file.year || "—"}</TableCell>
-                <TableCell>{file.publisher || "—"}</TableCell>
+                <TableCell>{file.pageCount || "—"}</TableCell>
                 <TableCell>
                   {file.confidence && (
                     <Badge variant={confidenceVariant[file.confidence]}>
