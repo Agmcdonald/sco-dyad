@@ -34,7 +34,7 @@ const Organize = () => {
     addFiles
   } = useAppContext();
   const { selectedItem, setSelectedItem } = useSelection();
-  const { isElectron } = useElectron();
+  const { isElectron, electronAPI } = useElectron();
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [filteredFiles, setFilteredFiles] = useState<QueuedFile[]>(files);
   const [processingProgress, setProcessingProgress] = useState(0);
@@ -54,6 +54,25 @@ const Organize = () => {
       }
     }
   }, [isProcessing, files.length]);
+
+  const addFilesWithInfo = useCallback(async (filesToAdd: QueuedFile[]) => {
+    addFiles(filesToAdd);
+    showSuccess(`Added ${filesToAdd.length} comic file${filesToAdd.length !== 1 ? 's' : ''} to queue`);
+
+    if (isElectron && electronAPI) {
+      // Asynchronously fetch file info
+      for (const file of filesToAdd) {
+        try {
+          const fileInfo = await electronAPI.readComicFile(file.path);
+          if (fileInfo) {
+            updateFile({ ...file, pageCount: fileInfo.pageCount });
+          }
+        } catch (error) {
+          console.warn(`Could not read info for ${file.name}:`, error);
+        }
+      }
+    }
+  }, [addFiles, isElectron, electronAPI, updateFile]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -186,9 +205,8 @@ const Organize = () => {
       status: 'Pending' as any
     }));
 
-    addFiles(queuedFiles);
-    showSuccess(`Added ${comicFiles.length} comic file${comicFiles.length !== 1 ? 's' : ''} to queue`);
-  }, [addFiles, isElectron]);
+    addFilesWithInfo(queuedFiles);
+  }, [addFilesWithInfo, isElectron]);
 
   const handleSkip = () => {
     if (selectedItem?.type === 'file') {

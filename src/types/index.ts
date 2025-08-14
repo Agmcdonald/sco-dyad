@@ -25,6 +25,7 @@ export interface QueuedFile {
   publisher: string | null;
   confidence: Confidence | null;
   status: FileStatus;
+  pageCount?: number;
 }
 
 export type SelectableItem = (Comic & { type: 'comic' }) | (QueuedFile & { type: 'file' });
