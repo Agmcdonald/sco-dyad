@@ -41,7 +41,7 @@ const sampleComics: Comic[] = [
     year: 2012,
     publisher: "Image Comics",
     volume: "1",
-    coverUrl: "placeholder.svg",
+    coverUrl: "/placeholder.svg",
     summary: "An epic space opera/fantasy comic about star-crossed lovers from enemy species."
   },
   {
@@ -51,7 +51,7 @@ const sampleComics: Comic[] = [
     year: 2003,
     publisher: "Image Comics",
     volume: "1",
-    coverUrl: "placeholder.svg",
+    coverUrl: "/placeholder.svg",
     summary: "A post-apocalyptic horror comic following survivors in a zombie-infested world."
   },
   {
@@ -61,7 +61,7 @@ const sampleComics: Comic[] = [
     year: 2016,
     publisher: "DC Comics",
     volume: "3",
-    coverUrl: "placeholder.svg",
+    coverUrl: "/placeholder.svg",
     summary: "The Dark Knight's adventures in Gotham City continue in this acclaimed series."
   },
   {
@@ -71,7 +71,7 @@ const sampleComics: Comic[] = [
     year: 2018,
     publisher: "Marvel Comics",
     volume: "5",
-    coverUrl: "placeholder.svg",
+    coverUrl: "/placeholder.svg",
     summary: "Your friendly neighborhood Spider-Man swings into action in New York City."
   },
   {
@@ -81,7 +81,7 @@ const sampleComics: Comic[] = [
     year: 2003,
     publisher: "Image Comics",
     volume: "1",
-    coverUrl: "placeholder.svg",
+    coverUrl: "/placeholder.svg",
     summary: "A teenage superhero discovers his powers and the complex world of heroes and villains."
   }
 ];
@@ -111,7 +111,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
               publisher: dbComic.publisher,
               volume: dbComic.volume,
               summary: dbComic.summary,
-              coverUrl: dbComic.coverUrl || 'placeholder.svg'
+              coverUrl: dbComic.coverUrl || '/placeholder.svg'
             }));
             setComics(appComics);
             logAction('info', `Loaded ${appComics.length} comics from database.`);
@@ -234,7 +234,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           publisher: savedComic.publisher,
           volume: savedComic.volume,
           summary: savedComic.summary,
-          coverUrl: savedComic.coverUrl || 'placeholder.svg'
+          coverUrl: savedComic.coverUrl || '/placeholder.svg'
         };
 
         setComics(prev => [uiComic, ...prev]);
@@ -257,7 +257,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       const newComic: Comic = {
         ...comicData,
         id: `comic-${comicIdCounter++}`,
-        coverUrl: 'placeholder.svg'
+        coverUrl: '/placeholder.svg'
       };
       setComics(prev => [newComic, ...prev]);
       logAction('success', `(Web Mode) Organized '${originalFile.name}' as '${newComic.series} #${newComic.issue}'`, {

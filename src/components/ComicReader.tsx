@@ -54,7 +54,7 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
   const totalPages = 22;
   const mockPages = Array.from({ length: totalPages }, (_, i) => ({
     id: i + 1,
-    url: "placeholder.svg",
+    url: "/placeholder.svg",
   }));
 
   // --- Core Navigation Logic ---
