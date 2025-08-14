@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Check, ChevronsUpDown, X } from "lucide-react"
+import { Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -8,7 +8,6 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
-  CommandList,
 } from "@/components/ui/command"
 import {
   Popover,
@@ -28,9 +27,6 @@ interface ComboboxProps {
   placeholder?: string
   emptyText?: string
   className?: string
-  disabled?: boolean
-  allowCustomValue?: boolean
-  searchPlaceholder?: string
 }
 
 export function Combobox({
@@ -39,48 +35,39 @@ export function Combobox({
   onValueChange,
   placeholder = "Select option...",
   emptyText = "No option found.",
-  className,
-  disabled = false,
-  allowCustomValue = true,
-  searchPlaceholder,
+  className
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
-  const [searchValue, setSearchValue] = React.useState("")
+  const [inputValue, setInputValue] = React.useState("")
 
   const selectedOption = options.find((option) => option.value === value)
-  
-  // Filter options based on search
-  const filteredOptions = React.useMemo(() => {
-    if (!searchValue) return options;
-    
-    return options.filter(option =>
-      option.label.toLowerCase().includes(searchValue.toLowerCase()) ||
-      option.value.toLowerCase().includes(searchValue.toLowerCase())
-    );
-  }, [options, searchValue]);
 
-  // Check if current value is a custom value (not in options)
-  const isCustomValue = value && !options.find(option => option.value === value);
+  const filteredOptions = options.filter((option) =>
+    option.label.toLowerCase().includes(inputValue.toLowerCase())
+  )
 
   const handleSelect = (selectedValue: string) => {
-    const newValue = selectedValue === value ? "" : selectedValue;
-    onValueChange?.(newValue);
-    setOpen(false);
-    setSearchValue("");
-  };
-
-  const handleCustomValue = () => {
-    if (searchValue && allowCustomValue) {
-      onValueChange?.(searchValue);
-      setOpen(false);
-      setSearchValue("");
+    if (selectedValue === value) {
+      onValueChange?.("")
+    } else {
+      onValueChange?.(selectedValue)
     }
-  };
+    setOpen(false)
+  }
 
-  const clearValue = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onValueChange?.("");
-  };
+  const handleInputChange = (newValue: string) => {
+    setInputValue(newValue)
+    
+    // If the input matches an existing option exactly, don't treat it as a custom value
+    const exactMatch = options.find(option => 
+      option.label.toLowerCase() === newValue.toLowerCase()
+    )
+    
+    if (!exactMatch && newValue.trim()) {
+      // Allow custom values by calling onValueChange with the input value
+      onValueChange?.(newValue.trim())
+    }
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -90,69 +77,47 @@ export function Combobox({
           role="combobox"
           aria-expanded={open}
           className={cn("w-full justify-between", className)}
-          disabled={disabled}
         >
-          <span className="truncate">
-            {selectedOption ? selectedOption.label : (isCustomValue ? value : placeholder)}
-          </span>
-          <div className="flex items-center gap-1">
-            {value && (
-              <X 
-                className="h-4 w-4 shrink-0 opacity-50 hover:opacity-100" 
-                onClick={clearValue}
-              />
-            )}
-            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
-          </div>
+          {selectedOption ? selectedOption.label : value || placeholder}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
-        <Command shouldFilter={false}>
+      <PopoverContent className="w-full p-0">
+        <Command>
           <CommandInput 
-            placeholder={searchPlaceholder || `Search ${placeholder.toLowerCase()}...`}
-            value={searchValue}
-            onValueChange={setSearchValue}
+            placeholder={`Search or type new...`}
+            value={inputValue}
+            onValueChange={handleInputChange}
           />
-          <CommandList>
-            {filteredOptions.length === 0 && !searchValue && (
-              <CommandEmpty>{emptyText}</CommandEmpty>
-            )}
-            
-            {filteredOptions.length === 0 && searchValue && allowCustomValue && (
-              <CommandItem onSelect={handleCustomValue} className="text-muted-foreground">
-                Create "{searchValue}"
+          <CommandEmpty>{emptyText}</CommandEmpty>
+          <CommandGroup>
+            {filteredOptions.map((option) => (
+              <CommandItem
+                key={option.value}
+                value={option.value}
+                onSelect={handleSelect}
+              >
+                <Check
+                  className={cn(
+                    "mr-2 h-4 w-4",
+                    value === option.value ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                {option.label}
+              </CommandItem>
+            ))}
+            {inputValue && !filteredOptions.some(option => 
+              option.label.toLowerCase() === inputValue.toLowerCase()
+            ) && (
+              <CommandItem
+                value={inputValue}
+                onSelect={() => handleSelect(inputValue)}
+              >
+                <Check className="mr-2 h-4 w-4 opacity-0" />
+                Create "{inputValue}"
               </CommandItem>
             )}
-            
-            {filteredOptions.length === 0 && searchValue && !allowCustomValue && (
-              <CommandEmpty>No results found for "{searchValue}"</CommandEmpty>
-            )}
-            
-            {filteredOptions.length > 0 && (
-              <CommandGroup>
-                {searchValue && allowCustomValue && !filteredOptions.find(opt => opt.value === searchValue) && (
-                  <CommandItem onSelect={handleCustomValue} className="text-muted-foreground border-b">
-                    Create "{searchValue}"
-                  </CommandItem>
-                )}
-                {filteredOptions.map((option) => (
-                  <CommandItem
-                    key={option.value}
-                    value={option.value}
-                    onSelect={handleSelect}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value === option.value ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    <span className="truncate">{option.label}</span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
+          </CommandGroup>
         </Command>
       </PopoverContent>
     </Popover>
