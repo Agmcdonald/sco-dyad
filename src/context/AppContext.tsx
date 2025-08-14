@@ -2,6 +2,8 @@ import { createContext, useContext, useState, ReactNode, useCallback, useEffect 
 import { QueuedFile, Comic, RecentAction, NewComic, UndoPayload } from '@/types';
 import { useElectronDatabaseService } from '@/services/electronDatabaseService';
 import { useElectron } from '@/hooks/useElectron';
+import { useSettings } from '@/context/SettingsContext';
+import { formatPath } from '@/lib/formatter';
 import { showSuccess, showError } from '@/utils/toast';
 
 interface AppContextType {
@@ -91,6 +93,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [actions, setActions] = useState<RecentAction[]>([]);
   const databaseService = useElectronDatabaseService();
   const { isElectron, electronAPI } = useElectron();
+  const { settings } = useSettings();
 
   // Load comics from Electron database on startup
   useEffect(() => {
@@ -196,35 +199,56 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addComic = async (comicData: NewComic, originalFile: QueuedFile) => {
-    const newComic: Comic = {
-      ...comicData,
-      id: `comic-${comicIdCounter++}`,
-      coverUrl: 'placeholder.svg'
-    };
-
-    // Save to database if available
-    if (databaseService) {
+    if (isElectron && electronAPI && databaseService) {
       try {
-        const savedComic = await databaseService.saveComic({
-          ...comicData,
-          filePath: originalFile.path,
-          fileSize: 25000000 // Default size, would be actual file size in real implementation
-        });
-        
-        // Update comic with database info
-        newComic.id = savedComic.id;
-        newComic.coverUrl = savedComic.coverUrl || 'placeholder.svg';
-      } catch (error) {
-        console.error('Error saving comic to database:', error);
-        logAction('warning', `Comic added to memory only: ${error.message}`);
-      }
-    }
+        // 1. Organize the physical file
+        const fileExtension = originalFile.name.substring(originalFile.name.lastIndexOf('.'));
+        const folderPart = formatPath(settings.folderNameFormat, comicData);
+        const filePart = formatPath(settings.fileNameFormat, comicData) + fileExtension;
+        const relativeTargetPath = `${folderPart}/${filePart}`.replace(/\\/g, '/');
 
-    setComics(prev => [newComic, ...prev]);
-    logAction('success', `Organized '${originalFile.name}' as '${newComic.series} #${newComic.issue}'`, {
-      type: 'ADD_COMIC',
-      payload: { comicId: newComic.id, originalFile }
-    });
+        const organizeResult = await electronAPI.organizeFile(originalFile.path, relativeTargetPath);
+
+        if (!organizeResult.success) {
+          showError(`Failed to move file: ${originalFile.name}`);
+          logAction('error', `Failed to organize file: ${originalFile.name}`);
+          return;
+        }
+
+        // 2. Save comic metadata to the database with the new path
+        const comicToSave = {
+          ...comicData,
+          filePath: organizeResult.newPath,
+          fileSize: originalFile.pageCount ? originalFile.pageCount * 1000000 : 25000000, // Estimate size
+        };
+        
+        const savedComic = await databaseService.saveComic(comicToSave);
+
+        // 3. Update UI state with the final comic object from the database
+        setComics(prev => [savedComic, ...prev]);
+        logAction('success', `Organized '${originalFile.name}' as '${savedComic.series} #${savedComic.issue}'`, {
+          type: 'ADD_COMIC',
+          payload: { comicId: savedComic.id, originalFile }
+        });
+
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        showError(`An error occurred while organizing ${originalFile.name}`);
+        logAction('error', `Error organizing ${originalFile.name}: ${errorMessage}`);
+      }
+    } else {
+      // Web mode (mock behavior)
+      const newComic: Comic = {
+        ...comicData,
+        id: `comic-${comicIdCounter++}`,
+        coverUrl: 'placeholder.svg'
+      };
+      setComics(prev => [newComic, ...prev]);
+      logAction('success', `(Web Mode) Organized '${originalFile.name}' as '${newComic.series} #${newComic.issue}'`, {
+        type: 'ADD_COMIC',
+        payload: { comicId: newComic.id, originalFile }
+      });
+    }
   };
 
   const updateComic = async (updatedComic: Comic) => {

@@ -389,12 +389,24 @@ ipcMain.handle('scan-folder', async (event, folderPath) => {
   }
 });
 
-ipcMain.handle('organize-file', async (event, sourcePath, targetPath) => {
+ipcMain.handle('organize-file', async (event, sourcePath, relativeTargetPath) => {
   try {
     const settings = database.getAllSettings();
+    // Use a sensible default if libraryPath is not set
+    const libraryRoot = settings.libraryPath || path.join(app.getPath('documents'), 'Comic Organizer Library');
     const keepOriginal = settings.keepOriginalFiles !== false;
-    return await fileHandler.organizeFile(sourcePath, targetPath, keepOriginal);
+
+    const fullTargetPath = path.join(libraryRoot, relativeTargetPath);
+
+    const success = await fileHandler.organizeFile(sourcePath, fullTargetPath, keepOriginal);
+    
+    if (success) {
+      return { success: true, newPath: fullTargetPath };
+    } else {
+      return { success: false, error: 'File operation failed.' };
+    }
   } catch (error) {
+    console.error('Organize file error:', error);
     throw error;
   }
 });
