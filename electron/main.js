@@ -328,6 +328,33 @@ ipcMain.handle('show-message-box', async (event, options) => {
   return result;
 });
 
+// Dialog handlers
+ipcMain.handle('dialog:select-files', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    title: 'Select Comic Files',
+    properties: ['openFile', 'multiSelections'],
+    filters: [
+      { name: 'Comic Files', extensions: ['cbr', 'cbz', 'pdf'] },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  });
+  return canceled ? [] : filePaths;
+});
+
+ipcMain.handle('dialog:select-folder', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    title: 'Select Folder to Scan',
+    properties: ['openDirectory']
+  });
+  if (canceled || filePaths.length === 0) {
+    return [];
+  }
+  // Scan the selected folder and return file paths
+  const comicFiles = await fileHandler.scanFolder(filePaths[0]);
+  return comicFiles.map(file => file.path);
+});
+
+
 // File operations
 ipcMain.handle('read-comic-file', async (event, filePath) => {
   try {

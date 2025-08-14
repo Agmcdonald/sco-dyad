@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { QueuedFile, Comic, RecentAction, NewComic, UndoPayload } from '@/types';
 import { useElectronDatabaseService } from '@/services/electronDatabaseService';
+import { useElectron } from '@/hooks/useElectron';
+import { showSuccess, showError } from '@/utils/toast';
 
 interface AppContextType {
   files: QueuedFile[];
@@ -20,6 +22,8 @@ interface AppContextType {
   lastUndoableAction: RecentAction | null;
   undoLastAction: () => void;
   addMockFiles: () => void;
+  triggerSelectFiles: () => void;
+  triggerScanFolder: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -86,6 +90,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [actions, setActions] = useState<RecentAction[]>([]);
   const databaseService = useElectronDatabaseService();
+  const { isElectron, electronAPI } = useElectron();
 
   // Load comics from Electron database on startup
   useEffect(() => {
@@ -153,6 +158,26 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const addFiles = (newFiles: QueuedFile[]) => {
     setFiles(prev => [...prev, ...newFiles]);
   };
+
+  const addFilesFromPaths = useCallback((paths: string[]) => {
+    if (paths.length === 0) return;
+
+    const newFiles = paths.map((path, index) => ({
+      id: `file-${fileIdCounter++}-${index}`,
+      name: path.split(/[\\/]/).pop() || 'Unknown File',
+      path: path,
+      series: null,
+      issue: null,
+      year: null,
+      publisher: null,
+      confidence: null,
+      status: 'Pending' as FileStatus,
+    }));
+
+    addFiles(newFiles);
+    logAction('info', `Added ${newFiles.length} files to the queue.`);
+    showSuccess(`Added ${newFiles.length} files to the queue.`);
+  }, [logAction]);
 
   const removeFile = (id: string) => {
     setFiles(prev => prev.filter(f => f.id !== id));
@@ -267,6 +292,36 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     logAction('info', `Added ${newMockFiles.length} mock files to the queue.`);
   }, [logAction]);
 
+  const triggerSelectFiles = useCallback(async () => {
+    if (!isElectron || !electronAPI) {
+      showError("This feature is only available in the desktop app.");
+      addMockFiles(); // Fallback for web
+      return;
+    }
+    try {
+      const filePaths = await electronAPI.selectFilesDialog();
+      addFilesFromPaths(filePaths);
+    } catch (error) {
+      console.error("Error selecting files:", error);
+      showError("Could not select files.");
+    }
+  }, [isElectron, electronAPI, addFilesFromPaths, addMockFiles]);
+
+  const triggerScanFolder = useCallback(async () => {
+    if (!isElectron || !electronAPI) {
+      showError("This feature is only available in the desktop app.");
+      addMockFiles(); // Fallback for web
+      return;
+    }
+    try {
+      const filePaths = await electronAPI.selectFolderDialog();
+      addFilesFromPaths(filePaths);
+    } catch (error) {
+      console.error("Error scanning folder:", error);
+      showError("Could not scan folder.");
+    }
+  }, [isElectron, electronAPI, addFilesFromPaths, addMockFiles]);
+
   return (
     <AppContext.Provider value={{ 
       files, addFile, addFiles, removeFile, updateFile, skipFile,
@@ -274,7 +329,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       isProcessing, startProcessing, pauseProcessing,
       actions, logAction,
       lastUndoableAction, undoLastAction,
-      addMockFiles
+      addMockFiles,
+      triggerSelectFiles,
+      triggerScanFolder
     }}>
       {children}
     </AppContext.Provider>

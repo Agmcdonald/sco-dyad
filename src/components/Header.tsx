@@ -19,7 +19,7 @@ interface HeaderProps {
 
 const Header = ({ isInspectorOpen, toggleInspector }: HeaderProps) => {
   const navigate = useNavigate();
-  const { isProcessing, startProcessing, pauseProcessing, files, addMockFiles } = useAppContext();
+  const { isProcessing, startProcessing, pauseProcessing, files, triggerSelectFiles, triggerScanFolder } = useAppContext();
   const hasPendingFiles = files.some(f => f.status === 'Pending');
 
   const handleStartPause = () => {
@@ -31,15 +31,20 @@ const Header = ({ isInspectorOpen, toggleInspector }: HeaderProps) => {
     }
   };
 
+  const handleAddFiles = () => {
+    triggerSelectFiles();
+    navigate('/app/organize');
+  };
+
   const handleScanFolder = () => {
-    addMockFiles();
+    triggerScanFolder();
     navigate('/app/organize');
   };
 
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-background px-6 sticky top-0 z-10">
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => navigate('/app/organize')}>
+        <Button variant="outline" size="sm" onClick={handleAddFiles}>
           <Plus className="h-4 w-4 mr-2" /> Add Files...
         </Button>
         <Button variant="outline" size="sm" onClick={handleScanFolder}>
