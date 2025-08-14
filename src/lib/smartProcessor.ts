@@ -44,9 +44,9 @@ export const processComicFile = async (file: QueuedFile): Promise<ProcessingResu
         series: bestMatch.series, // Use canonical series name
         issue: parsed.issue,
         year: parsed.year || bestMatch.startYear,
-        publisher: bestMatch.publisher,
+        publisher: parsed.publisher || bestMatch.publisher, // Prefer character-detected publisher
         volume: bestMatch.volume,
-        summary: `Processed using knowledge base: ${bestMatch.series} published by ${bestMatch.publisher}`
+        summary: `Processed using knowledge base: ${bestMatch.series} published by ${parsed.publisher || bestMatch.publisher}`
       };
 
       return {
@@ -58,7 +58,20 @@ export const processComicFile = async (file: QueuedFile): Promise<ProcessingResu
     }
 
     // Fallback: use parsed data if available
-    if (parsed.year) {
+    if (parsed.year && parsed.publisher) {
+      return {
+        success: true,
+        confidence: "Medium", // Higher confidence if we detected the publisher
+        data: {
+          series: parsed.series,
+          issue: parsed.issue,
+          year: parsed.year,
+          publisher: parsed.publisher,
+          volume: parsed.volume || String(parsed.year),
+          summary: `Parsed from filename with character-based publisher detection: ${file.name}`
+        }
+      };
+    } else if (parsed.year) {
       return {
         success: true,
         confidence: "Low",
@@ -66,7 +79,7 @@ export const processComicFile = async (file: QueuedFile): Promise<ProcessingResu
           series: parsed.series,
           issue: parsed.issue,
           year: parsed.year,
-          publisher: "Unknown Publisher",
+          publisher: parsed.publisher || "Unknown Publisher",
           volume: parsed.volume || String(parsed.year),
           summary: `Parsed from filename: ${file.name}`
         }
