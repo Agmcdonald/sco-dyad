@@ -19,15 +19,15 @@ import { SelectionProvider } from "./context/SelectionContext";
 import { AppProvider } from "./context/AppContext";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { SettingsProvider } from "./context/SettingsContext";
+import { KnowledgeBaseProvider } from "./context/KnowledgeBaseContext";
 import { initializeKnowledgeBase } from "./lib/knowledgeBase";
-import { comicsKnowledgeData } from "./data/comicsKnowledge";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   useEffect(() => {
-    // Initialize the knowledge base with preseeded data
-    initializeKnowledgeBase(comicsKnowledgeData);
+    // This is now handled by the KnowledgeBaseProvider
+    // initializeKnowledgeBase(comicsKnowledgeData);
   }, []);
 
   return (
@@ -35,29 +35,31 @@ const App = () => {
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <TooltipProvider>
           <SettingsProvider>
-            <AppProvider>
-              <SelectionProvider>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
-                  <ElectronIntegration />
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/app" element={<Layout />}>
-                      <Route index element={<Dashboard />} />
-                      <Route path="dashboard" element={<Dashboard />} />
-                      <Route path="organize" element={<Organize />} />
-                      <Route path="learning" element={<Learning />} />
-                      <Route path="library" element={<Library />} />
-                      <Route path="activity" element={<Activity />} />
-                      <Route path="settings" element={<Settings />} />
-                      <Route path="maintenance" element={<Maintenance />} />
-                    </Route>
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </BrowserRouter>
-              </SelectionProvider>
-            </AppProvider>
+            <KnowledgeBaseProvider>
+              <AppProvider>
+                <SelectionProvider>
+                  <Toaster />
+                  <Sonner />
+                  <BrowserRouter>
+                    <ElectronIntegration />
+                    <Routes>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/app" element={<Layout />}>
+                        <Route index element={<Dashboard />} />
+                        <Route path="dashboard" element={<Dashboard />} />
+                        <Route path="organize" element={<Organize />} />
+                        <Route path="learning" element={<Learning />} />
+                        <Route path="library" element={<Library />} />
+                        <Route path="activity" element={<Activity />} />
+                        <Route path="settings" element={<Settings />} />
+                        <Route path="maintenance" element={<Maintenance />} />
+                      </Route>
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </BrowserRouter>
+                </SelectionProvider>
+              </AppProvider>
+            </KnowledgeBaseProvider>
           </SettingsProvider>
         </TooltipProvider>
       </ThemeProvider>

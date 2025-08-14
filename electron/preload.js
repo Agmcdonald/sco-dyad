@@ -36,6 +36,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Settings
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
+
+  // Knowledge Base
+  getKnowledgeBase: () => ipcRenderer.invoke('get-knowledge-base'),
+  saveKnowledgeBase: (data) => ipcRenderer.invoke('save-knowledge-base', data),
   
   // Dialog
   showMessageBox: (options) => ipcRenderer.invoke('show-message-box', options),

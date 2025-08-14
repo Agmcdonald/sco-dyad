@@ -18,7 +18,7 @@ export interface KnowledgeMatch {
   startYear: number;
 }
 
-// This will be populated with the preseeded data
+// This will be populated by the context
 let knowledgeDatabase: ComicKnowledge[] = [];
 
 // Enhanced fuzzy string matching function with better normalization

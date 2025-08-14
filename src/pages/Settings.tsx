@@ -22,15 +22,16 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/context/SettingsContext";
+import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 import { showError, showSuccess } from "@/utils/toast";
 import { testApiConnection } from "@/lib/scraper";
-import { comicsKnowledgeData } from "@/data/comicsKnowledge";
-import { Loader2, Database, Upload, Download } from "lucide-react";
+import { Loader2, Database } from "lucide-react";
 import KnowledgeBaseManager from "@/components/KnowledgeBaseManager";
 
 const Settings = () => {
   const { theme, setTheme } = useTheme();
   const { settings, setSettings } = useSettings();
+  const { knowledgeBase } = useKnowledgeBase();
   const [isTesting, setIsTesting] = useState(false);
 
   const handleSave = () => {
@@ -50,49 +51,10 @@ const Settings = () => {
     setIsTesting(false);
   };
 
-  const handleExportKnowledge = () => {
-    const blob = new Blob([JSON.stringify(comicsKnowledgeData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `comics-knowledge-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showSuccess("Knowledge base exported successfully");
-  };
-
-  const handleImportKnowledge = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          try {
-            const data = JSON.parse(e.target?.result as string);
-            if (Array.isArray(data) && data.length > 0) {
-              showSuccess(`Import would add ${data.length} series to knowledge base (feature not fully implemented)`);
-            } else {
-              showError("Invalid knowledge base file format");
-            }
-          } catch (error) {
-            showError("Failed to parse knowledge base file");
-          }
-        };
-        reader.readAsText(file);
-      }
-    };
-    input.click();
-  };
-
   // Calculate knowledge base stats
-  const totalSeries = comicsKnowledgeData.length;
-  const totalVolumes = comicsKnowledgeData.reduce((sum, series) => sum + series.volumes.length, 0);
-  const publishers = new Set(comicsKnowledgeData.map(s => s.publisher));
+  const totalSeries = knowledgeBase.length;
+  const totalVolumes = knowledgeBase.reduce((sum, series) => sum + series.volumes.length, 0);
+  const publishers = new Set(knowledgeBase.map(s => s.publisher));
 
   return (
     <div className="space-y-6">
@@ -306,19 +268,9 @@ const Settings = () => {
                 </div>
               </div>
             </CardContent>
-            <CardFooter className="border-t px-6 py-4 flex justify-between items-center">
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleExportKnowledge}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Export
-                </Button>
-                <Button variant="outline" onClick={handleImportKnowledge}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Import
-                </Button>
-              </div>
+            <CardFooter className="border-t px-6 py-4">
               <p className="text-sm text-muted-foreground">
-                Knowledge base provides intelligent suggestions during file processing
+                Manage the knowledge base in the Advanced tab.
               </p>
             </CardFooter>
           </Card>

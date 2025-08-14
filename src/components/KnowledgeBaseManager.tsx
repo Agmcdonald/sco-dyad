@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,35 +31,28 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import { Search, Database, TrendingUp, Plus, Download, Upload, Edit, Trash2 } from "lucide-react";
-import { comicsKnowledgeData } from "@/data/comicsKnowledge";
+import { Search, Database, TrendingUp, Plus, Download, Upload, Edit, Trash2, Loader2 } from "lucide-react";
+import { useKnowledgeBase, ComicKnowledge } from "@/context/KnowledgeBaseContext";
 import { showSuccess, showError } from "@/utils/toast";
 
-interface EditSeriesData {
-  series: string;
-  publisher: string;
-  startYear: number;
-  volumes: Array<{ volume: string; year: number }>;
-}
-
 const KnowledgeBaseManager = () => {
+  const { knowledgeBase, isLoading, updateKnowledgeBase, deleteSeries } = useKnowledgeBase();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPublisher, setSelectedPublisher] = useState<string>("");
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editData, setEditData] = useState<EditSeriesData | null>(null);
-  const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
+  const [editingSeries, setEditingSeries] = useState<ComicKnowledge | null>(null);
+  const [deletingSeries, setDeletingSeries] = useState<ComicKnowledge | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // Get statistics
   const stats = useMemo(() => {
-    const totalSeries = comicsKnowledgeData.length;
-    const totalVolumes = comicsKnowledgeData.reduce((sum, series) => sum + series.volumes.length, 0);
-    const publishers = new Set(comicsKnowledgeData.map(s => s.publisher));
+    const totalSeries = knowledgeBase.length;
+    const totalVolumes = knowledgeBase.reduce((sum, series) => sum + series.volumes.length, 0);
+    const publishers = new Set(knowledgeBase.map(s => s.publisher));
     const publisherStats = Array.from(publishers).map(publisher => ({
       name: publisher,
-      seriesCount: comicsKnowledgeData.filter(s => s.publisher === publisher).length,
-      volumeCount: comicsKnowledgeData
+      seriesCount: knowledgeBase.filter(s => s.publisher === publisher).length,
+      volumeCount: knowledgeBase
         .filter(s => s.publisher === publisher)
         .reduce((sum, s) => sum + s.volumes.length, 0)
     })).sort((a, b) => b.seriesCount - a.seriesCount);
@@ -70,11 +63,11 @@ const KnowledgeBaseManager = () => {
       totalPublishers: publishers.size,
       publisherStats
     };
-  }, []);
+  }, [knowledgeBase]);
 
   // Filter data based on search and publisher
   const filteredData = useMemo(() => {
-    let filtered = comicsKnowledgeData;
+    let filtered = knowledgeBase;
 
     if (selectedPublisher) {
       filtered = filtered.filter(series => series.publisher === selectedPublisher);
@@ -89,130 +82,77 @@ const KnowledgeBaseManager = () => {
     }
 
     return filtered.slice(0, 100); // Limit for performance
-  }, [searchTerm, selectedPublisher]);
+  }, [searchTerm, selectedPublisher, knowledgeBase]);
 
-  const handleExportKnowledge = () => {
-    const blob = new Blob([JSON.stringify(comicsKnowledgeData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `comics-knowledge-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showSuccess("Knowledge base exported successfully");
+  const handleEditSeries = (series: ComicKnowledge) => {
+    setEditingSeries(JSON.parse(JSON.stringify(series))); // Deep copy
+    setIsEditDialogOpen(true);
   };
 
-  const handleImportKnowledge = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          try {
-            const data = JSON.parse(e.target?.result as string);
-            if (Array.isArray(data) && data.length > 0) {
-              showSuccess(`Import would add ${data.length} series to knowledge base (feature not fully implemented)`);
-            } else {
-              showError("Invalid knowledge base file format");
-            }
-          } catch (error) {
-            showError("Failed to parse knowledge base file");
-          }
-        };
-        reader.readAsText(file);
+  const handleDeleteSeries = (series: ComicKnowledge) => {
+    setDeletingSeries(series);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (editingSeries) {
+      const originalSeries = knowledgeBase.find(s => s.series === editingSeries.series);
+      if (originalSeries) {
+        const updatedKB = knowledgeBase.map(s => s.series === originalSeries.series ? editingSeries : s);
+        await updateKnowledgeBase(updatedKB);
       }
-    };
-    input.click();
-  };
-
-  const handleEditSeries = (index: number) => {
-    const originalIndex = comicsKnowledgeData.findIndex(item => 
-      filteredData[index] && item.series === filteredData[index].series && item.publisher === filteredData[index].publisher
-    );
-    
-    if (originalIndex !== -1) {
-      setEditingIndex(originalIndex);
-      setEditData({ ...comicsKnowledgeData[originalIndex] });
-      setIsEditDialogOpen(true);
-    }
-  };
-
-  const handleDeleteSeries = (index: number) => {
-    const originalIndex = comicsKnowledgeData.findIndex(item => 
-      filteredData[index] && item.series === filteredData[index].series && item.publisher === filteredData[index].publisher
-    );
-    
-    if (originalIndex !== -1) {
-      setDeleteIndex(originalIndex);
-      setIsDeleteDialogOpen(true);
-    }
-  };
-
-  const handleSaveEdit = () => {
-    if (editingIndex !== null && editData) {
-      // In a real implementation, this would update the actual knowledge base
-      // For now, we'll just show a success message since the data is imported
-      showSuccess(`Series "${editData.series}" would be updated (feature requires backend implementation)`);
-      
-      // Note: To fully implement this, you'd need:
-      // 1. A way to persist changes to the knowledge base
-      // 2. Update the comicsKnowledgeData array
-      // 3. Possibly save to a user-specific knowledge base file
-      
       setIsEditDialogOpen(false);
-      setEditingIndex(null);
-      setEditData(null);
+      setEditingSeries(null);
     }
   };
 
-  const handleConfirmDelete = () => {
-    if (deleteIndex !== null) {
-      const seriesName = comicsKnowledgeData[deleteIndex].series;
-      
-      // In a real implementation, this would remove from the actual knowledge base
-      showSuccess(`Series "${seriesName}" would be deleted (feature requires backend implementation)`);
-      
-      // Note: To fully implement this, you'd need:
-      // 1. Remove from comicsKnowledgeData array
-      // 2. Update the knowledge base file
-      // 3. Refresh the component state
-      
+  const handleConfirmDelete = async () => {
+    if (deletingSeries) {
+      await deleteSeries(deletingSeries.series);
       setIsDeleteDialogOpen(false);
-      setDeleteIndex(null);
+      setDeletingSeries(null);
     }
   };
 
   const addVolume = () => {
-    if (editData) {
-      setEditData({
-        ...editData,
-        volumes: [...editData.volumes, { volume: '', year: new Date().getFullYear() }]
+    if (editingSeries) {
+      setEditingSeries({
+        ...editingSeries,
+        volumes: [...editingSeries.volumes, { volume: '', year: new Date().getFullYear() }]
       });
     }
   };
 
   const removeVolume = (volumeIndex: number) => {
-    if (editData) {
-      setEditData({
-        ...editData,
-        volumes: editData.volumes.filter((_, index) => index !== volumeIndex)
+    if (editingSeries) {
+      setEditingSeries({
+        ...editingSeries,
+        volumes: editingSeries.volumes.filter((_, index) => index !== volumeIndex)
       });
     }
   };
 
   const updateVolume = (volumeIndex: number, field: 'volume' | 'year', value: string | number) => {
-    if (editData) {
-      const updatedVolumes = editData.volumes.map((vol, index) => 
+    if (editingSeries) {
+      const updatedVolumes = editingSeries.volumes.map((vol, index) => 
         index === volumeIndex ? { ...vol, [field]: value } : vol
       );
-      setEditData({ ...editData, volumes: updatedVolumes });
+      setEditingSeries({ ...editingSeries, volumes: updatedVolumes });
     }
   };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Knowledge Base Manager</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -226,16 +166,6 @@ const KnowledgeBaseManager = () => {
             <CardDescription>
               Manage and explore the comic series knowledge database
             </CardDescription>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportKnowledge}>
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleImportKnowledge}>
-              <Upload className="h-4 w-4 mr-2" />
-              Import
-            </Button>
           </div>
         </div>
       </CardHeader>
@@ -318,7 +248,7 @@ const KnowledgeBaseManager = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredData.map((series, index) => (
-                    <TableRow key={index}>
+                    <TableRow key={`${series.series}-${index}`}>
                       <TableCell className="font-medium">{series.series}</TableCell>
                       <TableCell>{series.publisher}</TableCell>
                       <TableCell>{series.startYear}</TableCell>
@@ -330,7 +260,7 @@ const KnowledgeBaseManager = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleEditSeries(index)}
+                            onClick={() => handleEditSeries(series)}
                             className="h-8 w-8 p-0"
                           >
                             <Edit className="h-3 w-3" />
@@ -338,7 +268,7 @@ const KnowledgeBaseManager = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDeleteSeries(index)}
+                            onClick={() => handleDeleteSeries(series)}
                             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                           >
                             <Trash2 className="h-3 w-3" />
@@ -373,7 +303,7 @@ const KnowledgeBaseManager = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-1">
-                      {comicsKnowledgeData
+                      {knowledgeBase
                         .filter(s => s.publisher === publisher.name)
                         .slice(0, 10)
                         .map((series, index) => (
@@ -405,23 +335,23 @@ const KnowledgeBaseManager = () => {
             </DialogDescription>
           </DialogHeader>
           
-          {editData && (
+          {editingSeries && (
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="series">Series Name</Label>
                   <Input
                     id="series"
-                    value={editData.series}
-                    onChange={(e) => setEditData({ ...editData, series: e.target.value })}
+                    value={editingSeries.series}
+                    onChange={(e) => setEditingSeries({ ...editingSeries, series: e.target.value })}
                   />
                 </div>
                 <div>
                   <Label htmlFor="publisher">Publisher</Label>
                   <Input
                     id="publisher"
-                    value={editData.publisher}
-                    onChange={(e) => setEditData({ ...editData, publisher: e.target.value })}
+                    value={editingSeries.publisher}
+                    onChange={(e) => setEditingSeries({ ...editingSeries, publisher: e.target.value })}
                   />
                 </div>
               </div>
@@ -431,8 +361,8 @@ const KnowledgeBaseManager = () => {
                 <Input
                   id="startYear"
                   type="number"
-                  value={editData.startYear}
-                  onChange={(e) => setEditData({ ...editData, startYear: parseInt(e.target.value) || 0 })}
+                  value={editingSeries.startYear}
+                  onChange={(e) => setEditingSeries({ ...editingSeries, startYear: parseInt(e.target.value) || 0 })}
                 />
               </div>
 
@@ -446,7 +376,7 @@ const KnowledgeBaseManager = () => {
                 </div>
                 
                 <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {editData.volumes.map((volume, index) => (
+                  {editingSeries.volumes.map((volume, index) => (
                     <div key={index} className="flex gap-2 items-center">
                       <Input
                         placeholder="Volume"
@@ -494,7 +424,7 @@ const KnowledgeBaseManager = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Series</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deleteIndex !== null ? comicsKnowledgeData[deleteIndex]?.series : ''}"? 
+              Are you sure you want to delete "{deletingSeries?.series}"? 
               This action cannot be undone and will remove the series from the knowledge base.
             </AlertDialogDescription>
           </AlertDialogHeader>
