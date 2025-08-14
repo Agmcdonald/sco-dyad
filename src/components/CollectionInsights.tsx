@@ -1,8 +1,29 @@
 import { useMemo } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
+  BookOpen,
+  Building,
+  Calendar,
+  Star,
+  TrendingUp,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { TrendingUp, Calendar, Building, BookOpen, Star } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 
 const CollectionInsights = () => {
@@ -18,7 +39,7 @@ const CollectionInsights = () => {
     }, {} as Record<string, number>);
 
     const topPublishers = Object.entries(publisherStats)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 5);
 
     // Year analysis
@@ -29,8 +50,8 @@ const CollectionInsights = () => {
     }, {} as Record<number, number>);
 
     const topDecades = Object.entries(yearStats)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 3);
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5);
 
     // Series analysis
     const seriesStats = comics.reduce((acc, comic) => {
@@ -39,26 +60,38 @@ const CollectionInsights = () => {
     }, {} as Record<string, number>);
 
     const topSeries = Object.entries(seriesStats)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 5);
 
     // Collection completeness (mock data for demonstration)
     const incompleteSeries = topSeries.filter(([, count]) => count < 5).length;
-    const completenessScore = Math.round(((topSeries.length - incompleteSeries) / topSeries.length) * 100);
+    const completenessScore =
+      topSeries.length > 0
+        ? Math.round(
+            ((topSeries.length - incompleteSeries) / topSeries.length) * 100,
+          )
+        : 0;
 
-    // Recent additions (last 30 days simulation)
-    const recentAdditions = Math.floor(comics.length * 0.1); // Mock: 10% are "recent"
+    // Chart data
+    const publisherChartData = topPublishers
+      .map(([name, count]) => ({ name, comics: count }))
+      .reverse();
+    const decadeChartData = Object.entries(yearStats)
+      .map(([name, count]) => ({ name: `${name}s`, comics: count }))
+      .sort((a, b) => (a.name > b.name ? 1 : -1));
 
     return {
       totalComics: comics.length,
       totalSeries: Object.keys(seriesStats).length,
       totalPublishers: Object.keys(publisherStats).length,
-      topPublishers,
-      topDecades,
       topSeries,
       completenessScore,
-      recentAdditions,
-      avgIssuesPerSeries: Math.round(comics.length / Object.keys(seriesStats).length)
+      avgIssuesPerSeries:
+        Object.keys(seriesStats).length > 0
+          ? Math.round(comics.length / Object.keys(seriesStats).length)
+          : 0,
+      publisherChartData,
+      decadeChartData,
     };
   }, [comics]);
 
@@ -93,28 +126,42 @@ const CollectionInsights = () => {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{insights.totalComics}</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {insights.totalComics}
+              </div>
               <div className="text-sm text-muted-foreground">Total Comics</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{insights.totalSeries}</div>
+              <div className="text-2xl font-bold text-green-600">
+                {insights.totalSeries}
+              </div>
               <div className="text-sm text-muted-foreground">Unique Series</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{insights.totalPublishers}</div>
+              <div className="text-2xl font-bold text-purple-600">
+                {insights.totalPublishers}
+              </div>
               <div className="text-sm text-muted-foreground">Publishers</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{insights.avgIssuesPerSeries}</div>
-              <div className="text-sm text-muted-foreground">Avg Issues/Series</div>
+              <div className="text-2xl font-bold text-orange-600">
+                {insights.avgIssuesPerSeries}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Avg Issues/Series
+              </div>
             </div>
           </div>
 
           <div className="space-y-4">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Collection Completeness</span>
-                <span className="text-sm text-muted-foreground">{insights.completenessScore}%</span>
+                <span className="text-sm font-medium">
+                  Collection Completeness
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {insights.completenessScore}%
+                </span>
               </div>
               <Progress value={insights.completenessScore} className="h-2" />
               <p className="text-xs text-muted-foreground mt-1">
@@ -133,16 +180,32 @@ const CollectionInsights = () => {
               Top Publishers
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {insights.topPublishers.map(([publisher, count], index) => (
-              <div key={publisher} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">#{index + 1}</span>
-                  <span className="text-sm">{publisher}</span>
-                </div>
-                <Badge variant="secondary">{count} comics</Badge>
-              </div>
-            ))}
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart
+                data={insights.publisherChartData}
+                layout="vertical"
+                margin={{ left: 25 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  width={80}
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                />
+                <Tooltip
+                  cursor={{ fill: "hsl(var(--muted))" }}
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--background))",
+                    borderColor: "hsl(var(--border))",
+                  }}
+                />
+                <Bar dataKey="comics" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
@@ -150,19 +213,32 @@ const CollectionInsights = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Calendar className="h-4 w-4" />
-              Popular Decades
+              Comics by Decade
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {insights.topDecades.map(([decade, count], index) => (
-              <div key={decade} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">#{index + 1}</span>
-                  <span className="text-sm">{decade}s</span>
-                </div>
-                <Badge variant="outline">{count} comics</Badge>
-              </div>
-            ))}
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={insights.decadeChartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="name"
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                />
+                <YAxis
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                />
+                <Tooltip
+                  cursor={{ fill: "hsl(var(--muted))" }}
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--background))",
+                    borderColor: "hsl(var(--border))",
+                  }}
+                />
+                <Bar dataKey="comics" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
@@ -180,12 +256,19 @@ const CollectionInsights = () => {
         <CardContent>
           <div className="space-y-3">
             {insights.topSeries.map(([series, count], index) => (
-              <div key={series} className="flex items-center justify-between p-2 rounded border">
+              <div
+                key={series}
+                className="flex items-center justify-between p-2 rounded border"
+              >
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-muted-foreground">#{index + 1}</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    #{index + 1}
+                  </span>
                   <div>
                     <div className="font-medium">{series}</div>
-                    <div className="text-sm text-muted-foreground">{count} issue{count !== 1 ? 's' : ''}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {count} issue{count !== 1 ? "s" : ""}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
