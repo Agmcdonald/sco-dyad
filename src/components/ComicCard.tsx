@@ -3,6 +3,7 @@ import { Card, CardFooter } from "@/components/ui/card";
 import { useSelection } from "@/context/SelectionContext";
 import { Comic } from "@/types";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 interface ComicCardProps {
   comic: Comic;
@@ -10,6 +11,8 @@ interface ComicCardProps {
 
 const ComicCard = ({ comic }: ComicCardProps) => {
   const { selectedItem, setSelectedItem } = useSelection();
+  const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   const isSelected = selectedItem?.type === 'comic' && selectedItem.id === comic.id;
 
@@ -21,6 +24,16 @@ const ComicCard = ({ comic }: ComicCardProps) => {
     }
   };
 
+  const handleImageError = () => {
+    console.log('Image failed to load for comic:', comic.series, 'URL:', comic.coverUrl);
+    setImageError(true);
+  };
+
+  const handleImageLoad = () => {
+    console.log('Image loaded successfully for comic:', comic.series, 'URL:', comic.coverUrl);
+    setImageLoaded(true);
+  };
+
   return (
     <Card 
       className={cn(
@@ -30,11 +43,22 @@ const ComicCard = ({ comic }: ComicCardProps) => {
       onClick={handleClick}
     >
       <AspectRatio ratio={2 / 3}>
-        <img
-          src={comic.coverUrl}
-          alt={`${comic.series} #${comic.issue}`}
-          className="object-cover w-full h-full"
-        />
+        {!imageError ? (
+          <img
+            src={comic.coverUrl}
+            alt={`${comic.series} #${comic.issue}`}
+            className="object-cover w-full h-full"
+            onError={handleImageError}
+            onLoad={handleImageLoad}
+          />
+        ) : (
+          <div className="w-full h-full bg-muted flex items-center justify-center">
+            <div className="text-center p-4">
+              <div className="text-4xl mb-2">📚</div>
+              <div className="text-xs text-muted-foreground">No Cover</div>
+            </div>
+          </div>
+        )}
       </AspectRatio>
       <CardFooter className="p-3">
         <div>
@@ -42,6 +66,11 @@ const ComicCard = ({ comic }: ComicCardProps) => {
           <p className="text-sm text-muted-foreground">
             Issue #{comic.issue} ({comic.year})
           </p>
+          {process.env.NODE_ENV === 'development' && (
+            <p className="text-xs text-muted-foreground mt-1 truncate">
+              Cover: {comic.coverUrl}
+            </p>
+          )}
         </div>
       </CardFooter>
     </Card>
