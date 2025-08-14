@@ -12,13 +12,44 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Search, Database, TrendingUp, Plus, Download, Upload } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
+import { Search, Database, TrendingUp, Plus, Download, Upload, Edit, Trash2 } from "lucide-react";
 import { comicsKnowledgeData } from "@/data/comicsKnowledge";
 import { showSuccess, showError } from "@/utils/toast";
+
+interface EditSeriesData {
+  series: string;
+  publisher: string;
+  startYear: number;
+  volumes: Array<{ volume: string; year: number }>;
+}
 
 const KnowledgeBaseManager = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPublisher, setSelectedPublisher] = useState<string>("");
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editData, setEditData] = useState<EditSeriesData | null>(null);
+  const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // Get statistics
   const stats = useMemo(() => {
@@ -97,6 +128,90 @@ const KnowledgeBaseManager = () => {
       }
     };
     input.click();
+  };
+
+  const handleEditSeries = (index: number) => {
+    const originalIndex = comicsKnowledgeData.findIndex(item => 
+      filteredData[index] && item.series === filteredData[index].series && item.publisher === filteredData[index].publisher
+    );
+    
+    if (originalIndex !== -1) {
+      setEditingIndex(originalIndex);
+      setEditData({ ...comicsKnowledgeData[originalIndex] });
+      setIsEditDialogOpen(true);
+    }
+  };
+
+  const handleDeleteSeries = (index: number) => {
+    const originalIndex = comicsKnowledgeData.findIndex(item => 
+      filteredData[index] && item.series === filteredData[index].series && item.publisher === filteredData[index].publisher
+    );
+    
+    if (originalIndex !== -1) {
+      setDeleteIndex(originalIndex);
+      setIsDeleteDialogOpen(true);
+    }
+  };
+
+  const handleSaveEdit = () => {
+    if (editingIndex !== null && editData) {
+      // In a real implementation, this would update the actual knowledge base
+      // For now, we'll just show a success message since the data is imported
+      showSuccess(`Series "${editData.series}" would be updated (feature requires backend implementation)`);
+      
+      // Note: To fully implement this, you'd need:
+      // 1. A way to persist changes to the knowledge base
+      // 2. Update the comicsKnowledgeData array
+      // 3. Possibly save to a user-specific knowledge base file
+      
+      setIsEditDialogOpen(false);
+      setEditingIndex(null);
+      setEditData(null);
+    }
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteIndex !== null) {
+      const seriesName = comicsKnowledgeData[deleteIndex].series;
+      
+      // In a real implementation, this would remove from the actual knowledge base
+      showSuccess(`Series "${seriesName}" would be deleted (feature requires backend implementation)`);
+      
+      // Note: To fully implement this, you'd need:
+      // 1. Remove from comicsKnowledgeData array
+      // 2. Update the knowledge base file
+      // 3. Refresh the component state
+      
+      setIsDeleteDialogOpen(false);
+      setDeleteIndex(null);
+    }
+  };
+
+  const addVolume = () => {
+    if (editData) {
+      setEditData({
+        ...editData,
+        volumes: [...editData.volumes, { volume: '', year: new Date().getFullYear() }]
+      });
+    }
+  };
+
+  const removeVolume = (volumeIndex: number) => {
+    if (editData) {
+      setEditData({
+        ...editData,
+        volumes: editData.volumes.filter((_, index) => index !== volumeIndex)
+      });
+    }
+  };
+
+  const updateVolume = (volumeIndex: number, field: 'volume' | 'year', value: string | number) => {
+    if (editData) {
+      const updatedVolumes = editData.volumes.map((vol, index) => 
+        index === volumeIndex ? { ...vol, [field]: value } : vol
+      );
+      setEditData({ ...editData, volumes: updatedVolumes });
+    }
   };
 
   return (
@@ -198,6 +313,7 @@ const KnowledgeBaseManager = () => {
                     <TableHead>Publisher</TableHead>
                     <TableHead>Start Year</TableHead>
                     <TableHead>Volumes</TableHead>
+                    <TableHead className="w-24">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -208,6 +324,26 @@ const KnowledgeBaseManager = () => {
                       <TableCell>{series.startYear}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{series.volumes.length}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditSeries(index)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteSeries(index)}
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -258,6 +394,118 @@ const KnowledgeBaseManager = () => {
           </TabsContent>
         </Tabs>
       </CardContent>
+
+      {/* Edit Series Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Series Information</DialogTitle>
+            <DialogDescription>
+              Update the series details and volume information.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editData && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="series">Series Name</Label>
+                  <Input
+                    id="series"
+                    value={editData.series}
+                    onChange={(e) => setEditData({ ...editData, series: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="publisher">Publisher</Label>
+                  <Input
+                    id="publisher"
+                    value={editData.publisher}
+                    onChange={(e) => setEditData({ ...editData, publisher: e.target.value })}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="startYear">Start Year</Label>
+                <Input
+                  id="startYear"
+                  type="number"
+                  value={editData.startYear}
+                  onChange={(e) => setEditData({ ...editData, startYear: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>Volumes</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addVolume}>
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add Volume
+                  </Button>
+                </div>
+                
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {editData.volumes.map((volume, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <Input
+                        placeholder="Volume"
+                        value={volume.volume}
+                        onChange={(e) => updateVolume(index, 'volume', e.target.value)}
+                        className="flex-1"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Year"
+                        value={volume.year}
+                        onChange={(e) => updateVolume(index, 'year', parseInt(e.target.value) || 0)}
+                        className="w-24"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeVolume(index)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Series</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteIndex !== null ? comicsKnowledgeData[deleteIndex]?.series : ''}"? 
+              This action cannot be undone and will remove the series from the knowledge base.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
