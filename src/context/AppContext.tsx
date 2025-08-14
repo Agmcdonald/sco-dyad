@@ -88,60 +88,12 @@ const sampleComics: Comic[] = [
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [files, setFiles] = useState<QueuedFile[]>([]);
-  const [comics, setComics] = useState<Comic[]>(sampleComics);
+  const [comics, setComics] = useState<Comic[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [actions, setActions] = useState<RecentAction[]>([]);
   const databaseService = useElectronDatabaseService();
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
-
-  // Load comics from Electron database on startup
-  useEffect(() => {
-    const loadComicsFromDatabase = async () => {
-      if (databaseService) {
-        try {
-          const dbComics = await databaseService.getComics();
-          if (dbComics.length > 0) {
-            // Convert database comics to app format
-            const appComics = dbComics.map(dbComic => ({
-              id: dbComic.id,
-              series: dbComic.series,
-              issue: dbComic.issue,
-              year: dbComic.year,
-              publisher: dbComic.publisher,
-              volume: dbComic.volume,
-              summary: dbComic.summary,
-              coverUrl: dbComic.coverUrl || '/placeholder.svg'
-            }));
-            setComics(appComics);
-            logAction('info', `Loaded ${appComics.length} comics from database.`);
-          } else {
-            // If no comics in database, add sample comics
-            for (const comic of sampleComics) {
-              try {
-                await databaseService.saveComic({
-                  ...comic,
-                  filePath: `sample/${comic.series.replace(/\s+/g, '_')}_${comic.issue}.cbz`,
-                  fileSize: 25000000 // 25MB sample size
-                });
-              } catch (error) {
-                console.warn('Could not save sample comic to database:', error);
-              }
-            }
-            logAction('info', `Initialized database with ${sampleComics.length} sample comics.`);
-          }
-        } catch (error) {
-          console.error('Error loading comics from database:', error);
-          logAction('error', 'Failed to load comics from database, using sample data.');
-        }
-      } else {
-        // Web mode - use sample data
-        logAction('info', `Comic Organizer initialized with ${sampleComics.length} sample comics.`);
-      }
-    };
-
-    loadComicsFromDatabase();
-  }, [databaseService]);
 
   const logAction = useCallback((type: RecentAction['type'], message: string, undo?: UndoPayload) => {
     const newAction: RecentAction = {
@@ -153,6 +105,43 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     };
     setActions(prev => [newAction, ...prev].slice(0, 10)); // Keep last 10 actions
   }, []);
+
+  // Load comics from Electron database on startup or use sample data for web
+  useEffect(() => {
+    const loadData = async () => {
+      if (databaseService) {
+        // Electron mode: Load from the user's database
+        try {
+          const dbComics = await databaseService.getComics();
+          const appComics = dbComics.map(dbComic => ({
+            id: dbComic.id,
+            series: dbComic.series,
+            issue: dbComic.issue,
+            year: dbComic.year,
+            publisher: dbComic.publisher,
+            volume: dbComic.volume,
+            summary: dbComic.summary,
+            coverUrl: dbComic.coverUrl || '/placeholder.svg'
+          }));
+          setComics(appComics);
+          if (appComics.length > 0) {
+            logAction('info', `Loaded ${appComics.length} comics from database.`);
+          } else {
+            logAction('info', 'Database is empty. Add files to start your library.');
+          }
+        } catch (error) {
+          console.error('Error loading comics from database:', error);
+          logAction('error', 'Failed to load comics from database.');
+        }
+      } else {
+        // Web mode: Use sample data for demonstration
+        setComics(sampleComics);
+        logAction('info', `Comic Organizer initialized with ${sampleComics.length} sample comics.`);
+      }
+    };
+
+    loadData();
+  }, [databaseService, logAction]);
 
   const addFile = (file: QueuedFile) => {
     setFiles(prev => [...prev, file]);
@@ -174,7 +163,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       year: null,
       publisher: null,
       confidence: null,
-      status: 'Pending' as FileStatus,
+      status: 'Pending' as any,
     }));
 
     addFiles(newFiles);
