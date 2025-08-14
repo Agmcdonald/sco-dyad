@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +15,8 @@ import { useSelection } from "@/context/SelectionContext";
 import { useAppContext } from "@/context/AppContext";
 import { QueuedFile } from "@/types";
 import { processComicFile } from "@/lib/smartProcessor";
+import { useElectron } from "@/hooks/useElectron";
+import { showSuccess, showError } from "@/utils/toast";
 
 const Organize = () => {
   const { 
@@ -28,13 +30,16 @@ const Organize = () => {
     updateFile,
     lastUndoableAction,
     undoLastAction,
-    skipFile
+    skipFile,
+    addFiles
   } = useAppContext();
   const { selectedItem, setSelectedItem } = useSelection();
+  const { isElectron } = useElectron();
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [filteredFiles, setFilteredFiles] = useState<QueuedFile[]>(files);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [currentProcessingFile, setCurrentProcessingFile] = useState<string>("");
+  const [isDragOver, setIsDragOver] = useState(false);
   const queueIndex = useRef(0);
 
   // Update filtered files when files change
@@ -124,6 +129,67 @@ const Organize = () => {
     return () => clearInterval(interval);
   }, [isProcessing, files, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile]);
 
+  // Drag and drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set drag over to false if we're leaving the main container
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    
+    if (droppedFiles.length === 0) {
+      showError("No files were dropped");
+      return;
+    }
+
+    // Filter for comic files
+    const comicExtensions = ['.cbr', '.cbz', '.pdf'];
+    const comicFiles = droppedFiles.filter(file => {
+      const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+      return comicExtensions.includes(ext);
+    });
+
+    if (comicFiles.length === 0) {
+      showError("No comic files found. Supported formats: CBR, CBZ, PDF");
+      return;
+    }
+
+    if (comicFiles.length !== droppedFiles.length) {
+      showError(`${droppedFiles.length - comicFiles.length} non-comic files were ignored`);
+    }
+
+    // Convert dropped files to QueuedFile objects
+    const queuedFiles = comicFiles.map((file, index) => ({
+      id: `dropped-file-${Date.now()}-${index}`,
+      name: file.name,
+      path: isElectron ? (file as any).path || file.name : file.name,
+      series: null,
+      issue: null,
+      year: null,
+      publisher: null,
+      confidence: null as any,
+      status: 'Pending' as any
+    }));
+
+    addFiles(queuedFiles);
+    showSuccess(`Added ${comicFiles.length} comic file${comicFiles.length !== 1 ? 's' : ''} to queue`);
+  }, [addFiles, isElectron]);
+
   const handleSkip = () => {
     if (selectedItem?.type === 'file') {
       skipFile(selectedItem as QueuedFile);
@@ -134,7 +200,23 @@ const Organize = () => {
   const pendingCount = files.filter(f => f.status === 'Pending').length;
 
   return (
-    <div className="h-full flex flex-col space-y-4">
+    <div 
+      className={`h-full flex flex-col space-y-4 ${isDragOver ? 'bg-primary/5' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {isDragOver && (
+        <div className="fixed inset-0 bg-primary/10 border-4 border-dashed border-primary z-50 flex items-center justify-center">
+          <div className="bg-background p-8 rounded-lg shadow-lg text-center">
+            <div className="text-4xl mb-4">📚</div>
+            <h3 className="text-xl font-semibold mb-2">Drop Comic Files Here</h3>
+            <p className="text-muted-foreground">Supported formats: CBR, CBZ, PDF</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Organize</h1>
