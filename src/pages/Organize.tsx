@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Play, Pause, SkipForward, Undo, Loader2 } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import FileQueue from "@/components/FileQueue";
 import BulkActions from "@/components/BulkActions";
 import { useSelection } from "@/context/SelectionContext";
 import { useAppContext } from "@/context/AppContext";
-import { useSettings } from "@/context/SettingsContext";
-import { parseFilename } from "@/lib/parser";
-import { fetchComicMetadata } from "@/lib/scraper";
 import { QueuedFile } from "@/types";
+import { processComicFile } from "@/lib/smartProcessor";
 
 const Organize = () => {
   const { 
@@ -25,9 +25,10 @@ const Organize = () => {
     undoLastAction,
     skipFile
   } = useAppContext();
-  const { settings } = useSettings();
   const { selectedItem, setSelectedItem } = useSelection();
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [currentProcessingFile, setCurrentProcessingFile] = useState<string>("");
   const queueIndex = useRef(0);
 
   useEffect(() => {
@@ -42,53 +43,75 @@ const Organize = () => {
     let interval: NodeJS.Timeout;
 
     const processNextFile = async () => {
-      if (queueIndex.current >= files.length) {
+      const pendingFiles = files.filter(f => f.status === 'Pending');
+      
+      if (queueIndex.current >= pendingFiles.length) {
         pauseProcessing();
+        setProcessingProgress(100);
+        setCurrentProcessingFile("");
+        logAction('info', `Processing complete. Processed ${pendingFiles.length} files.`);
         return;
       }
       
-      const currentFile = files[queueIndex.current];
+      const currentFile = pendingFiles[queueIndex.current];
+      if (!currentFile) {
+        queueIndex.current++;
+        return;
+      }
 
-      if (currentFile && currentFile.status === 'Pending') {
-        const parsed = parseFilename(currentFile.path);
-        const scraperResult = await fetchComicMetadata(parsed, settings.comicVineApiKey);
+      setCurrentProcessingFile(currentFile.name);
+      setProcessingProgress((queueIndex.current / pendingFiles.length) * 100);
 
-        if (scraperResult.success && scraperResult.data && parsed.series && parsed.issue && parsed.year) {
-          const finalData = {
-            series: parsed.series,
-            issue: parsed.issue,
-            year: parsed.year,
-            publisher: scraperResult.data.publisher,
-            volume: scraperResult.data.volume,
-            summary: scraperResult.data.summary,
-          };
+      try {
+        const result = await processComicFile(currentFile);
 
-          updateFile({ ...currentFile, ...finalData, status: "Success", confidence: "High" });
+        if (result.success && result.data) {
+          // Update file with processed data
+          updateFile({ 
+            ...currentFile, 
+            ...result.data, 
+            status: "Success", 
+            confidence: result.confidence 
+          });
           
-          setTimeout(() => {
-            addComic(finalData, currentFile);
-            removeFile(currentFile.id);
-            setSelectedItem(null);
-          }, 500);
-
+          // Auto-add high confidence matches to library
+          if (result.confidence === 'High') {
+            setTimeout(() => {
+              addComic(result.data!, currentFile);
+              removeFile(currentFile.id);
+              setSelectedItem(null);
+            }, 500);
+          }
         } else {
-          updateFile({ ...currentFile, status: "Warning", series: parsed.series, issue: parsed.issue, year: parsed.year });
-          logAction('warning', `'${currentFile.name}': ${scraperResult.error || 'Could not parse required fields.'}`);
+          // Mark as needing review
+          updateFile({ 
+            ...currentFile, 
+            status: result.confidence === 'Low' ? "Error" : "Warning",
+            confidence: result.confidence
+          });
+          
+          if (result.error) {
+            logAction('warning', `'${currentFile.name}': ${result.error}`);
+          }
         }
+      } catch (error) {
+        updateFile({ 
+          ...currentFile, 
+          status: "Error", 
+          confidence: "Low" 
+        });
+        logAction('error', `'${currentFile.name}': Processing failed`);
       }
 
       queueIndex.current++;
-      if (queueIndex.current >= files.length) {
-        pauseProcessing();
-      }
     };
 
     if (isProcessing) {
-      interval = setInterval(processNextFile, 1500);
+      interval = setInterval(processNextFile, 1000); // Slightly faster processing
     }
 
     return () => clearInterval(interval);
-  }, [isProcessing, files, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile, settings.comicVineApiKey]);
+  }, [isProcessing, files, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile]);
 
   const handleSkip = () => {
     if (selectedItem?.type === 'file') {
@@ -97,16 +120,25 @@ const Organize = () => {
     }
   };
 
+  const pendingCount = files.filter(f => f.status === 'Pending').length;
+  const processingCount = files.filter(f => f.status === 'Success').length;
+  const needsReviewCount = files.filter(f => f.status === 'Warning' || f.status === 'Error').length;
+
   return (
     <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Organize</h1>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Organize</h1>
+          <p className="text-muted-foreground mt-1">
+            Process and organize your comic files using intelligent detection.
+          </p>
+        </div>
         {files.length > 0 && (
           <div className="flex items-center gap-2">
             {!isProcessing ? (
-              <Button onClick={startProcessing}>
+              <Button onClick={startProcessing} disabled={pendingCount === 0}>
                 <Play className="h-4 w-4 mr-2" />
-                Start
+                Start Processing ({pendingCount})
               </Button>
             ) : (
               <Button variant="outline" onClick={pauseProcessing}>
@@ -123,6 +155,52 @@ const Organize = () => {
           </div>
         )}
       </div>
+
+      {/* Processing Progress */}
+      {isProcessing && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Processing Files</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Progress value={processingProgress} className="w-full" />
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Processing: {currentProcessingFile}</span>
+              <span>{Math.round(processingProgress)}% complete</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Statistics */}
+      {files.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold">{pendingCount}</div>
+              <div className="text-sm text-muted-foreground">Pending</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-green-600">{processingCount}</div>
+              <div className="text-sm text-muted-foreground">Processed</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-yellow-600">{needsReviewCount}</div>
+              <div className="text-sm text-muted-foreground">Needs Review</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold">{files.length}</div>
+              <div className="text-sm text-muted-foreground">Total Files</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {files.length > 0 && (
         <BulkActions 
