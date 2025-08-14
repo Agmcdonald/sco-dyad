@@ -13,6 +13,7 @@ import { showSuccess } from "@/utils/toast";
 import { parseFilename } from "@/lib/parser";
 import { getKnowledgeSuggestions, searchKnowledgeBase } from "@/lib/knowledgeBase";
 import Suggestions, { Suggestion } from "./Suggestions";
+import { comicsKnowledgeData } from "@/data/comicsKnowledge";
 
 interface LearningCardProps {
   file: QueuedFile;
@@ -47,8 +48,7 @@ const LearningCard = ({ file }: LearningCardProps) => {
   // Generate publisher options from existing comics and knowledge base
   const publisherOptions: ComboboxOption[] = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
-    const knowledgeMatches = searchKnowledgeBase(parsedInfo);
-    const publishersFromKnowledge = knowledgeMatches.map(m => m.publisher);
+    const publishersFromKnowledge = [...new Set(comicsKnowledgeData.map(entry => entry.publisher))];
     
     const allPublishers = [...new Set([...publishersFromComics, ...publishersFromKnowledge])];
     
@@ -56,13 +56,12 @@ const LearningCard = ({ file }: LearningCardProps) => {
       label: publisher,
       value: publisher
     })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [comics, parsedInfo]);
+  }, [comics]);
 
   // Generate series options from existing comics and knowledge base
   const seriesOptions: ComboboxOption[] = useMemo(() => {
     const seriesFromComics = [...new Set(comics.map(c => c.series))];
-    const knowledgeMatches = searchKnowledgeBase(parsedInfo);
-    const seriesFromKnowledge = knowledgeMatches.map(m => m.series);
+    const seriesFromKnowledge = [...new Set(comicsKnowledgeData.map(entry => entry.series))];
     
     const allSeries = [...new Set([...seriesFromComics, ...seriesFromKnowledge])];
     
@@ -70,7 +69,7 @@ const LearningCard = ({ file }: LearningCardProps) => {
       label: series,
       value: series
     })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [comics, parsedInfo]);
+  }, [comics]);
 
   useEffect(() => {
     // Get knowledge base suggestions

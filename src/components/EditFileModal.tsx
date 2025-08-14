@@ -17,8 +17,7 @@ import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { QueuedFile } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess } from "@/utils/toast";
-import { parseFilename } from "@/lib/parser";
-import { searchKnowledgeBase } from "@/lib/knowledgeBase";
+import { comicsKnowledgeData } from "@/data/comicsKnowledge";
 
 const formSchema = z.object({
   series: z.string().min(1, "Series is required"),
@@ -46,13 +45,10 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
     },
   });
 
-  const parsedInfo = useMemo(() => parseFilename(file.path), [file.path]);
-
   // Generate publisher options from existing comics and knowledge base
   const publisherOptions: ComboboxOption[] = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
-    const knowledgeMatches = searchKnowledgeBase(parsedInfo);
-    const publishersFromKnowledge = knowledgeMatches.map(m => m.publisher);
+    const publishersFromKnowledge = [...new Set(comicsKnowledgeData.map(entry => entry.publisher))];
     
     const allPublishers = [...new Set([...publishersFromComics, ...publishersFromKnowledge])];
     
@@ -60,13 +56,12 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
       label: publisher,
       value: publisher
     })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [comics, parsedInfo]);
+  }, [comics]);
 
   // Generate series options from existing comics and knowledge base
   const seriesOptions: ComboboxOption[] = useMemo(() => {
     const seriesFromComics = [...new Set(comics.map(c => c.series))];
-    const knowledgeMatches = searchKnowledgeBase(parsedInfo);
-    const seriesFromKnowledge = knowledgeMatches.map(m => m.series);
+    const seriesFromKnowledge = [...new Set(comicsKnowledgeData.map(entry => entry.series))];
     
     const allSeries = [...new Set([...seriesFromComics, ...seriesFromKnowledge])];
     
@@ -74,7 +69,7 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
       label: series,
       value: series
     })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [comics, parsedInfo]);
+  }, [comics]);
 
   useEffect(() => {
     form.reset({
