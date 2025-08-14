@@ -14,6 +14,7 @@ import Activity from "./pages/Activity";
 import Settings from "./pages/Settings";
 import Maintenance from "./pages/Maintenance";
 import NotFound from "./pages/NotFound";
+import ElectronIntegration from "./components/ElectronIntegration";
 import { SelectionProvider } from "./context/SelectionContext";
 import { AppProvider } from "./context/AppContext";
 import { ThemeProvider } from "./components/ThemeProvider";
@@ -38,6 +39,7 @@ const App = () => {
               <SelectionProvider>
                 <Toaster />
                 <Sonner />
+                <ElectronIntegration />
                 <BrowserRouter>
                   <Routes>
                     <Route path="/" element={<Index />} />
