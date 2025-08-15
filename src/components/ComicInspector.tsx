@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Comic } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Tag, BookOpen } from "lucide-react";
+import { Tag, BookOpen, PlusCircle } from "lucide-react";
 import EditComicModal from "./EditComicModal";
 import ComicReader from "./ComicReader";
+import { useAppContext } from "@/context/AppContext";
 
 interface ComicInspectorProps {
   comic: Comic;
@@ -13,6 +14,9 @@ interface ComicInspectorProps {
 const ComicInspector = ({ comic }: ComicInspectorProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReaderOpen, setIsReaderOpen] = useState(false);
+  const { readingList, addToReadingList } = useAppContext();
+
+  const isInReadingList = readingList.some(item => item.comicId === comic.id);
 
   return (
     <>
@@ -49,6 +53,15 @@ const ComicInspector = ({ comic }: ComicInspectorProps) => {
         <div className="p-4 border-t mt-auto bg-background space-y-2">
           <Button className="w-full" onClick={() => setIsReaderOpen(true)}>
             <BookOpen className="mr-2 h-4 w-4" /> Read Comic
+          </Button>
+          <Button 
+            className="w-full" 
+            variant="secondary" 
+            onClick={() => addToReadingList(comic)}
+            disabled={isInReadingList}
+          >
+            <PlusCircle className="mr-2 h-4 w-4" /> 
+            {isInReadingList ? 'In Reading List' : 'Add to Reading List'}
           </Button>
           <Button className="w-full" variant="outline" onClick={() => setIsModalOpen(true)}>
             <Tag className="mr-2 h-4 w-4" /> Edit Metadata

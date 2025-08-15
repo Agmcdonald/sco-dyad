@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
-import { QueuedFile, Comic, RecentAction, NewComic, UndoPayload } from '@/types';
+import { QueuedFile, Comic, RecentAction, NewComic, UndoPayload, ReadingListItem } from '@/types';
 import { useElectronDatabaseService } from '@/services/electronDatabaseService';
 import { useElectron } from '@/hooks/useElectron';
 import { useSettings } from '@/context/SettingsContext';
@@ -27,6 +27,11 @@ interface AppContextType {
   addMockFiles: () => void;
   triggerSelectFiles: () => void;
   triggerScanFolder: () => void;
+  readingList: ReadingListItem[];
+  addToReadingList: (comic: Comic) => void;
+  removeFromReadingList: (itemId: string) => void;
+  toggleReadingItemCompleted: (itemId: string) => void;
+  setReadingItemPriority: (itemId: string, priority: 'low' | 'medium' | 'high') => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -97,6 +102,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [comics, setComics] = useState<Comic[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [actions, setActions] = useState<RecentAction[]>([]);
+  const [readingList, setReadingList] = useState<ReadingListItem[]>([]);
   const databaseService = useElectronDatabaseService();
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
@@ -143,6 +149,22 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       } else {
         // Web mode: Use sample data for demonstration
         setComics(sampleComics);
+        if (sampleComics.length > 0) {
+          setReadingList([
+            {
+              id: '1',
+              comicId: sampleComics[0].id,
+              title: `${sampleComics[0].series} #${sampleComics[0].issue}`,
+              series: sampleComics[0].series,
+              issue: sampleComics[0].issue,
+              publisher: sampleComics[0].publisher,
+              year: sampleComics[0].year,
+              priority: 'high',
+              completed: false,
+              dateAdded: new Date()
+            }
+          ]);
+        }
         logAction('info', `Comic Organizer initialized with ${sampleComics.length} sample comics.`);
       }
     };
@@ -221,7 +243,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const savedComic = await databaseService.saveComic(comicToSave);
 
         // 3. Update UI state with the final comic object from the database
-        // The savedComic should have the coverUrl with the custom protocol
         const uiComic: Comic = {
           id: savedComic.id,
           series: savedComic.series,
@@ -240,7 +261,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           payload: { comicId: savedComic.id, originalFile }
         });
 
-        // Log cover URL for debugging
         console.log('Comic added with cover URL:', savedComic.coverUrl);
 
       } catch (error) {
@@ -266,7 +286,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateComic = async (updatedComic: Comic) => {
-    // Update in database if available
     if (databaseService) {
       try {
         await databaseService.updateComic({
@@ -309,7 +328,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       case 'ADD_COMIC':
         setComics(prev => prev.filter(c => c.id !== payload.comicId));
         addFile(payload.originalFile);
-        // TODO: Remove from database if available
         break;
       case 'SKIP_FILE':
         addFile(payload.skippedFile);
@@ -325,16 +343,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       { id: `file-${fileIdCounter++}`, name: "Saga #2 (2012).cbr", path: "/incoming/Saga #2 (2012).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
       { id: `file-${fileIdCounter++}`, name: "Batman The Knight #1 (2022).cbr", path: "/incoming/Batman The Knight #1 (2022).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
       { id: `file-${fileIdCounter++}`, name: "The Amazing Spider-Man #300 (1988).cbr", path: "/incoming/The Amazing Spider-Man #300 (1988).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
-      { id: `file-${fileIdCounter++}`, name: "Action Comics #1000 (2018).cbr", path: "/incoming/Action Comics #1000 (2018).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
-      { id: `file-${fileIdCounter++}`, name: "Radiant Black #1 (2021).cbr", path: "/incoming/Radiant Black #1 (2021).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
-      { id: `file-${fileIdCounter++}`, name: "Invincible #144 (2018).cbr", path: "/incoming/Invincible #144 (2018).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
-      { id: `file-${fileIdCounter++}`, name: "Monstress #1 (2015).cbr", path: "/incoming/Monstress #1 (2015).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
-      { id: `file-${fileIdCounter++}`, name: "Paper Girls #1 (2015).cbr", path: "/incoming/Paper Girls #1 (2015).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
-      { id: `file-${fileIdCounter++}`, name: "The Wicked The Divine #1 (2014).cbr", path: "/incoming/The Wicked The Divine #1 (2014).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
-      { id: `file-${fileIdCounter++}`, name: "East of West #1 (2013).cbr", path: "/incoming/East of West #1 (2013).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
-      { id: `file-${fileIdCounter++}`, name: "Unknown Comic.cbr", path: "/incoming/Unknown Comic.cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
-      { id: `file-${fileIdCounter++}`, name: "Another Unknown Comic.cbr", path: "/incoming/Another Unknown Comic.cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
-      { id: `file-${fileIdCounter++}`, name: "Superman - The Kryptonite Spectrum 001 (2025) (Webrip) (The Last Kryptonian-DCP) (1).cbr", path: "/incoming/Superman - The Kryptonite Spectrum 001 (2025) (Webrip) (The Last Kryptonian-DCP) (1).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
     ];
     addFiles(newMockFiles);
     logAction('info', `Added ${newMockFiles.length} mock files to the queue.`);
@@ -343,7 +351,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const triggerSelectFiles = useCallback(async () => {
     if (!isElectron || !electronAPI) {
       showError("This feature is only available in the desktop app.");
-      addMockFiles(); // Fallback for web
+      addMockFiles();
       return;
     }
     try {
@@ -358,7 +366,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const triggerScanFolder = useCallback(async () => {
     if (!isElectron || !electronAPI) {
       showError("This feature is only available in the desktop app.");
-      addMockFiles(); // Fallback for web
+      addMockFiles();
       return;
     }
     try {
@@ -370,6 +378,45 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isElectron, electronAPI, addFilesFromPaths, addMockFiles]);
 
+  // Reading List Functions
+  const addToReadingList = (comic: Comic) => {
+    const newItem: ReadingListItem = {
+      id: `rl-${Date.now()}`,
+      comicId: comic.id,
+      title: `${comic.series} #${comic.issue}`,
+      series: comic.series,
+      issue: comic.issue,
+      publisher: comic.publisher,
+      year: comic.year,
+      priority: 'medium',
+      completed: false,
+      dateAdded: new Date()
+    };
+    setReadingList(prev => [newItem, ...prev]);
+    showSuccess(`Added "${newItem.title}" to reading list.`);
+  };
+
+  const removeFromReadingList = (itemId: string) => {
+    setReadingList(prev => prev.filter(item => item.id !== itemId));
+    showSuccess("Removed from reading list");
+  };
+
+  const toggleReadingItemCompleted = (itemId: string) => {
+    setReadingList(prev => prev.map(item => 
+      item.id === itemId ? { ...item, completed: !item.completed } : item
+    ));
+    const item = readingList.find(i => i.id === itemId);
+    if (item && !item.completed) {
+      showSuccess(`Marked "${item.title}" as read!`);
+    }
+  };
+
+  const setReadingItemPriority = (itemId: string, priority: 'low' | 'medium' | 'high') => {
+    setReadingList(prev => prev.map(item => 
+      item.id === itemId ? { ...item, priority } : item
+    ));
+  };
+
   return (
     <AppContext.Provider value={{ 
       files, addFile, addFiles, removeFile, updateFile, skipFile,
@@ -379,7 +426,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       lastUndoableAction, undoLastAction,
       addMockFiles,
       triggerSelectFiles,
-      triggerScanFolder
+      triggerScanFolder,
+      readingList,
+      addToReadingList,
+      removeFromReadingList,
+      toggleReadingItemCompleted,
+      setReadingItemPriority
     }}>
       {children}
     </AppContext.Provider>
