@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,7 +35,12 @@ const Settings = () => {
   const { knowledgeBase } = useKnowledgeBase();
   const { isElectron, electronAPI } = useElectron();
   const [isTesting, setIsTesting] = useState(false);
-  const [libraryPath, setLibraryPath] = useState(settings.libraryPath || "");
+  const [libraryPath, setLibraryPath] = useState("");
+
+  // Initialize libraryPath from settings
+  useEffect(() => {
+    setLibraryPath(settings.libraryPath || "");
+  }, [settings.libraryPath]);
 
   const handleSave = async () => {
     const updatedSettings = { ...settings, libraryPath };
@@ -64,7 +69,9 @@ const Settings = () => {
     try {
       const result = await electronAPI.selectFolderDialog();
       if (result && result.length > 0) {
-        setLibraryPath(result[0]);
+        const selectedPath = result[0];
+        setLibraryPath(selectedPath);
+        console.log("Selected library path:", selectedPath);
       }
     } catch (error) {
       showError("Failed to select folder");
@@ -151,7 +158,7 @@ const Settings = () => {
                   id="library-path"
                   value={libraryPath}
                   onChange={(e) => setLibraryPath(e.target.value)}
-                  placeholder={isElectron ? "Choose a folder..." : "/Users/You/Documents/Comics"}
+                  placeholder={isElectron ? "Choose a folder..." : "C:\\Users\\You\\Documents\\Comics"}
                 />
                 <Button 
                   variant="outline" 
@@ -165,6 +172,11 @@ const Settings = () => {
               {!isElectron && (
                 <p className="text-sm text-muted-foreground mt-2">
                   Library path selection is only available in the desktop app.
+                </p>
+              )}
+              {libraryPath && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Selected: {libraryPath}
                 </p>
               )}
             </CardContent>
