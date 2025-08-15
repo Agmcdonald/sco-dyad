@@ -1,3 +1,8 @@
+export interface Creator {
+  name: string;
+  role: string;
+}
+
 export interface NewComic {
   series: string;
   issue: string;
@@ -5,6 +10,7 @@ export interface NewComic {
   publisher: string;
   volume: string;
   summary?: string;
+  creators?: Creator[];
 }
 
 export interface Comic extends NewComic {

@@ -17,6 +17,7 @@ import { QueuedFile } from "@/types";
 import { processComicFile } from "@/lib/smartProcessor";
 import { useElectron } from "@/hooks/useElectron";
 import { showError } from "@/utils/toast";
+import { useSettings } from "@/context/SettingsContext";
 
 const Organize = () => {
   const { 
@@ -41,6 +42,7 @@ const Organize = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   const queueIndex = useRef(0);
   const { isElectron } = useElectron();
+  const { settings } = useSettings();
 
   useEffect(() => {
     setFilteredFiles(files);
@@ -76,7 +78,7 @@ const Organize = () => {
       setProcessingProgress((queueIndex.current / pendingFiles.length) * 100);
 
       try {
-        const result = await processComicFile(currentFile);
+        const result = await processComicFile(currentFile, settings.comicVineApiKey);
 
         if (result.success && result.data) {
           updateFile({ ...currentFile, ...result.data, status: "Success", confidence: result.confidence });
@@ -104,7 +106,7 @@ const Organize = () => {
     }
 
     return () => clearInterval(interval);
-  }, [isProcessing, files, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile]);
+  }, [isProcessing, files, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile, settings.comicVineApiKey]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     if (isElectron) return;

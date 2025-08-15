@@ -1,6 +1,7 @@
-import { parseFilename, ParsedComicInfo } from "./parser";
+import { parseFilename } from "./parser";
 import { searchKnowledgeBase, KnowledgeMatch } from "./knowledgeBase";
-import { QueuedFile, Confidence } from "@/types";
+import { QueuedFile, Confidence, Creator } from "@/types";
+import { fetchComicMetadata } from "./scraper";
 
 export interface ProcessingResult {
   success: boolean;
@@ -12,6 +13,7 @@ export interface ProcessingResult {
     publisher: string;
     volume: string;
     summary: string;
+    creators?: Creator[];
   };
   suggestions?: KnowledgeMatch[];
   error?: string;
@@ -23,7 +25,7 @@ const isMockFile = (filePath: string): boolean => {
 };
 
 // Smart processor that combines parsing with knowledge base matching
-export const processComicFile = async (file: QueuedFile): Promise<ProcessingResult> => {
+export const processComicFile = async (file: QueuedFile, apiKey: string): Promise<ProcessingResult> => {
   try {
     // Parse the filename (works for both real and mock files)
     const parsed = parseFilename(file.path);
@@ -38,66 +40,64 @@ export const processComicFile = async (file: QueuedFile): Promise<ProcessingResu
       };
     }
 
-    // Search knowledge base for matches
+    // 1. Attempt API fetch first for richest data
+    if (apiKey) {
+      const apiResult = await fetchComicMetadata(parsed, apiKey);
+      if (apiResult.success && apiResult.data) {
+        return {
+          success: true,
+          confidence: apiResult.data.confidence,
+          data: {
+            series: apiResult.data.series || parsed.series,
+            issue: parsed.issue,
+            year: parsed.year || new Date().getFullYear(),
+            publisher: apiResult.data.publisher,
+            volume: apiResult.data.volume,
+            summary: apiResult.data.summary,
+            creators: apiResult.data.creators
+          }
+        };
+      }
+    }
+
+    // 2. Fallback to Knowledge Base
     const knowledgeMatches = searchKnowledgeBase(parsed);
-    
     if (knowledgeMatches.length > 0) {
       const bestMatch = knowledgeMatches[0];
-      
-      // Use knowledge base data to fill in missing information
-      const processedData = {
-        series: bestMatch.series, // Use canonical series name
-        issue: parsed.issue,
-        year: parsed.year || bestMatch.startYear,
-        publisher: parsed.publisher || bestMatch.publisher, // Prefer character-detected publisher
-        volume: bestMatch.volume,
-        summary: isMockFile(file.path) 
-          ? `Demo file processed using knowledge base: ${bestMatch.series} published by ${parsed.publisher || bestMatch.publisher}`
-          : `Processed using knowledge base: ${bestMatch.series} published by ${parsed.publisher || bestMatch.publisher}`
-      };
-
       return {
         success: true,
         confidence: bestMatch.confidence,
-        data: processedData,
-        suggestions: knowledgeMatches.slice(1, 4) // Additional suggestions
+        data: {
+          series: bestMatch.series,
+          issue: parsed.issue,
+          year: parsed.year || bestMatch.startYear,
+          publisher: parsed.publisher || bestMatch.publisher,
+          volume: bestMatch.volume,
+          summary: `Processed using knowledge base: ${bestMatch.series}`,
+          creators: []
+        },
+        suggestions: knowledgeMatches.slice(1, 4)
       };
     }
 
-    // Fallback: use parsed data if available
-    if (parsed.year && parsed.publisher) {
+    // 3. Fallback to parsed data only
+    if (parsed.year) {
       return {
         success: true,
-        confidence: "Medium", // Higher confidence if we detected the publisher
-        data: {
-          series: parsed.series,
-          issue: parsed.issue,
-          year: parsed.year,
-          publisher: parsed.publisher,
-          volume: parsed.volume || String(parsed.year),
-          summary: isMockFile(file.path)
-            ? `Demo file parsed with character-based publisher detection: ${file.name}`
-            : `Parsed from filename with character-based publisher detection: ${file.name}`
-        }
-      };
-    } else if (parsed.year) {
-      return {
-        success: true,
-        confidence: "Low",
+        confidence: parsed.publisher ? "Medium" : "Low",
         data: {
           series: parsed.series,
           issue: parsed.issue,
           year: parsed.year,
           publisher: parsed.publisher || "Unknown Publisher",
           volume: parsed.volume || String(parsed.year),
-          summary: isMockFile(file.path)
-            ? `Demo file parsed from filename: ${file.name}`
-            : `Parsed from filename: ${file.name}`
+          summary: `Parsed from filename: ${file.name}`,
+          creators: []
         }
       };
     }
 
-    // Not enough information
+    // 4. Failure
     return {
       success: false,
       confidence: "Low",
@@ -117,6 +117,7 @@ export const processComicFile = async (file: QueuedFile): Promise<ProcessingResu
 // Batch process multiple files
 export const batchProcessFiles = async (
   files: QueuedFile[],
+  apiKey: string,
   onProgress?: (processed: number, total: number, currentFile: string) => void
 ): Promise<Map<string, ProcessingResult>> => {
   const results = new Map<string, ProcessingResult>();
@@ -125,7 +126,7 @@ export const batchProcessFiles = async (
     const file = files[i];
     onProgress?.(i, files.length, file.name);
     
-    const result = await processComicFile(file);
+    const result = await processComicFile(file, apiKey);
     results.set(file.id, result);
     
     // Small delay to prevent UI blocking

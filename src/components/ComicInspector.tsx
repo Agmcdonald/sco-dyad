@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Comic } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Tag, BookOpen, PlusCircle } from "lucide-react";
+import { Tag, BookOpen, PlusCircle, Users } from "lucide-react";
 import EditComicModal from "./EditComicModal";
 import ComicReader from "./ComicReader";
 import { useAppContext } from "@/context/AppContext";
@@ -49,6 +49,25 @@ const ComicInspector = ({ comic }: ComicInspectorProps) => {
               {comic.summary || "No summary available."}
             </p>
           </div>
+          {comic.creators && comic.creators.length > 0 && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="font-semibold text-sm mb-2 flex items-center">
+                  <Users className="h-4 w-4 mr-2" />
+                  Creators
+                </h4>
+                <div className="space-y-2 text-sm">
+                  {comic.creators.map((creator, index) => (
+                    <div key={index} className="flex justify-between">
+                      <span className="text-muted-foreground">{creator.role}</span>
+                      <span>{creator.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
         <div className="p-4 border-t mt-auto bg-background space-y-2">
           <Button className="w-full" onClick={() => setIsReaderOpen(true)}>
