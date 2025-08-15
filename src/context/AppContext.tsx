@@ -242,6 +242,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [isElectron, electronAPI, addFilesFromPaths]);
 
   const addFilesFromDrop = useCallback(async (droppedFiles: File[]) => {
+    // This function is now only for web-mode (demo)
     const comicExtensions = ['.cbr', '.cbz', '.pdf'];
     const comicFiles = droppedFiles.filter(file => {
       const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
@@ -253,43 +254,20 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    if (isElectron) {
-      const paths = comicFiles.map(file => (file as any).path).filter(Boolean);
-      if (paths.length > 0) {
-        await addFilesFromPaths(paths);
-      } else {
-        // Fallback for Electron if paths aren't available
-        const mockFiles = comicFiles.map((file, index) => ({
-          id: `electron-drop-${Date.now()}-${index}`,
-          name: file.name,
-          path: `mock://electron-drop/${file.name}`,
-          series: null,
-          issue: null,
-          year: null,
-          publisher: null,
-          confidence: null as any,
-          status: 'Pending' as any
-        }));
-        addFiles(mockFiles);
-        showSuccess(`Added ${mockFiles.length} files (demo mode - paths not accessible)`);
-      }
-    } else {
-      // Web mode
-      const mockFiles = comicFiles.map((file, index) => ({
-        id: `web-drop-${Date.now()}-${index}`,
-        name: file.name,
-        path: `mock://web-drop/${file.name}`,
-        series: null,
-        issue: null,
-        year: null,
-        publisher: null,
-        confidence: null as any,
-        status: 'Pending' as any
-      }));
-      addFiles(mockFiles);
-      showSuccess(`Added ${mockFiles.length} files (web demo mode)`);
-    }
-  }, [addFilesFromPaths, addFiles, isElectron]);
+    const mockFiles = comicFiles.map((file, index) => ({
+      id: `web-drop-${Date.now()}-${index}`,
+      name: file.name,
+      path: `mock://web-drop/${file.name}`,
+      series: null,
+      issue: null,
+      year: null,
+      publisher: null,
+      confidence: null as any,
+      status: 'Pending' as any
+    }));
+    addFiles(mockFiles);
+    showSuccess(`Added ${mockFiles.length} files (web demo mode)`);
+  }, [addFiles]);
 
   return (
     <AppContext.Provider value={{ 
