@@ -35,6 +35,15 @@ const mockApiData: Record<string, any> = {
             { name: "Carmine Di Giandomenico", role: "Artist" }
         ]
     },
+    "Ice Cream Man": {
+        publisher: "Image Comics",
+        volume: "2018",
+        summary: "Ice Cream Man is a genre-defying comic book series that tells a new, strange, and horrifying story in each issue. The Ice Cream Man, a sinister figure, weaves his way through the lives of desperate people, offering them sweet treats that often lead to nightmarish consequences.",
+        creators: [
+            { name: "W. Maxwell Prince", role: "Writer" },
+            { name: "Martín Morazzo", role: "Artist" }
+        ]
+    },
     "The Amazing Spider-Man": { publisher: "Marvel Comics", volume: "1963", summary: "The classic adventures of Spider-Man from the early days.", creators: [{name: "Stan Lee", role: "Writer"}, {name: "Steve Ditko", role: "Artist"}] },
     "Action Comics": { publisher: "DC Comics", volume: "1938", summary: "The comic that introduced Superman to the world.", creators: [{name: "Jerry Siegel", role: "Writer"}, {name: "Joe Shuster", role: "Artist"}] },
     "Radiant Black": { publisher: "Image Comics", volume: "2021", summary: "A new superhero for a new generation.", creators: [{name: "Kyle Higgins", role: "Writer"}] },
