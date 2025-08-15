@@ -12,6 +12,60 @@ let fileHandler;
 let database;
 let knowledgeBasePath;
 
+// Register protocol before app is ready
+app.whenReady().then(async () => {
+  // Register custom protocol for serving cover images
+  protocol.registerFileProtocol('comic-cover', (request, callback) => {
+    try {
+      const url = request.url.substr('comic-cover://'.length);
+      const decodedPath = decodeURIComponent(url);
+      
+      console.log('[PROTOCOL] Raw URL:', url);
+      console.log('[PROTOCOL] Decoded path:', decodedPath);
+      
+      // If it's already a full path, use it directly
+      let coverPath;
+      if (path.isAbsolute(decodedPath)) {
+        coverPath = decodedPath;
+      } else {
+        // Otherwise, construct path in covers directory
+        const coversDir = path.join(app.getPath('userData'), 'covers');
+        coverPath = path.join(coversDir, decodedPath);
+      }
+      
+      console.log('[PROTOCOL] Final cover path:', coverPath);
+      
+      // Check if file exists synchronously (protocol handler requires sync)
+      if (require('fs').existsSync(coverPath)) {
+        console.log('[PROTOCOL] Success: Serving cover from', coverPath);
+        callback({ path: coverPath });
+      } else {
+        console.log('[PROTOCOL] Cover not found, using placeholder');
+        // Fallback to placeholder
+        const placeholderPath = path.join(__dirname, '../public/placeholder.svg');
+        if (require('fs').existsSync(placeholderPath)) {
+          callback({ path: placeholderPath });
+        } else {
+          callback({ error: -6 }); // net::ERR_FILE_NOT_FOUND
+        }
+      }
+    } catch (error) {
+      console.error('[PROTOCOL] Error:', error);
+      callback({ error: -6 });
+    }
+  });
+
+  await initializeServices();
+  createWindow();
+  createMenu();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
+
 function createWindow() {
   // Create the browser window
   mainWindow = new BrowserWindow({
@@ -26,33 +80,27 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js')
     },
     icon: path.join(__dirname, '../assets/icon.png'),
-    show: false, // Don't show until ready
+    show: false,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default'
   });
 
-  // Load the app
   const startUrl = isDev 
     ? 'http://localhost:5173' 
     : `file://${path.join(__dirname, '../dist/index.html')}`;
   
   mainWindow.loadURL(startUrl);
 
-  // Show window when ready to prevent visual flash
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    
-    // Open DevTools in development
     if (isDev) {
       mainWindow.webContents.openDevTools();
     }
   });
 
-  // Handle window closed
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
 
-  // Handle external links
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
@@ -62,14 +110,10 @@ function createWindow() {
 // Initialize services
 async function initializeServices() {
   try {
-    // Initialize file handler
     fileHandler = new ComicFileHandler();
-    
-    // Initialize database
     database = new ComicDatabase();
     await database.initialize();
 
-    // Initialize knowledge base
     const userDataPath = app.getPath('userData');
     knowledgeBasePath = path.join(userDataPath, 'userKnowledgeBase.json');
     await initializeKnowledgeBase();
@@ -85,14 +129,12 @@ async function initializeKnowledgeBase() {
   try {
     await fs.access(knowledgeBasePath);
   } catch (error) {
-    // File doesn't exist, create it from default
     const defaultKBPath = path.join(__dirname, '../dist/assets/comicsKnowledge.json');
     try {
       const defaultData = await fs.readFile(defaultKBPath, 'utf-8');
       await fs.writeFile(knowledgeBasePath, defaultData, 'utf-8');
       console.log('User knowledge base created from default.');
     } catch (readError) {
-      // Fallback if dist asset is not found (e.g. in dev)
       const devDefaultKBPath = path.join(__dirname, '../src/data/comicsKnowledge.json');
       try {
         const devDefaultData = await fs.readFile(devDefaultKBPath, 'utf-8');
@@ -105,57 +147,10 @@ async function initializeKnowledgeBase() {
   }
 }
 
-// App event handlers
-app.whenReady().then(async () => {
-  // Register custom protocol for serving cover images securely
-  protocol.registerFileProtocol('comic-cover', async (request, callback) => {
-    try {
-      const url = decodeURI(request.url.substr('comic-cover://'.length));
-      console.log('[PROTOCOL] Requested URL:', url);
-      
-      // The URL should be just the filename, construct full path
-      const coversDir = path.join(app.getPath('userData'), 'covers');
-      const coverPath = path.join(coversDir, url);
-      
-      console.log('[PROTOCOL] Looking for cover at:', coverPath);
-      
-      // Check if the file exists
-      await fs.access(coverPath);
-      console.log('[PROTOCOL] Success: Serving cover from', coverPath);
-      callback({ path: path.normalize(coverPath) });
-    } catch (error) {
-      console.error('[PROTOCOL] Error: Cover not found:', error.message);
-      // Fallback to placeholder
-      const placeholderPath = path.join(__dirname, '../public/placeholder.svg');
-      try {
-        await fs.access(placeholderPath);
-        callback({ path: placeholderPath });
-      } catch (placeholderError) {
-        console.error('[PROTOCOL] Placeholder also not found:', placeholderError.message);
-        callback({ error: -6 }); // net::ERR_FILE_NOT_FOUND
-      }
-    }
-  });
-
-  await initializeServices();
-  createWindow();
-  createMenu();
-
-  app.on('activate', () => {
-    // On macOS, re-create window when dock icon is clicked
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
-  });
-});
-
 app.on('window-all-closed', () => {
-  // Close database connection
   if (database) {
     database.close();
   }
-  
-  // On macOS, keep app running even when all windows are closed
   if (process.platform !== 'darwin') {
     app.quit();
   }
@@ -286,7 +281,6 @@ function createMenu() {
     }
   ];
 
-  // macOS specific menu adjustments
   if (process.platform === 'darwin') {
     template.unshift({
       label: app.getName(),
@@ -303,7 +297,6 @@ function createMenu() {
       ]
     });
 
-    // Window menu
     template[5].submenu = [
       { role: 'close' },
       { role: 'minimize' },
@@ -347,8 +340,6 @@ async function selectComicFolder() {
 }
 
 // IPC Handlers
-
-// App info
 ipcMain.handle('get-app-version', () => {
   return app.getVersion();
 });
@@ -358,7 +349,6 @@ ipcMain.handle('show-message-box', async (event, options) => {
   return result;
 });
 
-// Dialog handlers
 ipcMain.handle('dialog:select-files', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
     title: 'Select Comic Files',
@@ -379,13 +369,10 @@ ipcMain.handle('dialog:select-folder', async () => {
   if (canceled || filePaths.length === 0) {
     return [];
   }
-  // Scan the selected folder and return file paths
   const comicFiles = await fileHandler.scanFolder(filePaths[0]);
   return comicFiles.map(file => file.path);
 });
 
-
-// File operations
 ipcMain.handle('read-comic-file', async (event, filePath) => {
   try {
     return await fileHandler.readComicFile(filePath);
@@ -398,10 +385,10 @@ ipcMain.handle('extract-cover', async (event, filePath) => {
   try {
     const coversDir = path.join(app.getPath('userData'), 'covers');
     const coverPath = await fileHandler.extractCover(filePath, coversDir);
-    console.log('Cover extracted to:', coverPath);
+    console.log('[EXTRACT-COVER] Cover extracted to:', coverPath);
     return coverPath;
   } catch (error) {
-    console.error('Cover extraction error:', error);
+    console.error('[EXTRACT-COVER] Error:', error);
     throw error;
   }
 });
@@ -418,12 +405,10 @@ ipcMain.handle('scan-folder', async (event, folderPath) => {
 ipcMain.handle('organize-file', async (event, sourcePath, relativeTargetPath) => {
   try {
     const settings = database.getAllSettings();
-    // Use a sensible default if libraryPath is not set
     const libraryRoot = settings.libraryPath || path.join(app.getPath('documents'), 'Comic Organizer Library');
     const keepOriginal = settings.keepOriginalFiles !== false;
 
     const fullTargetPath = path.join(libraryRoot, relativeTargetPath);
-
     const success = await fileHandler.organizeFile(sourcePath, fullTargetPath, keepOriginal);
     
     if (success) {
@@ -439,7 +424,6 @@ ipcMain.handle('organize-file', async (event, sourcePath, relativeTargetPath) =>
 
 // Database operations
 ipcMain.handle('init-database', async () => {
-  // Database is already initialized in app startup
   return true;
 });
 
@@ -449,7 +433,7 @@ ipcMain.handle('save-comic', async (event, comic) => {
       comic.id = `comic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     }
     
-    comic.coverPath = null; // Default to null
+    comic.coverPath = null;
     if (comic.filePath) {
       try {
         const coversDir = path.join(app.getPath('userData'), 'covers');
