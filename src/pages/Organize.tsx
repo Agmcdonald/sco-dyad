@@ -15,6 +15,8 @@ import { useSelection } from "@/context/SelectionContext";
 import { useAppContext } from "@/context/AppContext";
 import { QueuedFile } from "@/types";
 import { processComicFile } from "@/lib/smartProcessor";
+import { useElectron } from "@/hooks/useElectron";
+import { showError } from "@/utils/toast";
 
 const Organize = () => {
   const { 
@@ -38,6 +40,7 @@ const Organize = () => {
   const [currentProcessingFile, setCurrentProcessingFile] = useState<string>("");
   const [isDragOver, setIsDragOver] = useState(false);
   const queueIndex = useRef(0);
+  const { isElectron } = useElectron();
 
   useEffect(() => {
     setFilteredFiles(files);
@@ -104,25 +107,33 @@ const Organize = () => {
   }, [isProcessing, files, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (isElectron) return;
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(true);
-  }, []);
+  }, [isElectron]);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (isElectron) return;
     e.preventDefault();
     e.stopPropagation();
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
       setIsDragOver(false);
     }
-  }, []);
+  }, [isElectron]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
+    if (isElectron) {
+      e.preventDefault();
+      e.stopPropagation();
+      showError("Please use the 'Add Files' or 'Scan Folder' buttons for the desktop app.");
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
     addFilesFromDrop(Array.from(e.dataTransfer.files));
-  }, [addFilesFromDrop]);
+  }, [addFilesFromDrop, isElectron]);
 
   const handleSkip = () => {
     if (selectedItem?.type === 'file') {
@@ -140,7 +151,7 @@ const Organize = () => {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {isDragOver && (
+      {isDragOver && !isElectron && (
         <div className="fixed inset-0 bg-primary/10 border-4 border-dashed border-primary z-50 flex items-center justify-center">
           <div className="bg-background p-8 rounded-lg shadow-lg text-center">
             <div className="text-4xl mb-4">📚</div>
