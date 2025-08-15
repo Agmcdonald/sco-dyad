@@ -3,30 +3,30 @@ import { ComicKnowledge } from '@/types';
 
 // Type definitions for our Electron API
 interface ElectronAPI {
-  getAppVersion: () => Promise<string>;
-  onNavigateTo: (callback: (path: string) => void) => void;
-  onFilesSelected: (callback: (string[]) => void) => void;
-  onFolderSelected: (callback: (folderPath: string) => void) => void;
-  readComicFile: (filePath: string) => Promise<any>;
-  extractCover: (filePath: string) => Promise<string>;
-  scanFolder: (folderPath: string) => Promise<string[]>;
-  organizeFile: (filePath: string, targetPath: string) => Promise<{ success: boolean; newPath?: string; error?: string; }>;
-  getComicPages: (filePath: string) => Promise<string[]>;
-  getComicPageDataUrl: (filePath: string, pageName: string) => Promise<string>;
-  initDatabase: () => Promise<void>;
-  saveComic: (comic: any) => Promise<any>;
-  getComics: () => Promise<any[]>;
-  updateComic: (comic: any) => Promise<any>;
-  deleteComic: (comicId: string) => Promise<boolean>;
-  getSettings: () => Promise<any>;
-  saveSettings: (settings: any) => Promise<void>;
-  showMessageBox: (options: any) => Promise<any>;
+  getAppVersion(): Promise<string>;
+  onNavigateTo(callback: (path: string) => void): void;
+  onFilesSelected(callback: (filePaths: string[]) => void): void;
+  onFolderSelected(callback: (folderPath: string) => void): void;
+  readComicFile(filePath: string): Promise<any>;
+  extractCover(filePath: string): Promise<string>;
+  scanFolder(folderPath: string): Promise<string[]>;
+  organizeFile(filePath: string, targetPath: string): Promise<{ success: boolean; newPath?: string; error?: string; }>;
+  getComicPages(filePath: string): Promise<string[]>;
+  getComicPageDataUrl(filePath: string, pageName: string): Promise<string>;
+  initDatabase(): Promise<void>;
+  saveComic(comic: any): Promise<any>;
+  getComics(): Promise<any[]>;
+  updateComic(comic: any): Promise<any>;
+  deleteComic(comicId: string): Promise<boolean>;
+  getSettings(): Promise<any>;
+  saveSettings(settings: any): Promise<void>;
+  showMessageBox(options: any): Promise<any>;
   platform: string;
-  removeAllListeners: (channel: string) => void;
-  selectFilesDialog: () => Promise<string[]>;
-  selectFolderDialog: () => Promise<string[]>;
-  getKnowledgeBase: () => Promise<ComicKnowledge[]>;
-  saveKnowledgeBase: (data: ComicKnowledge[]) => Promise<void>;
+  removeAllListeners(channel: string): void;
+  selectFilesDialog(): Promise<string[]>;
+  selectFolderDialog(): Promise<string[]>;
+  getKnowledgeBase(): Promise<ComicKnowledge[]>;
+  saveKnowledgeBase(data: ComicKnowledge[]): Promise<void>;
 }
 
 declare global {
