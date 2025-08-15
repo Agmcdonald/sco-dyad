@@ -12,7 +12,7 @@ import LibraryHealth from "@/components/LibraryHealth";
 import { useAppContext } from "@/context/AppContext";
 
 const Dashboard = () => {
-  const { comics, files, addMockFiles } = useAppContext();
+  const { comics, files, triggerSelectFiles, triggerScanFolder } = useAppContext();
   const navigate = useNavigate();
 
   const filesInQueue = files.filter(f => f.status === 'Pending').length;
@@ -20,8 +20,13 @@ const Dashboard = () => {
   const unmapped = files.filter(f => f.status === 'Warning').length;
   const errors = files.filter(f => f.status === 'Error').length;
 
+  const handleAddFiles = () => {
+    triggerSelectFiles();
+    navigate('/app/organize');
+  };
+
   const handleScanFolder = () => {
-    addMockFiles();
+    triggerScanFolder();
     navigate('/app/organize');
   };
 
@@ -103,7 +108,7 @@ const Dashboard = () => {
                   <CardTitle>Quick Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-wrap gap-4">
-                  <Button onClick={() => navigate('/app/organize')}>
+                  <Button onClick={handleAddFiles}>
                     <Plus className="mr-2 h-4 w-4" /> Add Files
                   </Button>
                   <Button variant="secondary" onClick={handleScanFolder}>
