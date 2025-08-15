@@ -5,12 +5,14 @@ import { ComicKnowledge } from '@/types';
 interface ElectronAPI {
   getAppVersion: () => Promise<string>;
   onNavigateTo: (callback: (path: string) => void) => void;
-  onFilesSelected: (callback: (filePaths: string[]) => void) => void;
+  onFilesSelected: (callback: (string[]) => void) => void;
   onFolderSelected: (callback: (folderPath: string) => void) => void;
   readComicFile: (filePath: string) => Promise<any>;
   extractCover: (filePath: string) => Promise<string>;
   scanFolder: (folderPath: string) => Promise<string[]>;
   organizeFile: (filePath: string, targetPath: string) => Promise<{ success: boolean; newPath?: string; error?: string; }>;
+  getComicPages: (filePath: string) => Promise<string[]>;
+  getComicPageDataUrl: (filePath: string, pageName: string) => Promise<string>;
   initDatabase: () => Promise<void>;
   saveComic: (comic: any) => Promise<any>;
   getComics: () => Promise<any[]>;

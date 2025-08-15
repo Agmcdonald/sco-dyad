@@ -135,6 +135,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             summary: dbComic.summary,
             coverUrl: dbComic.coverUrl || '/placeholder.svg',
             dateAdded: new Date(dbComic.dateAdded),
+            filePath: dbComic.filePath,
           }));
           setComics(appComics);
           if (appComics.length > 0) {
@@ -253,6 +254,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           summary: savedComic.summary,
           coverUrl: savedComic.coverUrl || '/placeholder.svg',
           dateAdded: new Date(savedComic.dateAdded),
+          filePath: savedComic.filePath,
         };
 
         setComics(prev => [uiComic, ...prev]);
@@ -290,7 +292,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       try {
         await databaseService.updateComic({
           ...updatedComic,
-          filePath: `library/${updatedComic.series}/${updatedComic.series}_${updatedComic.issue}.cbz`,
+          filePath: updatedComic.filePath || `library/${updatedComic.series}/${updatedComic.series}_${updatedComic.issue}.cbz`,
           fileSize: 25000000,
           dateAdded: updatedComic.dateAdded.toISOString(),
           lastModified: new Date().toISOString()
