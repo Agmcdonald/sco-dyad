@@ -25,12 +25,10 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
 
   ipcMain.handle('dialog:select-folder', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
-      title: 'Select Folder to Scan',
+      title: 'Select Folder',
       properties: ['openDirectory']
     });
-    if (canceled || filePaths.length === 0) return [];
-    const comicFiles = await fileHandler.scanFolder(filePaths[0]);
-    return comicFiles.map(file => file.path);
+    return canceled ? [] : filePaths;
   });
 
   // File system operations
@@ -60,9 +58,14 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('organize-file', async (event, sourcePath, relativeTargetPath) => {
     try {
       const settings = database.getAllSettings();
+      // Use the user's library path if set, otherwise use default
       const libraryRoot = settings.libraryPath || path.join(app.getPath('documents'), 'Comic Organizer Library');
       const keepOriginal = settings.keepOriginalFiles !== false;
       const fullTargetPath = path.join(libraryRoot, relativeTargetPath);
+      
+      console.log('[ORGANIZE-FILE] Source:', sourcePath);
+      console.log('[ORGANIZE-FILE] Target:', fullTargetPath);
+      console.log('[ORGANIZE-FILE] Library root:', libraryRoot);
       
       const success = await fileHandler.organizeFile(sourcePath, fullTargetPath, keepOriginal);
       return success ? { success: true, newPath: fullTargetPath } : { success: false, error: 'File operation failed.' };
@@ -98,7 +101,15 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   });
 
   // Settings operations
-  ipcMain.handle('get-settings', () => database.getAllSettings());
+  ipcMain.handle('get-settings', () => {
+    const settings = database.getAllSettings();
+    // Set default library path if not set
+    if (!settings.libraryPath) {
+      settings.libraryPath = path.join(app.getPath('documents'), 'Comic Organizer Library');
+    }
+    return settings;
+  });
+  
   ipcMain.handle('save-settings', (event, settings) => {
     for (const [key, value] of Object.entries(settings)) {
       database.saveSetting(key, value);

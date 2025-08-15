@@ -65,6 +65,7 @@ export interface AppSettings {
   autoScanOnStartup: boolean;
   folderNameFormat: string;
   fileNameFormat: string;
+  libraryPath: string;
 }
 
 export interface ComicKnowledge {
