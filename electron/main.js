@@ -21,6 +21,8 @@ function createWindow() {
     minWidth: 1200,
     minHeight: 700,
     webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     },
     show: false,
@@ -31,7 +33,11 @@ function createWindow() {
     ? 'http://localhost:5173' 
     : `file://${path.join(__dirname, '../dist/index.html')}`;
   
-  mainWindow.loadURL(startUrl);
+  mainWindow.loadURL(startUrl).catch(err => {
+    console.error('ERROR: Failed to load start URL:', startUrl);
+    console.error('Please ensure the Vite development server is running and accessible.');
+    console.error(err);
+  });
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();

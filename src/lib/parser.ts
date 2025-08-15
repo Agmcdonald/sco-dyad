@@ -113,7 +113,6 @@ const clean = (name: string): string => {
   
   // Clean up separators but preserve hyphens in series names like "Spider-Man"
   cleaned = cleaned
-    .replace(/\s*-\s*/g, ' - ') // Normalize hyphens with spaces
     .replace(/\s+/g, ' ') // Collapse multiple spaces
     .trim();
   
