@@ -38,6 +38,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 let fileIdCounter = 0;
 let comicIdCounter = 0;
+let actionIdCounter = 0;
 
 // Check if a file is a mock file
 const isMockFile = (filePath: string): boolean => {
@@ -118,7 +119,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const logAction = useCallback((type: RecentAction['type'], message: string, undo?: UndoPayload) => {
     const newAction: RecentAction = {
-      id: Date.now(),
+      id: actionIdCounter++, // Use incrementing counter instead of timestamp
       type,
       message,
       timestamp: new Date(),
@@ -247,7 +248,29 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     if (isElectron && electronAPI && databaseService) {
       try {
-        // 1. Organize the physical file
+        // 1. First, extract cover and get file info BEFORE moving the file
+        let coverUrl = '/placeholder.svg';
+        let fileSize = 25000000; // Default size
+        
+        try {
+          // Extract cover before moving the file
+          coverUrl = await electronAPI.extractCover(originalFile.path);
+          console.log('[ADD-COMIC] Cover extracted:', coverUrl);
+        } catch (coverError) {
+          console.warn('[ADD-COMIC] Could not extract cover:', coverError);
+        }
+
+        try {
+          // Get file info before moving
+          const fileInfo = await electronAPI.readComicFile(originalFile.path);
+          if (fileInfo && fileInfo.size) {
+            fileSize = fileInfo.size;
+          }
+        } catch (infoError) {
+          console.warn('[ADD-COMIC] Could not read file info:', infoError);
+        }
+
+        // 2. Organize the physical file
         const fileExtension = originalFile.name.substring(originalFile.name.lastIndexOf('.'));
         const folderPart = formatPath(settings.folderNameFormat, comicData);
         const filePart = formatPath(settings.fileNameFormat, comicData) + fileExtension;
@@ -261,42 +284,56 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
 
-        // 2. Save comic metadata to the database with the new path
+        // 3. Save comic metadata to the database with the new path and extracted cover
         const comicToSave = {
           ...comicData,
           filePath: organizeResult.newPath,
-          fileSize: originalFile.pageCount ? originalFile.pageCount * 1000000 : 25000000, // Estimate size
+          fileSize: fileSize,
         };
         
         const savedComic = await databaseService.saveComic(comicToSave);
 
-        // 3. Update UI state with the final comic object from the database
+        // 4. Update the saved comic with the cover URL we extracted earlier
+        const finalComic = {
+          ...savedComic,
+          coverUrl: coverUrl
+        };
+
+        // Update the database with the cover URL
+        try {
+          await databaseService.updateComic(finalComic);
+        } catch (updateError) {
+          console.warn('[ADD-COMIC] Could not update cover URL in database:', updateError);
+        }
+
+        // 5. Update UI state with the final comic object
         const uiComic: Comic = {
-          id: savedComic.id,
-          series: savedComic.series,
-          issue: savedComic.issue,
-          year: savedComic.year,
-          publisher: savedComic.publisher,
-          volume: savedComic.volume,
-          summary: savedComic.summary,
-          coverUrl: savedComic.coverUrl || '/placeholder.svg',
-          dateAdded: new Date(savedComic.dateAdded),
-          filePath: savedComic.filePath,
+          id: finalComic.id,
+          series: finalComic.series,
+          issue: finalComic.issue,
+          year: finalComic.year,
+          publisher: finalComic.publisher,
+          volume: finalComic.volume,
+          summary: finalComic.summary,
+          coverUrl: finalComic.coverUrl,
+          dateAdded: new Date(finalComic.dateAdded),
+          filePath: finalComic.filePath,
         };
 
         setComics(prev => [uiComic, ...prev]);
-        logAction('success', `Organized '${originalFile.name}' as '${savedComic.series} #${savedComic.issue}'`, {
+        logAction('success', `Organized '${originalFile.name}' as '${finalComic.series} #${finalComic.issue}'`, {
           type: 'ADD_COMIC',
-          payload: { comicId: savedComic.id, originalFile }
+          payload: { comicId: finalComic.id, originalFile }
         });
 
-        console.log('Comic added with cover URL:', savedComic.coverUrl);
+        console.log('[ADD-COMIC] Comic added successfully with cover:', finalComic.coverUrl);
+        showSuccess(`Added '${finalComic.series} #${finalComic.issue}' to library`);
 
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         showError(`An error occurred while organizing ${originalFile.name}`);
         logAction('error', `Error organizing ${originalFile.name}: ${errorMessage}`);
-        console.error('Error in addComic:', error);
+        console.error('[ADD-COMIC] Error:', error);
       }
     } else {
       // Web mode (mock behavior) - Don't try to organize files
