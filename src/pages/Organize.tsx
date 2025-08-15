@@ -56,23 +56,28 @@ const Organize = () => {
   }, [isProcessing, files.length]);
 
   const addFilesWithInfo = useCallback(async (filesToAdd: QueuedFile[]) => {
-    addFiles(filesToAdd);
-    showSuccess(`Added ${filesToAdd.length} comic file${filesToAdd.length !== 1 ? 's' : ''} to queue`);
-
-    if (isElectron && electronAPI) {
-      // Asynchronously fetch file info
-      for (const file of filesToAdd) {
-        try {
-          const fileInfo = await electronAPI.readComicFile(file.path);
-          if (fileInfo) {
-            updateFile({ ...file, pageCount: fileInfo.pageCount });
+    // First, read file info for all files BEFORE adding them to the queue
+    const filesWithInfo = await Promise.all(
+      filesToAdd.map(async (file) => {
+        if (isElectron && electronAPI) {
+          try {
+            const fileInfo = await electronAPI.readComicFile(file.path);
+            return {
+              ...file,
+              pageCount: fileInfo?.pageCount || undefined
+            };
+          } catch (error) {
+            console.warn(`Could not read info for ${file.name}:`, error);
+            return file;
           }
-        } catch (error) {
-          console.warn(`Could not read info for ${file.name}:`, error);
         }
-      }
-    }
-  }, [addFiles, isElectron, electronAPI, updateFile]);
+        return file;
+      })
+    );
+
+    addFiles(filesWithInfo);
+    showSuccess(`Added ${filesWithInfo.length} comic file${filesWithInfo.length !== 1 ? 's' : ''} to queue`);
+  }, [addFiles, isElectron, electronAPI]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;

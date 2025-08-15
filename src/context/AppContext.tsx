@@ -32,6 +32,7 @@ interface AppContextType {
   removeFromReadingList: (itemId: string) => void;
   toggleReadingItemCompleted: (itemId: string) => void;
   setReadingItemPriority: (itemId: string, priority: 'low' | 'medium' | 'high') => void;
+  refreshComics: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -128,28 +129,41 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setActions(prev => [newAction, ...prev].slice(0, 10)); // Keep last 10 actions
   }, []);
 
+  // Function to refresh comics from database
+  const refreshComics = useCallback(async () => {
+    if (databaseService) {
+      try {
+        const dbComics = await databaseService.getComics();
+        const appComics = dbComics.map(dbComic => ({
+          id: dbComic.id,
+          series: dbComic.series,
+          issue: dbComic.issue,
+          year: dbComic.year,
+          publisher: dbComic.publisher,
+          volume: dbComic.volume,
+          summary: dbComic.summary,
+          coverUrl: dbComic.coverUrl || '/placeholder.svg',
+          dateAdded: new Date(dbComic.dateAdded),
+          filePath: dbComic.filePath,
+        }));
+        setComics(appComics);
+        console.log('[REFRESH-COMICS] Loaded', appComics.length, 'comics from database');
+      } catch (error) {
+        console.error('Error refreshing comics from database:', error);
+      }
+    }
+  }, [databaseService]);
+
   // Load comics from Electron database on startup or use sample data for web
   useEffect(() => {
     const loadData = async () => {
       if (databaseService) {
         // Electron mode: Load from the user's database
         try {
-          const dbComics = await databaseService.getComics();
-          const appComics = dbComics.map(dbComic => ({
-            id: dbComic.id,
-            series: dbComic.series,
-            issue: dbComic.issue,
-            year: dbComic.year,
-            publisher: dbComic.publisher,
-            volume: dbComic.volume,
-            summary: dbComic.summary,
-            coverUrl: dbComic.coverUrl || '/placeholder.svg',
-            dateAdded: new Date(dbComic.dateAdded),
-            filePath: dbComic.filePath,
-          }));
-          setComics(appComics);
-          if (appComics.length > 0) {
-            logAction('info', `Loaded ${appComics.length} comics from database.`);
+          await refreshComics();
+          const currentComics = await databaseService.getComics();
+          if (currentComics.length > 0) {
+            logAction('info', `Loaded ${currentComics.length} comics from database.`);
           } else {
             logAction('info', 'Database is empty. Add files to start your library.');
           }
@@ -181,7 +195,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     };
 
     loadData();
-  }, [databaseService, logAction]);
+  }, [databaseService, logAction, refreshComics]);
 
   const addFile = (file: QueuedFile) => {
     setFiles(prev => [...prev, file]);
@@ -248,6 +262,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     if (isElectron && electronAPI && databaseService) {
       try {
+        console.log('[ADD-COMIC] Starting comic addition process for:', originalFile.name);
+        
         // 1. First, extract cover and get file info BEFORE moving the file
         let coverUrl = '/placeholder.svg';
         let fileSize = 25000000; // Default size
@@ -276,6 +292,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const filePart = formatPath(settings.fileNameFormat, comicData) + fileExtension;
         const relativeTargetPath = `${folderPart}/${filePart}`.replace(/\\/g, '/');
 
+        console.log('[ADD-COMIC] Organizing file to:', relativeTargetPath);
         const organizeResult = await electronAPI.organizeFile(originalFile.path, relativeTargetPath);
 
         if (!organizeResult.success) {
@@ -284,6 +301,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
 
+        console.log('[ADD-COMIC] File organized successfully to:', organizeResult.newPath);
+
         // 3. Save comic metadata to the database with the new path and extracted cover
         const comicToSave = {
           ...comicData,
@@ -291,7 +310,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           fileSize: fileSize,
         };
         
+        console.log('[ADD-COMIC] Saving comic to database:', comicToSave);
         const savedComic = await databaseService.saveComic(comicToSave);
+        console.log('[ADD-COMIC] Comic saved to database:', savedComic);
 
         // 4. Update the saved comic with the cover URL we extracted earlier
         const finalComic = {
@@ -302,6 +323,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         // Update the database with the cover URL
         try {
           await databaseService.updateComic(finalComic);
+          console.log('[ADD-COMIC] Cover URL updated in database');
         } catch (updateError) {
           console.warn('[ADD-COMIC] Could not update cover URL in database:', updateError);
         }
@@ -320,7 +342,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           filePath: finalComic.filePath,
         };
 
+        console.log('[ADD-COMIC] Adding comic to UI state:', uiComic);
         setComics(prev => [uiComic, ...prev]);
+        
+        // Also refresh from database to ensure consistency
+        await refreshComics();
+        
         logAction('success', `Organized '${originalFile.name}' as '${finalComic.series} #${finalComic.issue}'`, {
           type: 'ADD_COMIC',
           payload: { comicId: finalComic.id, originalFile }
@@ -362,6 +389,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           dateAdded: updatedComic.dateAdded.toISOString(),
           lastModified: new Date().toISOString()
         });
+        await refreshComics(); // Refresh after update
       } catch (error) {
         console.error('Error updating comic in database:', error);
         logAction('warning', `Comic updated in memory only: ${error.message}`);
@@ -372,9 +400,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     logAction('info', `Updated metadata for '${updatedComic.series} #${updatedComic.issue}'`);
   };
 
-  const removeComic = (id: string) => {
+  const removeComic = async (id: string) => {
     const comicToRemove = comics.find(c => c.id === id);
     if (comicToRemove) {
+      if (databaseService) {
+        try {
+          await databaseService.deleteComic(id);
+          await refreshComics(); // Refresh after deletion
+        } catch (error) {
+          console.error('Error deleting comic from database:', error);
+        }
+      }
       setComics(prev => prev.filter(c => c.id !== id));
       logAction('info', `Removed comic: '${comicToRemove.series} #${comicToRemove.issue}'`);
       showSuccess("Comic removed from library");
@@ -529,7 +565,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       addToReadingList,
       removeFromReadingList,
       toggleReadingItemCompleted,
-      setReadingItemPriority
+      setReadingItemPriority,
+      refreshComics
     }}>
       {children}
     </AppContext.Provider>
