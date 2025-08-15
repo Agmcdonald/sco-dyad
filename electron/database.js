@@ -40,7 +40,7 @@ class ComicDatabase {
 
   // Create database tables
   createTables() {
-    // Comics table
+    // Comics table - updated to store cover_url instead of cover_path
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS comics (
         id TEXT PRIMARY KEY,
@@ -54,7 +54,7 @@ class ComicDatabase {
         file_size INTEGER,
         file_type TEXT,
         page_count INTEGER,
-        cover_path TEXT,
+        cover_url TEXT,
         date_added TEXT NOT NULL,
         last_modified TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -99,7 +99,7 @@ class ComicDatabase {
       const stmt = this.db.prepare(`
         INSERT INTO comics (
           id, series, issue, year, publisher, volume, summary,
-          file_path, file_size, file_type, page_count, cover_path,
+          file_path, file_size, file_type, page_count, cover_url,
           date_added, last_modified
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
@@ -116,7 +116,7 @@ class ComicDatabase {
         comic.fileSize,
         comic.fileType,
         comic.pageCount,
-        comic.coverPath,
+        comic.coverUrl, // Now storing the URL directly
         comic.dateAdded,
         comic.lastModified
       );
@@ -327,19 +327,9 @@ class ComicDatabase {
     }
   }
 
-  // Format comic data for frontend
+  // Format comic data for frontend - now much simpler!
   formatComic(comic) {
-    // Instead of using a protocol URL, we'll use a special identifier
-    // that the frontend can use to request the image via IPC
-    let coverUrl = '/placeholder.svg'; // Default fallback
-    
-    if (comic.cover_path) {
-      // Use a special prefix to indicate this needs to be loaded via IPC
-      coverUrl = `electron-cover:${comic.cover_path}`;
-      console.log(`[FORMAT-COMIC] ID: ${comic.id}, Cover Path: ${comic.cover_path}, Generated URL: ${coverUrl}`);
-    } else {
-      console.log(`[FORMAT-COMIC] ID: ${comic.id}, No cover path found, using placeholder`);
-    }
+    console.log(`[FORMAT-COMIC] ID: ${comic.id}, Cover URL: ${comic.cover_url || '/placeholder.svg'}`);
 
     return {
       id: comic.id,
@@ -353,7 +343,7 @@ class ComicDatabase {
       fileSize: comic.file_size,
       fileType: comic.file_type,
       pageCount: comic.page_count,
-      coverUrl: coverUrl,
+      coverUrl: comic.cover_url || '/placeholder.svg', // Use stored URL directly
       dateAdded: comic.date_added,
       lastModified: comic.last_modified
     };

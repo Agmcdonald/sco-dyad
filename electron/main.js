@@ -11,6 +11,7 @@ let mainWindow;
 let fileHandler;
 let database;
 let knowledgeBasePath;
+let publicCoversDir;
 
 function createWindow() {
   // Create the browser window
@@ -63,6 +64,17 @@ async function initializeServices() {
     const userDataPath = app.getPath('userData');
     knowledgeBasePath = path.join(userDataPath, 'userKnowledgeBase.json');
     await initializeKnowledgeBase();
+    
+    // Setup public covers directory
+    if (isDev) {
+      publicCoversDir = path.join(__dirname, '../public/covers');
+    } else {
+      publicCoversDir = path.join(__dirname, '../dist/covers');
+    }
+    
+    // Ensure covers directory exists
+    await fs.mkdir(publicCoversDir, { recursive: true });
+    console.log('Public covers directory:', publicCoversDir);
     
     console.log('Services initialized successfully');
   } catch (error) {
@@ -341,45 +353,30 @@ ipcMain.handle('read-comic-file', async (event, filePath) => {
 
 ipcMain.handle('extract-cover', async (event, filePath) => {
   try {
-    const coversDir = path.join(app.getPath('userData'), 'covers');
-    const coverPath = await fileHandler.extractCover(filePath, coversDir);
-    console.log('[EXTRACT-COVER] Cover extracted to:', coverPath);
-    return coverPath;
+    // Extract to temporary location first
+    const tempCoversDir = path.join(app.getPath('userData'), 'temp-covers');
+    await fs.mkdir(tempCoversDir, { recursive: true });
+    
+    const tempCoverPath = await fileHandler.extractCover(filePath, tempCoversDir);
+    console.log('[EXTRACT-COVER] Temp cover extracted to:', tempCoverPath);
+    
+    // Generate unique filename for public directory
+    const comicId = `comic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const publicCoverFilename = `${comicId}-cover.jpg`;
+    const publicCoverPath = path.join(publicCoversDir, publicCoverFilename);
+    
+    // Copy to public directory
+    await fs.copyFile(tempCoverPath, publicCoverPath);
+    console.log('[EXTRACT-COVER] Cover copied to public:', publicCoverPath);
+    
+    // Clean up temp file
+    await fs.unlink(tempCoverPath);
+    
+    // Return the public URL path
+    return `/covers/${publicCoverFilename}`;
   } catch (error) {
     console.error('[EXTRACT-COVER] Error:', error);
     throw error;
-  }
-});
-
-// NEW: Get cover image as data URL
-ipcMain.handle('get-cover-image', async (event, coverPath) => {
-  try {
-    console.log('[GET-COVER-IMAGE] Requested cover:', coverPath);
-    
-    if (!coverPath) {
-      console.log('[GET-COVER-IMAGE] No cover path provided');
-      return null;
-    }
-
-    // Check if file exists
-    try {
-      await fs.access(coverPath);
-    } catch (error) {
-      console.log('[GET-COVER-IMAGE] Cover file not found:', coverPath);
-      return null;
-    }
-
-    // Read the file and convert to base64
-    const imageBuffer = await fs.readFile(coverPath);
-    const base64Image = imageBuffer.toString('base64');
-    const mimeType = coverPath.endsWith('.png') ? 'image/png' : 'image/jpeg';
-    const dataUrl = `data:${mimeType};base64,${base64Image}`;
-    
-    console.log('[GET-COVER-IMAGE] Successfully converted to data URL, size:', base64Image.length);
-    return dataUrl;
-  } catch (error) {
-    console.error('[GET-COVER-IMAGE] Error:', error);
-    return null;
   }
 });
 
@@ -423,13 +420,13 @@ ipcMain.handle('save-comic', async (event, comic) => {
       comic.id = `comic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     }
     
-    comic.coverPath = null;
+    comic.coverUrl = '/placeholder.svg'; // Default
     if (comic.filePath) {
       try {
-        const coversDir = path.join(app.getPath('userData'), 'covers');
-        const extractedPath = await fileHandler.extractCover(comic.filePath, coversDir);
-        comic.coverPath = extractedPath;
-        console.log('[SAVE-COMIC] Cover extracted to:', comic.coverPath);
+        // Extract cover and get public URL
+        const publicCoverUrl = await fileHandler.extractCoverToPublic(comic.filePath, publicCoversDir);
+        comic.coverUrl = publicCoverUrl;
+        console.log('[SAVE-COMIC] Cover URL set to:', comic.coverUrl);
       } catch (error) {
         console.error('[SAVE-COMIC] Could not extract cover for', comic.filePath, error.message);
       }
