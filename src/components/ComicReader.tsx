@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -42,6 +42,7 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
   const [showThumbnails, setShowThumbnails] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const canReadComic = isElectron && !!comic.filePath;
+  const fetchedPages = useRef(new Set());
 
   // Fetch page list from Electron backend
   useEffect(() => {
@@ -65,11 +66,13 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
     fetchPages();
   }, [canReadComic, electronAPI, comic.filePath]);
 
-  // Fetch image data for all pages, prioritizing the current view
+  // Fetch image data for pages
   useEffect(() => {
     const fetchPageImage = async (pageNumber: number, pageName: string) => {
-      if (!canReadComic || !electronAPI || !pageName) return;
-      if (pageImageUrls[pageNumber]) return; // Already fetched or fetching
+      if (!canReadComic || !electronAPI || !pageName || fetchedPages.current.has(pageNumber)) {
+        return;
+      }
+      fetchedPages.current.add(pageNumber);
 
       try {
         const dataUrl = await electronAPI.getComicPageDataUrl(comic.filePath!, pageName);
@@ -92,11 +95,11 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
         pages.forEach((pageName, index) => {
           fetchPageImage(index + 1, pageName);
         });
-      }, 100); // Small delay to let main page render first
+      }, 100);
 
       return () => clearTimeout(timer);
     }
-  }, [canReadComic, electronAPI, comic.filePath, pages, currentPage, viewMode, totalPages, pageImageUrls]);
+  }, [canReadComic, electronAPI, comic.filePath, pages, currentPage, viewMode, totalPages]);
 
   const goToPage = useCallback((page: number) => {
     const newPage = Math.max(1, Math.min(totalPages, page));

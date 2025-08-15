@@ -82,21 +82,24 @@ const characterPublisherMap: Record<string, string> = {
 
 // Patterns to remove common metadata that clutters series names
 const metadataPatterns = [
-  /\(digital\)/gi,
-  /\(web-rip\)/gi,
-  /\(webrip\)/gi,
-  /\(scan\)/gi,
-  /\(cbr\)/gi,
-  /\(cbz\)/gi,
-  /\(pdf\)/gi,
-  /\([^)]*-[^)]*\)/gi, // Catches (Kileko-Empire), (The Last Kryptonian-DCP)
-  /\([^)]*rip[^)]*\)/gi,
-  /\([^)]*scan[^)]*\)/gi,
-  /\(dcp\)/gi,
-  /\(empire\)/gi,
-  /\(son of ultron-empire\)/gi,
-  /\(the last kryptonian-dcp\)/gi,
-  /\(\d+\)$/gi,
+    /\(digital\)/gi,
+    /\(web-rip\)/gi,
+    /\(webrip\)/gi,
+    /\(scan\)/gi,
+    /\(cbr\)/gi,
+    /\(cbz\)/gi,
+    /\(pdf\)/gi,
+    /\([^)]*-[^)]*\)/gi, // Catches (Kileko-Empire), (The Last Kryptonian-DCP)
+    /\([^)]*rip[^)]*\)/gi,
+    /\([^)]*scan[^)]*\)/gi,
+    /\(dcp\)/gi,
+    /\(empire\)/gi,
+    /\(son of ultron-empire\)/gi,
+    /\(the last kryptonian-dcp\)/gi,
+    /\(\d+\)$/gi,
+    /\(\d+\s*covers?\)/gi, // New: (2 covers)
+    /\(annual\)/gi, // New
+    /\(one-shot\)/gi, // New
 ];
 
 const clean = (name: string): string => {
@@ -170,16 +173,17 @@ export const parseFilename = (path: string): ParsedComicInfo => {
   }
 
   // Clean the remaining text to get series name
-  const seriesFromFilename = clean(cleanedFilename);
+  let series = clean(cleanedFilename);
+  series = series.replace(/\([^)]*\)/g, '').replace(/\[[^\]]*\]/g, '').trim();
 
   // --- Parse Folder Name ---
   const seriesFromFolder = clean(folderName);
 
   // --- Combine Results ---
   // Prefer the folder name for the series if it's not a generic name
-  let series = (seriesFromFolder && !/incoming|scans|comics|downloads/i.test(seriesFromFolder)) 
-    ? seriesFromFolder 
-    : seriesFromFilename;
+  if (seriesFromFolder && !/incoming|scans|comics|downloads/i.test(seriesFromFolder)) {
+    series = seriesFromFolder;
+  }
 
   // Format issue number with leading zeros for display
   if (issue) {
