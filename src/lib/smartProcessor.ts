@@ -19,12 +19,7 @@ export interface ProcessingResult {
 
 // Check if a file is a mock file (used for testing)
 const isMockFile = (filePath: string): boolean => {
-  return filePath.startsWith('mock://') || 
-         filePath.includes('(Digital)') || 
-         filePath.includes('(Webrip)') || 
-         filePath.includes('Kileko-Empire') ||
-         filePath.includes('The Last Kryptonian-DCP') ||
-         filePath.includes('Son of Ultron-Empire');
+  return filePath.startsWith('mock://');
 };
 
 // Smart processor that combines parsing with knowledge base matching

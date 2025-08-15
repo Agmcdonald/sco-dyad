@@ -45,11 +45,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 let comicIdCounter = 0;
 
 const isMockFile = (filePath: string): boolean => {
-  return filePath.startsWith('mock://') || 
-         filePath.includes('(Digital)') || 
-         filePath.includes('(Webrip)') || 
-         filePath.includes('Kileko-Empire') ||
-         filePath.includes('The Last Kryptonian-DCP');
+  return filePath.startsWith('mock://');
 };
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
