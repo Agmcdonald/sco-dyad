@@ -23,26 +23,30 @@ export const useComicLibrary = (logAction: (type: any, message: string) => void)
           filePath: dbComic.filePath,
         }));
         setComics(appComics);
+        
+        // Only log if there's a meaningful change
+        if (appComics.length > 0 && comics.length === 0) {
+          logAction('info', `Loaded ${appComics.length} comics from database.`);
+        }
       } catch (error) {
         console.error('Error refreshing comics from database:', error);
       }
     }
-  }, [databaseService]);
+  }, [databaseService, logAction, comics.length]);
 
   useEffect(() => {
     const loadData = async () => {
       if (databaseService) {
         await refreshComics();
-        const currentComics = await databaseService.getComics();
-        if (currentComics.length > 0) {
-          logAction('info', `Loaded ${currentComics.length} comics from database.`);
-        } else {
+      } else {
+        // Only log empty database message once on initial load
+        if (comics.length === 0) {
           logAction('info', 'Database is empty. Add files to start your library.');
         }
       }
     };
     loadData();
-  }, [databaseService, refreshComics, logAction]);
+  }, [databaseService]); // Remove refreshComics and logAction from deps to prevent loops
 
   return { comics, setComics, refreshComics };
 };
