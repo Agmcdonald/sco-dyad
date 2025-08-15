@@ -329,13 +329,12 @@ class ComicDatabase {
 
   // Format comic data for frontend
   formatComic(comic) {
-    let coverUrl = 'placeholder.svg'; // Default fallback
+    let coverUrl = '/placeholder.svg'; // Default fallback
     
     if (comic.cover_path) {
-      // Extract just the filename from the full path
-      const coverFilename = path.basename(comic.cover_path);
-      coverUrl = `comic-cover://${encodeURIComponent(coverFilename)}`;
-      console.log(`[FORMAT-COMIC] ID: ${comic.id}, Cover Path: ${comic.cover_path}, Filename: ${coverFilename}, Generated URL: ${coverUrl}`);
+      // Use the full path in the protocol URL
+      coverUrl = `comic-cover://${encodeURIComponent(comic.cover_path)}`;
+      console.log(`[FORMAT-COMIC] ID: ${comic.id}, Cover Path: ${comic.cover_path}, Generated URL: ${coverUrl}`);
     } else {
       console.log(`[FORMAT-COMIC] ID: ${comic.id}, No cover path found, using placeholder`);
     }
