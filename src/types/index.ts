@@ -13,6 +13,19 @@ export interface Comic extends NewComic {
   dateAdded: Date;
 }
 
+export interface ReadingListItem {
+  id: string;
+  comicId: string;
+  title: string;
+  series: string;
+  issue: string;
+  publisher: string;
+  year: number;
+  priority: 'low' | 'medium' | 'high';
+  completed: boolean;
+  dateAdded: Date;
+}
+
 export type FileStatus = "Pending" | "Success" | "Warning" | "Error";
 export type Confidence = "High" | "Medium" | "Low";
 

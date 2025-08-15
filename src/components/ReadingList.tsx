@@ -4,39 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { BookOpen, Plus, X, Calendar, Star } from "lucide-react";
+import { BookOpen, Plus, X, Star } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
-import { showSuccess } from "@/utils/toast";
-
-interface ReadingListItem {
-  id: string;
-  comicId: string;
-  title: string;
-  series: string;
-  issue: string;
-  publisher: string;
-  year: number;
-  priority: 'low' | 'medium' | 'high';
-  completed: boolean;
-  dateAdded: Date;
-}
 
 const ReadingList = () => {
-  const { comics } = useAppContext();
-  const [readingList, setReadingList] = useState<ReadingListItem[]>([
-    {
-      id: '1',
-      comicId: comics[0]?.id || '',
-      title: `${comics[0]?.series || 'Sample'} #${comics[0]?.issue || '1'}`,
-      series: comics[0]?.series || 'Sample Series',
-      issue: comics[0]?.issue || '1',
-      publisher: comics[0]?.publisher || 'Sample Publisher',
-      year: comics[0]?.year || 2023,
-      priority: 'high',
-      completed: false,
-      dateAdded: new Date()
-    }
-  ]);
+  const { 
+    readingList, 
+    toggleReadingItemCompleted, 
+    removeFromReadingList, 
+    setReadingItemPriority 
+  } = useAppContext();
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -46,27 +23,6 @@ const ReadingList = () => {
     const matchesCompleted = showCompleted || !item.completed;
     return matchesSearch && matchesCompleted;
   });
-
-  const toggleCompleted = (id: string) => {
-    setReadingList(prev => prev.map(item => 
-      item.id === id ? { ...item, completed: !item.completed } : item
-    ));
-    const item = readingList.find(i => i.id === id);
-    if (item && !item.completed) {
-      showSuccess(`Marked "${item.title}" as read!`);
-    }
-  };
-
-  const removeFromList = (id: string) => {
-    setReadingList(prev => prev.filter(item => item.id !== id));
-    showSuccess("Removed from reading list");
-  };
-
-  const setPriority = (id: string, priority: 'low' | 'medium' | 'high') => {
-    setReadingList(prev => prev.map(item => 
-      item.id === id ? { ...item, priority } : item
-    ));
-  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -129,7 +85,7 @@ const ReadingList = () => {
               <Checkbox
                 id="show-completed"
                 checked={showCompleted}
-                onCheckedChange={setShowCompleted}
+                onCheckedChange={(checked) => setShowCompleted(Boolean(checked))}
               />
               <label htmlFor="show-completed" className="text-sm">
                 Show completed
@@ -150,7 +106,7 @@ const ReadingList = () => {
                 <div key={item.id} className={`flex items-center gap-4 p-4 border rounded-lg ${item.completed ? 'opacity-60' : ''}`}>
                   <Checkbox
                     checked={item.completed}
-                    onCheckedChange={() => toggleCompleted(item.id)}
+                    onCheckedChange={() => toggleReadingItemCompleted(item.id)}
                   />
                   
                   <div className="flex-1">
@@ -171,8 +127,8 @@ const ReadingList = () => {
                     {!item.completed && (
                       <select
                         value={item.priority}
-                        onChange={(e) => setPriority(item.id, e.target.value as any)}
-                        className="text-xs border rounded px-2 py-1"
+                        onChange={(e) => setReadingItemPriority(item.id, e.target.value as any)}
+                        className="text-xs border rounded px-2 py-1 bg-background"
                       >
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
@@ -182,7 +138,8 @@ const ReadingList = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => removeFromList(item.id)}
+                      onClick={() => removeFromReadingList(item.id)}
+                      className="h-8 w-8 p-0"
                     >
                       <X className="h-4 w-4" />
                     </Button>
