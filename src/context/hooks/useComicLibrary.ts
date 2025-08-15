@@ -25,7 +25,6 @@ export const useComicLibrary = (logAction: (type: any, message: string) => void)
         }));
         setComics(appComics);
         
-        // Only log if there's a meaningful change and we haven't logged before
         if (appComics.length > 0 && comics.length === 0 && !hasLoggedEmpty) {
           logAction('info', `Loaded ${appComics.length} comics from database.`);
         }
@@ -40,13 +39,13 @@ export const useComicLibrary = (logAction: (type: any, message: string) => void)
       if (databaseService) {
         await refreshComics();
       } else if (!hasLoggedEmpty) {
-        // Only log empty database message once
         logAction('info', 'Database is empty. Add files to start your library.');
         setHasLoggedEmpty(true);
       }
     };
     loadData();
-  }, [databaseService, refreshComics, hasLoggedEmpty, logAction]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [databaseService]);
 
   return { comics, setComics, refreshComics };
 };

@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { ReadingListItem, Comic } from '@/types';
-import { showSuccess } from '@/utils/toast';
+import { showSuccess, showError } from '@/utils/toast';
 
 export const useReadingList = () => {
   const [readingList, setReadingList] = useState<ReadingListItem[]>([]);
 
   const addToReadingList = (comic: Comic) => {
+    if (readingList.some(item => item.comicId === comic.id)) {
+      showError(`"${comic.series} #${comic.issue}" is already in your reading list.`);
+      return;
+    }
+
     const newItem: ReadingListItem = {
       id: `rl-${Date.now()}`,
       comicId: comic.id,
