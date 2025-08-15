@@ -1,126 +1,27 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-const { app } = require('electron');
-const fs = require('fs');
+const Store = require('electron-store');
 
 class ComicDatabase {
   constructor() {
-    this.db = null;
-    this.dbPath = null;
+    this.store = new Store({
+      defaults: {
+        comics: [],
+        settings: {},
+      },
+    });
   }
 
-  // Initialize the database
+  // No async initialize needed for electron-store
   async initialize() {
-    try {
-      // Create database in user data directory
-      const userDataPath = app.getPath('userData');
-      this.dbPath = path.join(userDataPath, 'comics.db');
-      
-      // Ensure directory exists
-      const dbDir = path.dirname(this.dbPath);
-      if (!fs.existsSync(dbDir)) {
-        fs.mkdirSync(dbDir, { recursive: true });
-      }
-
-      // Open database connection
-      this.db = new Database(this.dbPath);
-      
-      // Enable foreign keys
-      this.db.pragma('foreign_keys = ON');
-      
-      // Create tables
-      this.createTables();
-      
-      console.log('Database initialized at:', this.dbPath);
-    } catch (error) {
-      console.error('Error initializing database:', error);
-      throw error;
-    }
+    console.log('Database (electron-store) initialized at:', this.store.path);
+    return Promise.resolve();
   }
 
-  // Create database tables
-  createTables() {
-    // Comics table - updated to store cover_url instead of cover_path
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS comics (
-        id TEXT PRIMARY KEY,
-        series TEXT NOT NULL,
-        issue TEXT NOT NULL,
-        year INTEGER,
-        publisher TEXT,
-        volume TEXT,
-        summary TEXT,
-        file_path TEXT UNIQUE NOT NULL,
-        file_size INTEGER,
-        file_type TEXT,
-        page_count INTEGER,
-        cover_url TEXT,
-        date_added TEXT NOT NULL,
-        last_modified TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Settings table
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS settings (
-        key TEXT PRIMARY KEY,
-        value TEXT,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Reading progress table
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS reading_progress (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        comic_id TEXT NOT NULL,
-        current_page INTEGER DEFAULT 1,
-        total_pages INTEGER,
-        completed BOOLEAN DEFAULT FALSE,
-        last_read DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (comic_id) REFERENCES comics (id) ON DELETE CASCADE
-      )
-    `);
-
-    // Create indexes for better performance
-    this.db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_comics_series ON comics (series);
-      CREATE INDEX IF NOT EXISTS idx_comics_publisher ON comics (publisher);
-      CREATE INDEX IF NOT EXISTS idx_comics_year ON comics (year);
-      CREATE INDEX IF NOT EXISTS idx_comics_date_added ON comics (date_added);
-    `);
-  }
-
-  // Save a comic to the database
+  // Save a comic
   saveComic(comic) {
     try {
-      const stmt = this.db.prepare(`
-        INSERT INTO comics (
-          id, series, issue, year, publisher, volume, summary,
-          file_path, file_size, file_type, page_count, cover_url,
-          date_added, last_modified
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      const result = stmt.run(
-        comic.id,
-        comic.series,
-        comic.issue,
-        comic.year,
-        comic.publisher,
-        comic.volume,
-        comic.summary,
-        comic.filePath,
-        comic.fileSize,
-        comic.fileType,
-        comic.pageCount,
-        comic.coverUrl, // Now storing the URL directly
-        comic.dateAdded,
-        comic.lastModified
-      );
-
+      const comics = this.store.get('comics', []);
+      comics.push(comic);
+      this.store.set('comics', comics);
       return this.getComic(comic.id);
     } catch (error) {
       console.error('Error saving comic:', error);
@@ -131,8 +32,8 @@ class ComicDatabase {
   // Get a comic by ID
   getComic(id) {
     try {
-      const stmt = this.db.prepare('SELECT * FROM comics WHERE id = ?');
-      const comic = stmt.get(id);
+      const comics = this.store.get('comics', []);
+      const comic = comics.find(c => c.id === id);
       return comic ? this.formatComic(comic) : null;
     } catch (error) {
       console.error('Error getting comic:', error);
@@ -141,16 +42,11 @@ class ComicDatabase {
   }
 
   // Get all comics
-  getComics(limit = null, offset = 0) {
+  getComics() {
     try {
-      let query = 'SELECT * FROM comics ORDER BY date_added DESC';
-      if (limit) {
-        query += ` LIMIT ${limit} OFFSET ${offset}`;
-      }
-      
-      const stmt = this.db.prepare(query);
-      const comics = stmt.all();
-      return comics.map(comic => this.formatComic(comic));
+      const comics = this.store.get('comics', []);
+      // The type assertion is needed because TS can't infer the type of the sort function
+      return comics.map(comic => this.formatComic(comic)).sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime());
     } catch (error) {
       console.error('Error getting comics:', error);
       throw error;
@@ -158,31 +54,16 @@ class ComicDatabase {
   }
 
   // Update a comic
-  updateComic(comic) {
+  updateComic(updatedComic) {
     try {
-      const stmt = this.db.prepare(`
-        UPDATE comics SET
-          series = ?, issue = ?, year = ?, publisher = ?, volume = ?,
-          summary = ?, last_modified = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `);
-
-      const result = stmt.run(
-        comic.series,
-        comic.issue,
-        comic.year,
-        comic.publisher,
-        comic.volume,
-        comic.summary,
-        comic.lastModified,
-        comic.id
-      );
-
-      if (result.changes === 0) {
+      let comics = this.store.get('comics', []);
+      const index = comics.findIndex(c => c.id === updatedComic.id);
+      if (index === -1) {
         throw new Error('Comic not found');
       }
-
-      return this.getComic(comic.id);
+      comics[index] = { ...comics[index], ...updatedComic };
+      this.store.set('comics', comics);
+      return this.getComic(updatedComic.id);
     } catch (error) {
       console.error('Error updating comic:', error);
       throw error;
@@ -192,97 +73,16 @@ class ComicDatabase {
   // Delete a comic
   deleteComic(id) {
     try {
-      const stmt = this.db.prepare('DELETE FROM comics WHERE id = ?');
-      const result = stmt.run(id);
-      return result.changes > 0;
+      let comics = this.store.get('comics', []);
+      const initialLength = comics.length;
+      comics = comics.filter(c => c.id !== id);
+      if (comics.length === initialLength) {
+        return false; // No comic was deleted
+      }
+      this.store.set('comics', comics);
+      return true;
     } catch (error) {
       console.error('Error deleting comic:', error);
-      throw error;
-    }
-  }
-
-  // Search comics
-  searchComics(query) {
-    try {
-      const searchTerm = `%${query}%`;
-      const stmt = this.db.prepare(`
-        SELECT * FROM comics 
-        WHERE series LIKE ? OR publisher LIKE ? OR issue LIKE ?
-        ORDER BY series, CAST(issue AS INTEGER)
-      `);
-      
-      const comics = stmt.all(searchTerm, searchTerm, searchTerm);
-      return comics.map(comic => this.formatComic(comic));
-    } catch (error) {
-      console.error('Error searching comics:', error);
-      throw error;
-    }
-  }
-
-  // Get comics by series
-  getComicsBySeries(series) {
-    try {
-      const stmt = this.db.prepare(`
-        SELECT * FROM comics 
-        WHERE series = ? 
-        ORDER BY CAST(issue AS INTEGER)
-      `);
-      
-      const comics = stmt.all(series);
-      return comics.map(comic => this.formatComic(comic));
-    } catch (error) {
-      console.error('Error getting comics by series:', error);
-      throw error;
-    }
-  }
-
-  // Get comics by publisher
-  getComicsByPublisher(publisher) {
-    try {
-      const stmt = this.db.prepare(`
-        SELECT * FROM comics 
-        WHERE publisher = ? 
-        ORDER BY series, CAST(issue AS INTEGER)
-      `);
-      
-      const comics = stmt.all(publisher);
-      return comics.map(comic => this.formatComic(comic));
-    } catch (error) {
-      console.error('Error getting comics by publisher:', error);
-      throw error;
-    }
-  }
-
-  // Get library statistics
-  getLibraryStats() {
-    try {
-      const totalComics = this.db.prepare('SELECT COUNT(*) as count FROM comics').get().count;
-      
-      const seriesCount = this.db.prepare(`
-        SELECT COUNT(DISTINCT series) as count FROM comics
-      `).get().count;
-      
-      const publisherCount = this.db.prepare(`
-        SELECT COUNT(DISTINCT publisher) as count FROM comics
-      `).get().count;
-      
-      const topPublishers = this.db.prepare(`
-        SELECT publisher, COUNT(*) as count 
-        FROM comics 
-        WHERE publisher IS NOT NULL
-        GROUP BY publisher 
-        ORDER BY count DESC 
-        LIMIT 5
-      `).all();
-
-      return {
-        totalComics,
-        seriesCount,
-        publisherCount,
-        topPublishers
-      };
-    } catch (error) {
-      console.error('Error getting library stats:', error);
       throw error;
     }
   }
@@ -290,11 +90,7 @@ class ComicDatabase {
   // Save/get settings
   saveSetting(key, value) {
     try {
-      const stmt = this.db.prepare(`
-        INSERT OR REPLACE INTO settings (key, value, updated_at) 
-        VALUES (?, ?, CURRENT_TIMESTAMP)
-      `);
-      stmt.run(key, JSON.stringify(value));
+      this.store.set(`settings.${key}`, value);
     } catch (error) {
       console.error('Error saving setting:', error);
       throw error;
@@ -303,9 +99,7 @@ class ComicDatabase {
 
   getSetting(key, defaultValue = null) {
     try {
-      const stmt = this.db.prepare('SELECT value FROM settings WHERE key = ?');
-      const result = stmt.get(key);
-      return result ? JSON.parse(result.value) : defaultValue;
+      return this.store.get(`settings.${key}`, defaultValue);
     } catch (error) {
       console.error('Error getting setting:', error);
       return defaultValue;
@@ -314,48 +108,24 @@ class ComicDatabase {
 
   getAllSettings() {
     try {
-      const stmt = this.db.prepare('SELECT key, value FROM settings');
-      const settings = stmt.all();
-      const result = {};
-      settings.forEach(setting => {
-        result[setting.key] = JSON.parse(setting.value);
-      });
-      return result;
+      return this.store.get('settings', {});
     } catch (error) {
       console.error('Error getting all settings:', error);
       return {};
     }
   }
 
-  // Format comic data for frontend - now much simpler!
+  // Format comic data for frontend
   formatComic(comic) {
-    console.log(`[FORMAT-COMIC] ID: ${comic.id}, Cover URL: ${comic.cover_url || '/placeholder.svg'}`);
-
+    // electron-store stores plain objects, so we just ensure defaults
     return {
-      id: comic.id,
-      series: comic.series,
-      issue: comic.issue,
-      year: comic.year,
-      publisher: comic.publisher,
-      volume: comic.volume,
-      summary: comic.summary,
-      filePath: comic.file_path,
-      fileSize: comic.file_size,
-      fileType: comic.file_type,
-      pageCount: comic.page_count,
-      coverUrl: comic.cover_url || '/placeholder.svg', // Use stored URL directly
-      dateAdded: comic.date_added,
-      lastModified: comic.last_modified
+      ...comic,
+      coverUrl: comic.coverUrl || '/placeholder.svg',
     };
   }
 
-  // Close database connection
-  close() {
-    if (this.db) {
-      this.db.close();
-      this.db = null;
-    }
-  }
+  // No close method needed for electron-store
+  close() {}
 }
 
 module.exports = ComicDatabase;
