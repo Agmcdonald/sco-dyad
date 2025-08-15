@@ -36,10 +36,12 @@ const RecentActions = () => {
       <CardContent>
         {actions.length > 0 ? (
           <div className="space-y-4">
-            {actions.map((action) => {
+            {actions.map((action, index) => {
               const Icon = actionIcons[action.type];
+              // Use a combination of id and index to ensure unique keys
+              const uniqueKey = `${action.id}-${index}`;
               return (
-                <div key={action.id} className="flex items-center gap-4">
+                <div key={uniqueKey} className="flex items-center gap-4">
                   <Icon className={`h-5 w-5 ${actionColors[action.type]}`} />
                   <div className="flex-1">
                     <p className="text-sm font-medium">{action.message}</p>
