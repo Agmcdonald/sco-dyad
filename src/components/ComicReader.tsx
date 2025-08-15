@@ -9,12 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -23,8 +17,6 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
-  ZoomIn,
-  ZoomOut,
   RotateCw,
   Maximize,
   Minimize,
@@ -32,9 +24,11 @@ import {
   Columns2,
   PanelBottom,
   X,
+  Loader2,
 } from "lucide-react";
 import { Comic } from "@/types";
 import { cn } from "@/lib/utils";
+import { useElectron } from "@/hooks/useElectron";
 
 interface ComicReaderProps {
   comic: Comic;
@@ -42,20 +36,61 @@ interface ComicReaderProps {
 }
 
 const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
+  const { isElectron, electronAPI } = useElectron();
+  const [pages, setPages] = useState<string[]>([]);
+  const [pageImageUrls, setPageImageUrls] = useState<Record<number, string>>({});
+  const [totalPages, setTotalPages] = useState(22); // Default for web mode
   const [currentPage, setCurrentPage] = useState(1);
-  const [zoom, setZoom] = useState(100);
   const [rotation, setRotation] = useState(0);
   const [viewMode, setViewMode] = useState<"single" | "double">("single");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [showThumbnails, setShowThumbnails] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock pages
-  const totalPages = 22;
-  const mockPages = Array.from({ length: totalPages }, (_, i) => ({
-    id: i + 1,
-    url: "/placeholder.svg",
-  }));
+  // Fetch page list from Electron backend
+  useEffect(() => {
+    const fetchPages = async () => {
+      if (isElectron && electronAPI && comic.filePath) {
+        try {
+          setIsLoading(true);
+          const pageList = await electronAPI.getComicPages(comic.filePath);
+          setPages(pageList);
+          setTotalPages(pageList.length);
+        } catch (error) {
+          console.error("Failed to fetch comic pages:", error);
+          // Fallback to mock pages on error
+          setTotalPages(22);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        setIsLoading(false);
+      }
+    };
+    fetchPages();
+  }, [isElectron, electronAPI, comic.filePath]);
+
+  // Fetch image data for current page(s)
+  useEffect(() => {
+    const fetchPageImage = async (pageNumber: number) => {
+      if (!isElectron || !electronAPI || !comic.filePath || !pages[pageNumber - 1]) return;
+      if (pageImageUrls[pageNumber]) return; // Already loaded
+
+      try {
+        const dataUrl = await electronAPI.getComicPageDataUrl(comic.filePath, pages[pageNumber - 1]);
+        setPageImageUrls(prev => ({ ...prev, [pageNumber]: dataUrl }));
+      } catch (error) {
+        console.error(`Failed to load page ${pageNumber}:`, error);
+        setPageImageUrls(prev => ({ ...prev, [pageNumber]: '/placeholder.svg' })); // Show error placeholder
+      }
+    };
+
+    fetchPageImage(currentPage);
+    if (viewMode === 'double' && currentPage + 1 <= totalPages) {
+      fetchPageImage(currentPage + 1);
+    }
+  }, [isElectron, electronAPI, comic.filePath, pages, currentPage, totalPages, viewMode, pageImageUrls]);
 
   // --- Core Navigation Logic ---
   const goToPage = useCallback((page: number) => {
@@ -112,12 +147,21 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
 
   const renderPage = (pageNumber: number) => {
     if (pageNumber < 1 || pageNumber > totalPages) return null;
+    
+    const imageUrl = pageImageUrls[pageNumber];
+
     return (
-      <img
-        src={mockPages[pageNumber - 1].url}
-        alt={`Page ${pageNumber}`}
-        className="max-w-full max-h-full object-contain shadow-lg"
-      />
+      <div className="w-full h-full flex items-center justify-center">
+        {!imageUrl ? (
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        ) : (
+          <img
+            src={imageUrl || '/placeholder.svg'}
+            alt={`Page ${pageNumber}`}
+            className="max-w-full max-h-full object-contain shadow-lg"
+          />
+        )}
+      </div>
     );
   };
 
@@ -154,17 +198,21 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
 
         {/* Main Reader Area */}
         <main className="flex-1 flex items-center justify-center overflow-hidden p-4">
-          <div
-            className="transition-transform duration-200 flex gap-4 items-center justify-center"
-            style={{
-              transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
-              width: "100%",
-              height: "100%",
-            }}
-          >
-            {viewMode === "double" && renderPage(currentPage)}
-            {renderPage(viewMode === "double" ? currentPage + 1 : currentPage)}
-          </div>
+          {isLoading ? (
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          ) : (
+            <div
+              className="transition-transform duration-200 flex gap-4 items-center justify-center"
+              style={{
+                transform: `scale(1) rotate(${rotation}deg)`,
+                width: "100%",
+                height: "100%",
+              }}
+            >
+              {viewMode === "double" && renderPage(currentPage)}
+              {renderPage(viewMode === "double" ? currentPage + 1 : currentPage)}
+            </div>
+          )}
         </main>
 
         {/* Thumbnail Strip */}
@@ -175,19 +223,25 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
           )}
         >
           <div className="flex overflow-x-auto p-2 gap-2">
-            {mockPages.map((page) => (
-              <img
-                key={page.id}
-                src={page.url}
-                alt={`Thumbnail ${page.id}`}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageId) => (
+              <div
+                key={pageId}
                 className={cn(
-                  "h-24 w-auto rounded-sm cursor-pointer border-2",
-                  currentPage === page.id
+                  "h-24 w-16 rounded-sm cursor-pointer border-2 flex-shrink-0 bg-muted",
+                  currentPage === pageId
                     ? "border-primary"
                     : "border-transparent hover:border-muted-foreground"
                 )}
-                onClick={() => goToPage(page.id)}
-              />
+                onClick={() => goToPage(pageId)}
+              >
+                {pageImageUrls[pageId] && (
+                  <img
+                    src={pageImageUrls[pageId]}
+                    alt={`Thumbnail ${pageId}`}
+                    className="w-full h-full object-cover"
+                  />
+                )}
+              </div>
             ))}
           </div>
         </div>

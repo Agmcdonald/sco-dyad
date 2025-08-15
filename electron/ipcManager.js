@@ -72,6 +72,10 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
+  // Comic Reader operations
+  ipcMain.handle('get-comic-pages', (event, filePath) => fileHandler.getPages(filePath));
+  ipcMain.handle('get-comic-page-data-url', (event, filePath, pageName) => fileHandler.extractPageAsDataUrl(filePath, pageName));
+
   // Database operations
   ipcMain.handle('init-database', () => true);
   ipcMain.handle('get-comics', () => database.getComics());

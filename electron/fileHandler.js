@@ -276,57 +276,84 @@ class ComicFileHandler {
   async getPages(filePath) {
     const fileType = this.getFileType(filePath);
     
-    if (fileType === 'cbz' || fileType === 'cbr') {
+    if (fileType === 'cbz') {
       const zip = new StreamZip.async({ file: filePath });
-      
       try {
         const entries = await zip.entries();
-        const imageFiles = Object.values(entries)
+        return Object.values(entries)
           .filter(entry => !entry.isDirectory && this.isImageFile(entry.name))
           .sort((a, b) => a.name.localeCompare(b.name))
-          .map((entry, index) => ({
-            index: index + 1,
-            name: entry.name,
-            size: entry.size
-          }));
-
-        return imageFiles;
+          .map(entry => entry.name);
       } finally {
         await zip.close();
+      }
+    } else if (fileType === 'cbr') {
+      let tempDir = null;
+      try {
+        tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-pages-'));
+        await unrar(filePath, tempDir);
+        const files = await fs.readdir(tempDir);
+        return files
+          .filter(file => this.isImageFile(file))
+          .sort((a, b) => a.localeCompare(b));
+      } finally {
+        if (tempDir) {
+          await fs.rm(tempDir, { recursive: true, force: true });
+        }
       }
     }
     
     throw new Error(`Unsupported file type for page extraction: ${fileType}`);
   }
 
-  // Extract a specific page from comic archive
-  async extractPage(filePath, pageIndex, outputDir) {
-    const zip = new StreamZip.async({ file: filePath });
+  // Extract a specific page from comic archive as a data URL
+  async extractPageAsDataUrl(filePath, pageName) {
+    const fileType = this.getFileType(filePath);
     
-    try {
-      const entries = await zip.entries();
-      const imageFiles = Object.values(entries)
-        .filter(entry => !entry.isDirectory && this.isImageFile(entry.name))
-        .sort((a, b) => a.name.localeCompare(b.name));
-
-      if (pageIndex < 0 || pageIndex >= imageFiles.length) {
-        throw new Error(`Page index ${pageIndex} out of range (0-${imageFiles.length - 1})`);
+    if (fileType === 'cbz') {
+      const zip = new StreamZip.async({ file: filePath });
+      try {
+        const pageData = await zip.entryData(pageName);
+        const mimeType = this.getMimeType(pageName);
+        return `data:${mimeType};base64,${pageData.toString('base64')}`;
+      } finally {
+        await zip.close();
       }
+    } else if (fileType === 'cbr') {
+      let tempDir = null;
+      try {
+        tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-page-'));
+        await unrar(filePath, tempDir, { filter: [pageName] });
+        const pagePath = path.join(tempDir, pageName);
+        const pageData = await fs.readFile(pagePath);
+        const mimeType = this.getMimeType(pageName);
+        return `data:${mimeType};base64,${pageData.toString('base64')}`;
+      } finally {
+        if (tempDir) {
+          await fs.rm(tempDir, { recursive: true, force: true });
+        }
+      }
+    }
+    
+    throw new Error(`Unsupported file type for page extraction: ${fileType}`);
+  }
 
-      const pageEntry = imageFiles[pageIndex];
-      const pageData = await zip.entryData(pageEntry);
-      
-      const baseName = path.basename(filePath, path.extname(filePath));
-      const pageExt = path.extname(pageEntry.name);
-      const outputPath = path.join(outputDir, `${baseName}_page_${pageIndex + 1}${pageExt}`);
-      
-      await fs.mkdir(outputDir, { recursive: true });
-      
-      await fs.writeFile(outputPath, pageData);
-      
-      return outputPath;
-    } finally {
-      await zip.close();
+  getMimeType(fileName) {
+    const ext = path.extname(fileName).toLowerCase();
+    switch(ext) {
+      case '.jpg':
+      case '.jpeg':
+        return 'image/jpeg';
+      case '.png':
+        return 'image/png';
+      case '.gif':
+        return 'image/gif';
+      case '.webp':
+        return 'image/webp';
+      case '.bmp':
+        return 'image/bmp';
+      default:
+        return 'image/jpeg';
     }
   }
 }

@@ -31,6 +31,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   scanFolder: (folderPath) => ipcRenderer.invoke('scan-folder', folderPath),
   organizeFile: (filePath, targetPath) => ipcRenderer.invoke('organize-file', filePath, targetPath),
   
+  // Comic Reader operations
+  getComicPages: (filePath) => ipcRenderer.invoke('get-comic-pages', filePath),
+  getComicPageDataUrl: (filePath, pageName) => ipcRenderer.invoke('get-comic-page-data-url', filePath, pageName),
+
   // Database operations
   initDatabase: () => ipcRenderer.invoke('init-database'),
   saveComic: (comic) => ipcRenderer.invoke('save-comic', comic),

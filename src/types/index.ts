@@ -11,6 +11,7 @@ export interface Comic extends NewComic {
   id: string;
   coverUrl: string;
   dateAdded: Date;
+  filePath?: string;
 }
 
 export interface ReadingListItem {
