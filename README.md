@@ -67,43 +67,38 @@ Before you begin, ensure you have the following installed on your system:
    ```
    This process may take a few minutes as it downloads all necessary packages.
 
-### Step 3: Start the Development Server
+### Step 3: Start the Application
 
-Run the following command to start the application:
+You can run the application in two modes:
+
+**1. Web Mode (for development)**
 ```bash
 npm run dev
 ```
+This will start the web server, and you can open the app in your browser at `http://localhost:5173`. Note that file system features will be limited.
 
-The terminal will display output similar to:
+**2. Electron Mode (Desktop App)**
+```bash
+npm run electron
 ```
-  VITE v5.0.0  ready in 500 ms
-
-  ➜  Local:   http://localhost:5173/
-  ➜  Network: use --host to expose
-```
-
-### Step 4: Open the Application
-
-1. Open your web browser
-2. Navigate to `http://localhost:5173`
-3. The Comic Organizer application should now be running!
+This command will start the web server and launch the native desktop application window. This is the recommended way to run the app for full functionality.
 
 ## Getting Started
 
 ### Initial Setup
 
-1. **Explore the Dashboard**: The app starts with sample data including 5 comics in the library
-2. **Add Mock Files**: Click "Scan Folder" or "Add Files" to simulate adding comic files to the processing queue
-3. **Test Processing**: Use the "Start Processing" button to see how the intelligent detection works
-4. **Review Results**: Check the Learning section for files that need manual review
+1. **Launch in Electron Mode**: Use `npm run electron` to start the desktop app.
+2. **Add Files/Folders**: Use the `File` menu (`Add Files...` or `Add Folder...`) to import your comic files.
+3. **Process Files**: Navigate to the "Organize" page and use the "Start Processing" button.
+4. **Review Results**: Check the "Learning" section for any files that need manual review.
 
 ### Basic Workflow
 
-1. **Add Files**: Import comic files to the processing queue
-2. **Process Files**: Let the intelligent system parse and match metadata
-3. **Review & Correct**: Manually verify and correct any uncertain matches
-4. **Organize Library**: Successfully processed comics are added to your organized collection
-5. **Browse & Manage**: Use the library to search, filter, and manage your collection
+1. **Add Files**: Import comic files to the processing queue.
+2. **Process Files**: Let the intelligent system parse and match metadata.
+3. **Review & Correct**: Manually verify and correct any uncertain matches.
+4. **Organize Library**: Successfully processed comics are added to your organized collection.
+5. **Browse & Manage**: Use the library to search, filter, and manage your collection.
 
 ## Configuration
 
@@ -126,22 +121,15 @@ To enable enhanced metadata fetching:
 3. Enter the API key in Settings > Scrapers > Comic Vine API
 4. Test the connection using the "Test Connection" button
 
-## Current Limitations
-
-Since this is a web-based application running in the browser, some features are currently simulated:
-
-- **File System Access**: Cannot directly read/write files from your computer
-- **Real File Processing**: Uses mock data instead of actual comic files
-- **File Operations**: Moving/copying files is simulated
-
 ## Development
 
 ### Available Scripts
 
-- `npm run dev` - Start the development server
-- `npm run build` - Build the application for production
-- `npm run preview` - Preview the production build locally
-- `npm run lint` - Run ESLint to check for code issues
+- `npm run dev` - Start the development server for web-only mode.
+- `npm run electron` - Start the development server and launch the Electron app.
+- `npm run build` - Build the application for production.
+- `npm run preview` - Preview the production build locally.
+- `npm run lint` - Run ESLint to check for code issues.
 
 ### Project Structure
 
@@ -154,6 +142,10 @@ src/
 ├── data/               # Static data and knowledge base
 ├── hooks/              # Custom React hooks
 └── types/              # TypeScript type definitions
+electron/
+├── main.js             # Main Electron process
+├── preload.js          # Electron preload script
+└── ...                 # Other Electron-related files
 ```
 
 ## Troubleshooting
@@ -161,7 +153,7 @@ src/
 ### Common Issues
 
 **Port Already in Use**
-If port 5173 is already in use, Vite will automatically try the next available port (5174, 5175, etc.).
+If port 5173 is already in use, Vite will automatically try the next available port. The Electron app may fail to connect. Ensure port 5173 is free before running `npm run electron`.
 
 **Dependencies Installation Fails**
 - Ensure you have Node.js 18+ installed
@@ -177,18 +169,9 @@ If port 5173 is already in use, Vite will automatically try the next available p
 
 If you encounter issues:
 
-1. Check the browser's developer console for error messages (F12)
+1. Check the browser's developer console for error messages (F12 or `View > Toggle Developer Tools` in Electron)
 2. Review the terminal output for any error logs
 3. Ensure all prerequisites are properly installed
-
-## Future Enhancements
-
-To make this work with actual comic files, potential next steps include:
-
-1. **Desktop Application**: Convert to Electron app for full file system access
-2. **Backend Server**: Add Node.js backend to handle file operations
-3. **File System Access API**: Utilize modern browser APIs for limited file access
-4. **Cloud Integration**: Add cloud storage support for cross-device access
 
 ## License
 
@@ -197,7 +180,3 @@ This project is open source and available under the MIT License.
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues and enhancement requests.
-
----
-
-**Note**: This application is currently in development and optimized for demonstration and testing purposes. For production use with actual comic files, additional development would be required to handle real file system operations.
