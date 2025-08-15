@@ -1,12 +1,13 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const ComicFileHandler = require('./fileHandler');
 const ComicDatabase = require('./database');
+const { createMenu } = require('./appMenu');
+const { registerIpcHandlers } = require('./ipcManager');
 
 const isDev = process.env.NODE_ENV === 'development';
 
-// Keep a global reference of the window object
 let mainWindow;
 let fileHandler;
 let database;
@@ -14,19 +15,14 @@ let knowledgeBasePath;
 let publicCoversDir;
 
 function createWindow() {
-  // Create the browser window
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: 1200,
     minHeight: 700,
     webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      enableRemoteModule: false,
       preload: path.join(__dirname, 'preload.js')
     },
-    icon: path.join(__dirname, '../assets/icon.png'),
     show: false,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default'
   });
@@ -54,61 +50,44 @@ function createWindow() {
   });
 }
 
-// Initialize services
 async function initializeServices() {
-  try {
-    fileHandler = new ComicFileHandler();
-    database = new ComicDatabase();
-    await database.initialize();
+  fileHandler = new ComicFileHandler();
+  database = new ComicDatabase();
+  await database.initialize();
 
-    const userDataPath = app.getPath('userData');
-    knowledgeBasePath = path.join(userDataPath, 'userKnowledgeBase.json');
-    await initializeKnowledgeBase();
-    
-    // Setup public covers directory
-    if (isDev) {
-      publicCoversDir = path.join(__dirname, '../public/covers');
-    } else {
-      publicCoversDir = path.join(__dirname, '../dist/covers');
-    }
-    
-    // Ensure covers directory exists
-    await fs.mkdir(publicCoversDir, { recursive: true });
-    console.log('Public covers directory:', publicCoversDir);
-    
-    console.log('Services initialized successfully');
-  } catch (error) {
-    console.error('Error initializing services:', error);
-  }
+  const userDataPath = app.getPath('userData');
+  knowledgeBasePath = path.join(userDataPath, 'userKnowledgeBase.json');
+  
+  publicCoversDir = isDev 
+    ? path.join(__dirname, '../public/covers') 
+    : path.join(__dirname, '../dist/covers');
+  
+  await fs.mkdir(publicCoversDir, { recursive: true });
+  await initializeKnowledgeBaseFile();
 }
 
-// Initialize knowledge base file
-async function initializeKnowledgeBase() {
+async function initializeKnowledgeBaseFile() {
   try {
     await fs.access(knowledgeBasePath);
-  } catch (error) {
-    const defaultKBPath = path.join(__dirname, '../dist/assets/comicsKnowledge.json');
+  } catch {
+    const defaultKBPath = isDev
+      ? path.join(__dirname, '../src/data/comicsKnowledge.json')
+      : path.join(__dirname, '../dist/assets/comicsKnowledge.json');
     try {
       const defaultData = await fs.readFile(defaultKBPath, 'utf-8');
       await fs.writeFile(knowledgeBasePath, defaultData, 'utf-8');
-      console.log('User knowledge base created from default.');
-    } catch (readError) {
-      const devDefaultKBPath = path.join(__dirname, '../src/data/comicsKnowledge.json');
-      try {
-        const devDefaultData = await fs.readFile(devDefaultKBPath, 'utf-8');
-        await fs.writeFile(knowledgeBasePath, devDefaultData, 'utf-8');
-        console.log('User knowledge base created from dev default.');
-      } catch (devReadError) {
-        console.error('Could not find default knowledge base file:', devReadError);
-      }
+    } catch (error) {
+      console.error('Could not create default knowledge base file:', error);
     }
   }
 }
 
 app.whenReady().then(async () => {
   await initializeServices();
+  
   createWindow();
-  createMenu();
+  createMenu(mainWindow);
+  registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBasePath, publicCoversDir });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -118,401 +97,19 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
-  if (database) {
-    database.close();
-  }
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  if (database) database.close();
+  if (process.platform !== 'darwin') app.quit();
 });
 
-// Security: Prevent new window creation
-app.on('web-contents-created', (event, contents) => {
-  contents.on('new-window', (event, navigationUrl) => {
-    event.preventDefault();
-    shell.openExternal(navigationUrl);
-  });
-});
-
-// Create application menu
-function createMenu() {
-  const template = [
-    {
-      label: 'File',
-      submenu: [
-        {
-          label: 'Add Files...',
-          accelerator: 'CmdOrCtrl+O',
-          click: () => {
-            selectComicFiles();
-          }
-        },
-        {
-          label: 'Add Folder...',
-          accelerator: 'CmdOrCtrl+Shift+O',
-          click: () => {
-            selectComicFolder();
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'Settings',
-          accelerator: 'CmdOrCtrl+,',
-          click: () => {
-            mainWindow.webContents.send('navigate-to', '/app/settings');
-          }
-        },
-        { type: 'separator' },
-        {
-          role: 'quit'
-        }
-      ]
-    },
-    {
-      label: 'Edit',
-      submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
-        { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' }
-      ]
-    },
-    {
-      label: 'View',
-      submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' },
-        { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
-        { type: 'separator' },
-        { role: 'togglefullscreen' }
-      ]
-    },
-    {
-      label: 'Library',
-      submenu: [
-        {
-          label: 'Dashboard',
-          accelerator: 'CmdOrCtrl+1',
-          click: () => {
-            mainWindow.webContents.send('navigate-to', '/app/dashboard');
-          }
-        },
-        {
-          label: 'Organize',
-          accelerator: 'CmdOrCtrl+2',
-          click: () => {
-            mainWindow.webContents.send('navigate-to', '/app/organize');
-          }
-        },
-        {
-          label: 'Library',
-          accelerator: 'CmdOrCtrl+3',
-          click: () => {
-            mainWindow.webContents.send('navigate-to', '/app/library');
-          }
-        },
-        {
-          label: 'Learning',
-          accelerator: 'CmdOrCtrl+4',
-          click: () => {
-            mainWindow.webContents.send('navigate-to', '/app/learning');
-          }
-        }
-      ]
-    },
-    {
-      label: 'Window',
-      submenu: [
-        { role: 'minimize' },
-        { role: 'close' }
-      ]
-    },
-    {
-      role: 'help',
-      submenu: [
-        {
-          label: 'About Comic Organizer',
-          click: () => {
-            dialog.showMessageBox(mainWindow, {
-              type: 'info',
-              title: 'About Comic Organizer',
-              message: 'Comic Organizer',
-              detail: 'A comprehensive comic book collection management application.\n\nVersion 1.0.0'
-            });
-          }
-        }
-      ]
-    }
-  ];
-
-  if (process.platform === 'darwin') {
-    template.unshift({
-      label: app.getName(),
-      submenu: [
-        { role: 'about' },
-        { type: 'separator' },
-        { role: 'services' },
-        { type: 'separator' },
-        { role: 'hide' },
-        { role: 'hideOthers' },
-        { role: 'unhide' },
-        { type: 'separator' },
-        { role: 'quit' }
-      ]
-    });
-
-    template[5].submenu = [
-      { role: 'close' },
-      { role: 'minimize' },
-      { role: 'zoom' },
-      { type: 'separator' },
-      { role: 'front' }
-    ];
-  }
-
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
-}
-
-// File selection functions
-async function selectComicFiles() {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Select Comic Files',
-    properties: ['openFile', 'multiSelections'],
-    filters: [
-      { name: 'Comic Files', extensions: ['cbr', 'cbz', 'pdf'] },
-      { name: 'Comic Archives', extensions: ['cbr', 'cbz'] },
-      { name: 'PDF Files', extensions: ['pdf'] },
-      { name: 'All Files', extensions: ['*'] }
-    ]
-  });
-
-  if (!result.canceled && result.filePaths.length > 0) {
-    mainWindow.webContents.send('files-selected', result.filePaths);
-  }
-}
-
-async function selectComicFolder() {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Select Comic Folder',
-    properties: ['openDirectory']
-  });
-
-  if (!result.canceled && result.filePaths.length > 0) {
-    mainWindow.webContents.send('folder-selected', result.filePaths[0]);
-  }
-}
-
-// IPC Handlers
-ipcMain.handle('get-app-version', () => {
-  return app.getVersion();
-});
-
-ipcMain.handle('show-message-box', async (event, options) => {
-  const result = await dialog.showMessageBox(mainWindow, options);
-  return result;
-});
-
-ipcMain.handle('dialog:select-files', async () => {
-  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
-    title: 'Select Comic Files',
-    properties: ['openFile', 'multiSelections'],
-    filters: [
-      { name: 'Comic Files', extensions: ['cbr', 'cbz', 'pdf'] },
-      { name: 'All Files', extensions: ['*'] }
-    ]
-  });
-  return canceled ? [] : filePaths;
-});
-
-ipcMain.handle('dialog:select-folder', async () => {
-  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
-    title: 'Select Folder to Scan',
-    properties: ['openDirectory']
-  });
-  if (canceled || filePaths.length === 0) {
-    return [];
-  }
-  const comicFiles = await fileHandler.scanFolder(filePaths[0]);
-  return comicFiles.map(file => file.path);
-});
-
-ipcMain.handle('read-comic-file', async (event, filePath) => {
-  try {
-    return await fileHandler.readComicFile(filePath);
-  } catch (error) {
-    throw error;
-  }
-});
-
-ipcMain.handle('extract-cover', async (event, filePath) => {
-  try {
-    // Extract to temporary location first
-    const tempCoversDir = path.join(app.getPath('userData'), 'temp-covers');
-    await fs.mkdir(tempCoversDir, { recursive: true });
-    
-    const tempCoverPath = await fileHandler.extractCover(filePath, tempCoversDir);
-    console.log('[EXTRACT-COVER] Temp cover extracted to:', tempCoverPath);
-    
-    // Generate unique filename for public directory
-    const comicId = `comic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const publicCoverFilename = `${comicId}-cover.jpg`;
-    const publicCoverPath = path.join(publicCoversDir, publicCoverFilename);
-    
-    // Copy to public directory
-    await fs.copyFile(tempCoverPath, publicCoverPath);
-    console.log('[EXTRACT-COVER] Cover copied to public:', publicCoverPath);
-    
-    // Clean up temp file
-    await fs.unlink(tempCoverPath);
-    
-    // Return the public URL path
-    return `/covers/${publicCoverFilename}`;
-  } catch (error) {
-    console.error('[EXTRACT-COVER] Error:', error);
-    throw error;
-  }
-});
-
-ipcMain.handle('scan-folder', async (event, folderPath) => {
-  try {
-    const files = await fileHandler.scanFolder(folderPath);
-    return files.map(file => file.path);
-  } catch (error) {
-    throw error;
-  }
-});
-
-ipcMain.handle('organize-file', async (event, sourcePath, relativeTargetPath) => {
-  try {
-    const settings = database.getAllSettings();
-    const libraryRoot = settings.libraryPath || path.join(app.getPath('documents'), 'Comic Organizer Library');
-    const keepOriginal = settings.keepOriginalFiles !== false;
-
-    const fullTargetPath = path.join(libraryRoot, relativeTargetPath);
-    const success = await fileHandler.organizeFile(sourcePath, fullTargetPath, keepOriginal);
-    
-    if (success) {
-      return { success: true, newPath: fullTargetPath };
-    } else {
-      return { success: false, error: 'File operation failed.' };
-    }
-  } catch (error) {
-    console.error('Organize file error:', error);
-    throw error;
-  }
-});
-
-// Database operations
-ipcMain.handle('init-database', async () => {
-  return true;
-});
-
-ipcMain.handle('save-comic', async (event, comic) => {
-  try {
-    if (!comic.id) {
-      comic.id = `comic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    }
-    
-    comic.coverUrl = '/placeholder.svg'; // Default
-    if (comic.filePath) {
-      try {
-        // Extract cover and get public URL
-        const publicCoverUrl = await fileHandler.extractCoverToPublic(comic.filePath, publicCoversDir);
-        comic.coverUrl = publicCoverUrl;
-        console.log('[SAVE-COMIC] Cover URL set to:', comic.coverUrl);
-      } catch (error) {
-        console.error('[SAVE-COMIC] Could not extract cover for', comic.filePath, error.message);
-      }
-    }
-    
-    const savedComic = database.saveComic(comic);
-    console.log('[SAVE-COMIC] Saved comic. Returned coverUrl:', savedComic.coverUrl);
-    return savedComic;
-  } catch (error) {
-    console.error('[SAVE-COMIC] Error:', error);
-    throw error;
-  }
-});
-
-ipcMain.handle('get-comics', async () => {
-  try {
-    return database.getComics();
-  } catch (error) {
-    throw error;
-  }
-});
-
-ipcMain.handle('update-comic', async (event, comic) => {
-  try {
-    return database.updateComic(comic);
-  } catch (error) {
-    throw error;
-  }
-});
-
-ipcMain.handle('delete-comic', async (event, comicId) => {
-  try {
-    return database.deleteComic(comicId);
-  } catch (error) {
-    throw error;
-  }
-});
-
-// Settings operations
-ipcMain.handle('get-settings', async () => {
-  try {
-    return database.getAllSettings();
-  } catch (error) {
-    throw error;
-  }
-});
-
-ipcMain.handle('save-settings', async (event, settings) => {
-  try {
-    for (const [key, value] of Object.entries(settings)) {
-      database.saveSetting(key, value);
-    }
-    return true;
-  } catch (error) {
-    throw error;
-  }
-});
-
-// Knowledge Base operations
-ipcMain.handle('get-knowledge-base', async () => {
-  try {
-    const data = await fs.readFile(knowledgeBasePath, 'utf-8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('Error reading knowledge base:', error);
-    throw error;
-  }
-});
-
-ipcMain.handle('save-knowledge-base', async (event, data) => {
-  try {
-    await fs.writeFile(knowledgeBasePath, JSON.stringify(data, null, 2), 'utf-8');
-    return true;
-  } catch (error) {
-    console.error('Error saving knowledge base:', error);
-    throw error;
-  }
-});
-
-// Prevent navigation to external URLs
 app.on('web-contents-created', (event, contents) => {
   contents.on('will-navigate', (event, navigationUrl) => {
     const parsedUrl = new URL(navigationUrl);
-    
     if (parsedUrl.origin !== 'http://localhost:5173' && !navigationUrl.startsWith('file://')) {
       event.preventDefault();
     }
+  });
+  contents.on('new-window', (event, navigationUrl) => {
+    event.preventDefault();
+    shell.openExternal(navigationUrl);
   });
 });
