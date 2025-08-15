@@ -83,17 +83,21 @@ const characterPublisherMap: Record<string, string> = {
 
 // Patterns to remove common metadata that clutters series names
 const metadataPatterns = [
-  /\(webrip\)/gi,
-  /\(web-rip\)/gi,
   /\(digital\)/gi,
+  /\(web-rip\)/gi,
+  /\(webrip\)/gi,
   /\(scan\)/gi,
   /\(cbr\)/gi,
   /\(cbz\)/gi,
   /\(pdf\)/gi,
-  /\([^)]*-DCP\)/gi,  // Remove release group tags like "(The Last Kryptonian-DCP)"
-  /\([^)]*rip[^)]*\)/gi,  // Remove any rip-related tags
-  /\([^)]*scan[^)]*\)/gi,  // Remove scan-related tags
-  /\(\d+\)$/gi,  // Remove trailing numbers like "(1)" at the end
+  /\([^)]*-[^)]*\)/gi, // Catches (Kileko-Empire), (The Last Kryptonian-DCP)
+  /\([^)]*rip[^)]*\)/gi,
+  /\([^)]*scan[^)]*\)/gi,
+  /\(dcp\)/gi,
+  /\(empire\)/gi,
+  /\(son of ultron-empire\)/gi,
+  /\(the last kryptonian-dcp\)/gi,
+  /\(\d+\)$/gi,
 ];
 
 const clean = (name: string): string => {
@@ -139,6 +143,12 @@ export const parseFilename = (path: string): ParsedComicInfo => {
 
   // --- Parse Filename ---
   let cleanedFilename = filename.replace(/\.[^/.]+$/, ""); // Remove extension
+
+  // Apply metadata cleaning patterns first
+  metadataPatterns.forEach(pattern => {
+    cleanedFilename = cleanedFilename.replace(pattern, '');
+  });
+  cleanedFilename = cleanedFilename.trim();
   
   // Extract year first (most reliable)
   const yearMatch = cleanedFilename.match(yearRegex);
