@@ -6,7 +6,7 @@ const ComicDatabase = require('./database');
 const { createMenu } = require('./appMenu');
 const { registerIpcHandlers } = require('./ipcManager');
 
-const isDev = process.env.NODE_ENV === 'development';
+const isDev = !app.isPackaged;
 
 let mainWindow;
 let fileHandler;
