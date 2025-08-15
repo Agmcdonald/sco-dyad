@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog, shell, protocol } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const ComicFileHandler = require('./fileHandler');
@@ -11,60 +11,6 @@ let mainWindow;
 let fileHandler;
 let database;
 let knowledgeBasePath;
-
-// Register protocol before app is ready
-app.whenReady().then(async () => {
-  // Register custom protocol for serving cover images
-  protocol.registerFileProtocol('comic-cover', (request, callback) => {
-    try {
-      const url = request.url.substr('comic-cover://'.length);
-      const decodedPath = decodeURIComponent(url);
-      
-      console.log('[PROTOCOL] Raw URL:', url);
-      console.log('[PROTOCOL] Decoded path:', decodedPath);
-      
-      // If it's already a full path, use it directly
-      let coverPath;
-      if (path.isAbsolute(decodedPath)) {
-        coverPath = decodedPath;
-      } else {
-        // Otherwise, construct path in covers directory
-        const coversDir = path.join(app.getPath('userData'), 'covers');
-        coverPath = path.join(coversDir, decodedPath);
-      }
-      
-      console.log('[PROTOCOL] Final cover path:', coverPath);
-      
-      // Check if file exists synchronously (protocol handler requires sync)
-      if (require('fs').existsSync(coverPath)) {
-        console.log('[PROTOCOL] Success: Serving cover from', coverPath);
-        callback({ path: coverPath });
-      } else {
-        console.log('[PROTOCOL] Cover not found, using placeholder');
-        // Fallback to placeholder
-        const placeholderPath = path.join(__dirname, '../public/placeholder.svg');
-        if (require('fs').existsSync(placeholderPath)) {
-          callback({ path: placeholderPath });
-        } else {
-          callback({ error: -6 }); // net::ERR_FILE_NOT_FOUND
-        }
-      }
-    } catch (error) {
-      console.error('[PROTOCOL] Error:', error);
-      callback({ error: -6 });
-    }
-  });
-
-  await initializeServices();
-  createWindow();
-  createMenu();
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
-  });
-});
 
 function createWindow() {
   // Create the browser window
@@ -146,6 +92,18 @@ async function initializeKnowledgeBase() {
     }
   }
 }
+
+app.whenReady().then(async () => {
+  await initializeServices();
+  createWindow();
+  createMenu();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
 
 app.on('window-all-closed', () => {
   if (database) {
@@ -390,6 +348,38 @@ ipcMain.handle('extract-cover', async (event, filePath) => {
   } catch (error) {
     console.error('[EXTRACT-COVER] Error:', error);
     throw error;
+  }
+});
+
+// NEW: Get cover image as data URL
+ipcMain.handle('get-cover-image', async (event, coverPath) => {
+  try {
+    console.log('[GET-COVER-IMAGE] Requested cover:', coverPath);
+    
+    if (!coverPath) {
+      console.log('[GET-COVER-IMAGE] No cover path provided');
+      return null;
+    }
+
+    // Check if file exists
+    try {
+      await fs.access(coverPath);
+    } catch (error) {
+      console.log('[GET-COVER-IMAGE] Cover file not found:', coverPath);
+      return null;
+    }
+
+    // Read the file and convert to base64
+    const imageBuffer = await fs.readFile(coverPath);
+    const base64Image = imageBuffer.toString('base64');
+    const mimeType = coverPath.endsWith('.png') ? 'image/png' : 'image/jpeg';
+    const dataUrl = `data:${mimeType};base64,${base64Image}`;
+    
+    console.log('[GET-COVER-IMAGE] Successfully converted to data URL, size:', base64Image.length);
+    return dataUrl;
+  } catch (error) {
+    console.error('[GET-COVER-IMAGE] Error:', error);
+    return null;
   }
 });
 

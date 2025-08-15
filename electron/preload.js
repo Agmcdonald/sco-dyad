@@ -24,13 +24,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('folder-selected', (event, folderPath) => callback(folderPath));
   },
   
-  // File system operations (to be implemented)
+  // File system operations
   readComicFile: (filePath) => ipcRenderer.invoke('read-comic-file', filePath),
   extractCover: (filePath) => ipcRenderer.invoke('extract-cover', filePath),
+  getCoverImage: (coverPath) => ipcRenderer.invoke('get-cover-image', coverPath),
   scanFolder: (folderPath) => ipcRenderer.invoke('scan-folder', folderPath),
   organizeFile: (filePath, targetPath) => ipcRenderer.invoke('organize-file', filePath, targetPath),
   
-  // Database operations (to be implemented)
+  // Database operations
   initDatabase: () => ipcRenderer.invoke('init-database'),
   saveComic: (comic) => ipcRenderer.invoke('save-comic', comic),
   getComics: () => ipcRenderer.invoke('get-comics'),
