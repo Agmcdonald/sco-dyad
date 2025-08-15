@@ -17,10 +17,15 @@ export interface ProcessingResult {
   error?: string;
 }
 
+// Check if a file is a mock file (used for testing)
+const isMockFile = (filePath: string): boolean => {
+  return filePath.startsWith('mock://');
+};
+
 // Smart processor that combines parsing with knowledge base matching
 export const processComicFile = async (file: QueuedFile): Promise<ProcessingResult> => {
   try {
-    // Parse the filename
+    // Parse the filename (works for both real and mock files)
     const parsed = parseFilename(file.path);
     
     // Check if we have minimum required information
@@ -46,7 +51,9 @@ export const processComicFile = async (file: QueuedFile): Promise<ProcessingResu
         year: parsed.year || bestMatch.startYear,
         publisher: parsed.publisher || bestMatch.publisher, // Prefer character-detected publisher
         volume: bestMatch.volume,
-        summary: `Processed using knowledge base: ${bestMatch.series} published by ${parsed.publisher || bestMatch.publisher}`
+        summary: isMockFile(file.path) 
+          ? `Mock file processed using knowledge base: ${bestMatch.series} published by ${parsed.publisher || bestMatch.publisher}`
+          : `Processed using knowledge base: ${bestMatch.series} published by ${parsed.publisher || bestMatch.publisher}`
       };
 
       return {
@@ -68,7 +75,9 @@ export const processComicFile = async (file: QueuedFile): Promise<ProcessingResu
           year: parsed.year,
           publisher: parsed.publisher,
           volume: parsed.volume || String(parsed.year),
-          summary: `Parsed from filename with character-based publisher detection: ${file.name}`
+          summary: isMockFile(file.path)
+            ? `Mock file parsed with character-based publisher detection: ${file.name}`
+            : `Parsed from filename with character-based publisher detection: ${file.name}`
         }
       };
     } else if (parsed.year) {
@@ -81,7 +90,9 @@ export const processComicFile = async (file: QueuedFile): Promise<ProcessingResu
           year: parsed.year,
           publisher: parsed.publisher || "Unknown Publisher",
           volume: parsed.volume || String(parsed.year),
-          summary: `Parsed from filename: ${file.name}`
+          summary: isMockFile(file.path)
+            ? `Mock file parsed from filename: ${file.name}`
+            : `Parsed from filename: ${file.name}`
         }
       };
     }
