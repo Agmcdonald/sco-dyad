@@ -207,27 +207,27 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       { id: `file-${Date.now()}-2`, name: "Batman The Knight #1 (2022).cbr", path: "mock://batman-knight-1-2022.cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
     ];
     addFiles(newMockFiles);
-    logAction('info', `Added ${newMockFiles.length} mock files.`);
+    logAction('info', `Added ${newMockFiles.length} demo files for testing.`);
   }, [addFiles, logAction]);
 
   const triggerSelectFiles = useCallback(async () => {
     if (!isElectron || !electronAPI) {
       showError("This feature is only available in the desktop app.");
-      addMockFiles();
       return;
     }
     try {
       const filePaths = await electronAPI.selectFilesDialog();
-      await addFilesFromPaths(filePaths);
+      if (filePaths && filePaths.length > 0) {
+        await addFilesFromPaths(filePaths);
+      }
     } catch (error) {
       showError("Could not select files.");
     }
-  }, [isElectron, electronAPI, addFilesFromPaths, addMockFiles]);
+  }, [isElectron, electronAPI, addFilesFromPaths]);
 
   const triggerScanFolder = useCallback(async () => {
     if (!isElectron || !electronAPI) {
       showError("This feature is only available in the desktop app.");
-      addMockFiles();
       return;
     }
     try {
@@ -239,7 +239,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       showError("Could not scan folder.");
     }
-  }, [isElectron, electronAPI, addFilesFromPaths, addMockFiles]);
+  }, [isElectron, electronAPI, addFilesFromPaths]);
 
   const addFilesFromDrop = useCallback(async (droppedFiles: File[]) => {
     const comicExtensions = ['.cbr', '.cbz', '.pdf'];
@@ -253,11 +253,43 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    const paths = comicFiles.map(file => (file as any).path).filter(Boolean);
-    if (paths.length > 0) {
-      await addFilesFromPaths(paths);
+    if (isElectron) {
+      const paths = comicFiles.map(file => (file as any).path).filter(Boolean);
+      if (paths.length > 0) {
+        await addFilesFromPaths(paths);
+      } else {
+        // Fallback for Electron if paths aren't available
+        const mockFiles = comicFiles.map((file, index) => ({
+          id: `electron-drop-${Date.now()}-${index}`,
+          name: file.name,
+          path: `mock://electron-drop/${file.name}`,
+          series: null,
+          issue: null,
+          year: null,
+          publisher: null,
+          confidence: null as any,
+          status: 'Pending' as any
+        }));
+        addFiles(mockFiles);
+        showSuccess(`Added ${mockFiles.length} files (demo mode - paths not accessible)`);
+      }
+    } else {
+      // Web mode
+      const mockFiles = comicFiles.map((file, index) => ({
+        id: `web-drop-${Date.now()}-${index}`,
+        name: file.name,
+        path: `mock://web-drop/${file.name}`,
+        series: null,
+        issue: null,
+        year: null,
+        publisher: null,
+        confidence: null as any,
+        status: 'Pending' as any
+      }));
+      addFiles(mockFiles);
+      showSuccess(`Added ${mockFiles.length} files (web demo mode)`);
     }
-  }, [addFilesFromPaths]);
+  }, [addFilesFromPaths, addFiles, isElectron]);
 
   return (
     <AppContext.Provider value={{ 

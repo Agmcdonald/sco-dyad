@@ -49,32 +49,50 @@ const FileDropzone = () => {
       showError(`${files.length - comicFiles.length} non-comic files were ignored`);
     }
 
-    // Convert dropped files to QueuedFile objects
-    const queuedFiles = comicFiles.map((file, index) => ({
-      id: `dropped-file-${Date.now()}-${index}`,
-      name: file.name,
-      path: isElectron ? (file as any).path || file.name : file.name, // In Electron, files have a path property
-      series: null,
-      issue: null,
-      year: null,
-      publisher: null,
-      confidence: null as any,
-      status: 'Pending' as any
-    }));
-
-    addFiles(queuedFiles);
-    showSuccess(`Added ${comicFiles.length} comic file${comicFiles.length !== 1 ? 's' : ''} to queue`);
-  }, [addFiles, isElectron]);
+    if (isElectron) {
+      // In Electron mode, try to get file paths
+      const paths = comicFiles.map(file => (file as any).path).filter(Boolean);
+      if (paths.length > 0) {
+        // Convert to QueuedFile objects with real paths
+        const queuedFiles = paths.map((path, index) => ({
+          id: `dropped-file-${Date.now()}-${index}`,
+          name: path.split(/[\\/]/).pop() || 'Unknown File',
+          path: path,
+          series: null,
+          issue: null,
+          year: null,
+          publisher: null,
+          confidence: null as any,
+          status: 'Pending' as any
+        }));
+        addFiles(queuedFiles);
+        showSuccess(`Added ${queuedFiles.length} comic file${queuedFiles.length !== 1 ? 's' : ''} to queue`);
+      } else {
+        // Fallback to mock files if paths aren't available
+        showError("Could not access file paths. Adding demo files instead.");
+        addMockFiles();
+      }
+    } else {
+      // Web mode - convert to mock files for demonstration
+      const queuedFiles = comicFiles.map((file, index) => ({
+        id: `web-dropped-file-${Date.now()}-${index}`,
+        name: file.name,
+        path: `mock://web-drop/${file.name}`,
+        series: null,
+        issue: null,
+        year: null,
+        publisher: null,
+        confidence: null as any,
+        status: 'Pending' as any
+      }));
+      addFiles(queuedFiles);
+      showSuccess(`Added ${queuedFiles.length} comic file${queuedFiles.length !== 1 ? 's' : ''} to queue (web mode)`);
+    }
+  }, [addFiles, addMockFiles, isElectron]);
 
   const handleClick = () => {
-    if (isElectron) {
-      // In Electron mode, we could trigger the file dialog here
-      // For now, just show mock files
-      addMockFiles();
-    } else {
-      // In web mode, show mock files
-      addMockFiles();
-    }
+    // Always add mock files when clicking the dropzone
+    addMockFiles();
   };
 
   return (
@@ -99,8 +117,8 @@ const FileDropzone = () => {
         {isDragOver 
           ? 'Release to add files to queue' 
           : isElectron 
-            ? 'Drag CBR/CBZ files here or click to add mock files'
-            : 'or click to add mock files (web mode)'
+            ? 'Drag CBR/CBZ files here or click to add demo files'
+            : 'Drag files here or click to add demo files (web mode)'
         }
       </p>
       {isDragOver && (
