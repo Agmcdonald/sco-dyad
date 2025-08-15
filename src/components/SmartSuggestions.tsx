@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,9 +10,10 @@ import { parseFilename } from "@/lib/parser";
 
 const SmartSuggestions = () => {
   const { files, comics } = useAppContext();
+  const navigate = useNavigate();
 
   const suggestions = useMemo(() => {
-    const suggs = [];
+    const suggs: any[] = [];
 
     // Analyze files that need attention
     const errorFiles = files.filter(f => f.status === 'Error');
@@ -26,7 +28,9 @@ const SmartSuggestions = () => {
         description: `${errorFiles.length} files couldn't be processed automatically`,
         action: 'Review Files',
         priority: 'high',
-        count: errorFiles.length
+        count: errorFiles.length,
+        path: '/app/learning',
+        state: { filter: 'Error' }
       });
     }
 
@@ -38,7 +42,9 @@ const SmartSuggestions = () => {
         description: `${warningFiles.length} files have uncertain matches`,
         action: 'Verify Matches',
         priority: 'medium',
-        count: warningFiles.length
+        count: warningFiles.length,
+        path: '/app/learning',
+        state: { filter: 'Warning' }
       });
     }
 
@@ -59,7 +65,8 @@ const SmartSuggestions = () => {
         description: `${unknownSeries.length} series not in knowledge base`,
         action: 'Add Series',
         priority: 'low',
-        count: unknownSeries.length
+        count: unknownSeries.length,
+        path: '/app/settings'
       });
     }
 
@@ -81,6 +88,12 @@ const SmartSuggestions = () => {
       return priorityOrder[b.priority] - priorityOrder[a.priority];
     });
   }, [files, comics]);
+
+  const handleActionClick = (suggestion: any) => {
+    if (suggestion.path) {
+      navigate(suggestion.path, { state: suggestion.state });
+    }
+  };
 
   if (suggestions.length === 0) {
     return (
@@ -137,7 +150,7 @@ const SmartSuggestions = () => {
                 <p className="text-xs text-muted-foreground">{suggestion.description}</p>
               </div>
             </div>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => handleActionClick(suggestion)}>
               {suggestion.action}
             </Button>
           </div>
