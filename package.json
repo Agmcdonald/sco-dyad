@@ -5,7 +5,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "electron": "concurrently -k \"npm run dev\" \"wait-on http://localhost:5173 && electron .\""
+    "electron": "concurrently -k \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
+    "postinstall": "electron-rebuild"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -68,6 +69,7 @@
   },
   "devDependencies": {
     "@dyad-sh/react-vite-component-tagger": "^0.8.0",
+    "@electron/rebuild": "^3.6.0",
     "@eslint/js": "^9.9.0",
     "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^22.5.5",
