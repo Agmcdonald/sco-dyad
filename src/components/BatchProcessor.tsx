@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { 
   Select, 
   SelectContent, 
@@ -10,9 +9,10 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Play, Pause, RotateCcw, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+import { Play, Pause, RotateCcw } from "lucide-react";
 import { QueuedFile } from "@/types";
 import { useAppContext } from "@/context/AppContext";
+import { useSettings } from "@/context/SettingsContext";
 import { batchProcessFiles, getProcessingStats } from "@/lib/smartProcessor";
 import { showSuccess, showError } from "@/utils/toast";
 
@@ -23,6 +23,7 @@ interface BatchProcessorProps {
 
 const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
   const { updateFile, addComic, removeFile, logAction } = useAppContext();
+  const { settings } = useSettings();
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState("");
@@ -56,6 +57,7 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
     try {
       const results = await batchProcessFiles(
         filesToProcess,
+        settings.comicVineApiKey,
         (processed, total, current) => {
           setProgress((processed / total) * 100);
           setCurrentFile(current);
