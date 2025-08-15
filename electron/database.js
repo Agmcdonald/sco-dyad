@@ -329,11 +329,13 @@ class ComicDatabase {
 
   // Format comic data for frontend
   formatComic(comic) {
+    // Instead of using a protocol URL, we'll use a special identifier
+    // that the frontend can use to request the image via IPC
     let coverUrl = '/placeholder.svg'; // Default fallback
     
     if (comic.cover_path) {
-      // Use the full path in the protocol URL
-      coverUrl = `comic-cover://${encodeURIComponent(comic.cover_path)}`;
+      // Use a special prefix to indicate this needs to be loaded via IPC
+      coverUrl = `electron-cover:${comic.cover_path}`;
       console.log(`[FORMAT-COMIC] ID: ${comic.id}, Cover Path: ${comic.cover_path}, Generated URL: ${coverUrl}`);
     } else {
       console.log(`[FORMAT-COMIC] ID: ${comic.id}, No cover path found, using placeholder`);
