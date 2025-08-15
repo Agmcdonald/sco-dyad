@@ -146,6 +146,45 @@ class ComicFileHandler {
     }
   }
 
+  // NEW: Extract cover directly to public directory with web-friendly URL
+  async extractCoverToPublic(filePath, publicCoversDir) {
+    try {
+      console.log('[EXTRACT-COVER-PUBLIC] Starting extraction for:', filePath);
+      console.log('[EXTRACT-COVER-PUBLIC] Public covers dir:', publicCoversDir);
+      
+      // Extract to temporary location first
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-cover-'));
+      const tempCoverPath = await this.extractCover(filePath, tempDir);
+      
+      console.log('[EXTRACT-COVER-PUBLIC] Temp cover extracted to:', tempCoverPath);
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substr(2, 9);
+      const publicCoverFilename = `comic-${timestamp}-${randomId}-cover.jpg`;
+      const publicCoverPath = path.join(publicCoversDir, publicCoverFilename);
+      
+      // Ensure public directory exists
+      await fs.mkdir(publicCoversDir, { recursive: true });
+      
+      // Copy to public directory
+      await fs.copyFile(tempCoverPath, publicCoverPath);
+      console.log('[EXTRACT-COVER-PUBLIC] Cover copied to:', publicCoverPath);
+      
+      // Clean up temp directory
+      await fs.rm(tempDir, { recursive: true, force: true });
+      
+      // Return web-accessible URL
+      const webUrl = `/covers/${publicCoverFilename}`;
+      console.log('[EXTRACT-COVER-PUBLIC] Web URL:', webUrl);
+      return webUrl;
+      
+    } catch (error) {
+      console.error('[EXTRACT-COVER-PUBLIC] Error:', error);
+      throw error;
+    }
+  }
+
   // Extract cover from CBZ (ZIP) archive
   async extractCoverFromZipArchive(filePath, outputDir) {
     const zip = new StreamZip.async({ file: filePath });
@@ -189,7 +228,7 @@ class ComicFileHandler {
       const files = await fs.readdir(tempDir);
       const imageFiles = files
         .filter(file => this.isImageFile(file))
-        .sort((a, b) => a.localeCompare(b.name));
+        .sort((a, b) => a.localeCompare(b));
 
       if (imageFiles.length === 0) {
         throw new Error('No images found in CBR archive');
