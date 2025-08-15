@@ -15,8 +15,6 @@ import { useSelection } from "@/context/SelectionContext";
 import { useAppContext } from "@/context/AppContext";
 import { QueuedFile } from "@/types";
 import { processComicFile } from "@/lib/smartProcessor";
-import { useElectron } from "@/hooks/useElectron";
-import { showSuccess, showError } from "@/utils/toast";
 
 const Organize = () => {
   const { 
@@ -31,10 +29,9 @@ const Organize = () => {
     lastUndoableAction,
     undoLastAction,
     skipFile,
-    addFiles
+    addFilesFromDrop
   } = useAppContext();
   const { selectedItem, setSelectedItem } = useSelection();
-  const { isElectron, electronAPI } = useElectron();
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [filteredFiles, setFilteredFiles] = useState<QueuedFile[]>(files);
   const [processingProgress, setProcessingProgress] = useState(0);
@@ -42,42 +39,15 @@ const Organize = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   const queueIndex = useRef(0);
 
-  // Update filtered files when files change
   useEffect(() => {
     setFilteredFiles(files);
   }, [files]);
 
   useEffect(() => {
-    if (isProcessing) {
-      if (queueIndex.current >= files.length) {
-        queueIndex.current = 0;
-      }
+    if (isProcessing && queueIndex.current >= files.length) {
+      queueIndex.current = 0;
     }
   }, [isProcessing, files.length]);
-
-  const addFilesWithInfo = useCallback(async (filesToAdd: QueuedFile[]) => {
-    // First, read file info for all files BEFORE adding them to the queue
-    const filesWithInfo = await Promise.all(
-      filesToAdd.map(async (file) => {
-        if (isElectron && electronAPI) {
-          try {
-            const fileInfo = await electronAPI.readComicFile(file.path);
-            return {
-              ...file,
-              pageCount: fileInfo?.pageCount || undefined
-            };
-          } catch (error) {
-            console.warn(`Could not read info for ${file.name}:`, error);
-            return file;
-          }
-        }
-        return file;
-      })
-    );
-
-    addFiles(filesWithInfo);
-    showSuccess(`Added ${filesWithInfo.length} comic file${filesWithInfo.length !== 1 ? 's' : ''} to queue`);
-  }, [addFiles, isElectron, electronAPI]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -106,15 +76,7 @@ const Organize = () => {
         const result = await processComicFile(currentFile);
 
         if (result.success && result.data) {
-          // Update file with processed data
-          updateFile({ 
-            ...currentFile, 
-            ...result.data, 
-            status: "Success", 
-            confidence: result.confidence 
-          });
-          
-          // Auto-add high confidence matches to library
+          updateFile({ ...currentFile, ...result.data, status: "Success", confidence: result.confidence });
           if (result.confidence === 'High') {
             setTimeout(() => {
               addComic(result.data!, currentFile);
@@ -123,23 +85,11 @@ const Organize = () => {
             }, 500);
           }
         } else {
-          // Mark as needing review
-          updateFile({ 
-            ...currentFile, 
-            status: result.confidence === 'Low' ? "Error" : "Warning",
-            confidence: result.confidence
-          });
-          
-          if (result.error) {
-            logAction('warning', `'${currentFile.name}': ${result.error}`);
-          }
+          updateFile({ ...currentFile, status: result.confidence === 'Low' ? "Error" : "Warning", confidence: result.confidence });
+          if (result.error) logAction('warning', `'${currentFile.name}': ${result.error}`);
         }
       } catch (error) {
-        updateFile({ 
-          ...currentFile, 
-          status: "Error", 
-          confidence: "Low" 
-        });
+        updateFile({ ...currentFile, status: "Error", confidence: "Low" });
         logAction('error', `'${currentFile.name}': Processing failed`);
       }
 
@@ -153,7 +103,6 @@ const Organize = () => {
     return () => clearInterval(interval);
   }, [isProcessing, files, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile]);
 
-  // Drag and drop handlers
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -163,7 +112,6 @@ const Organize = () => {
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Only set drag over to false if we're leaving the main container
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
       setIsDragOver(false);
     }
@@ -173,45 +121,8 @@ const Organize = () => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
-
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    
-    if (droppedFiles.length === 0) {
-      showError("No files were dropped");
-      return;
-    }
-
-    // Filter for comic files
-    const comicExtensions = ['.cbr', '.cbz', '.pdf'];
-    const comicFiles = droppedFiles.filter(file => {
-      const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
-      return comicExtensions.includes(ext);
-    });
-
-    if (comicFiles.length === 0) {
-      showError("No comic files found. Supported formats: CBR, CBZ, PDF");
-      return;
-    }
-
-    if (comicFiles.length !== droppedFiles.length) {
-      showError(`${droppedFiles.length - comicFiles.length} non-comic files were ignored`);
-    }
-
-    // Convert dropped files to QueuedFile objects
-    const queuedFiles = comicFiles.map((file, index) => ({
-      id: `dropped-file-${Date.now()}-${index}`,
-      name: file.name,
-      path: isElectron ? (file as any).path || file.name : file.name,
-      series: null,
-      issue: null,
-      year: null,
-      publisher: null,
-      confidence: null as any,
-      status: 'Pending' as any
-    }));
-
-    addFilesWithInfo(queuedFiles);
-  }, [addFilesWithInfo, isElectron]);
+    addFilesFromDrop(Array.from(e.dataTransfer.files));
+  }, [addFilesFromDrop]);
 
   const handleSkip = () => {
     if (selectedItem?.type === 'file') {
@@ -229,7 +140,6 @@ const Organize = () => {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Drag overlay */}
       {isDragOver && (
         <div className="fixed inset-0 bg-primary/10 border-4 border-dashed border-primary z-50 flex items-center justify-center">
           <div className="bg-background p-8 rounded-lg shadow-lg text-center">
@@ -270,7 +180,6 @@ const Organize = () => {
         )}
       </div>
 
-      {/* Processing Progress */}
       {isProcessing && (
         <Card>
           <CardHeader className="pb-3">
@@ -286,19 +195,13 @@ const Organize = () => {
         </Card>
       )}
 
-      {/* Statistics and Suggestions */}
       {files.length > 0 && (
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <ProcessingStats />
-          </div>
-          <div>
-            <SmartSuggestions />
-          </div>
+          <div className="lg:col-span-2"><ProcessingStats /></div>
+          <div><SmartSuggestions /></div>
         </div>
       )}
 
-      {/* Advanced Tools */}
       {files.length > 0 && (
         <div className="grid gap-4 lg:grid-cols-2">
           <BatchProcessor files={files} selectedFiles={selectedFiles} />
