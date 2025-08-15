@@ -1,14 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Slider } from "@/components/ui/slider";
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -26,6 +17,9 @@ import {
   X,
   Loader2,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import { Comic } from "@/types";
 import { cn } from "@/lib/utils";
 import { useElectron } from "@/hooks/useElectron";
@@ -47,20 +41,20 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
   const [showControls, setShowControls] = useState(true);
   const [showThumbnails, setShowThumbnails] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const canReadComic = isElectron && !!comic.filePath;
 
   // Fetch page list from Electron backend
   useEffect(() => {
     const fetchPages = async () => {
-      if (isElectron && electronAPI && comic.filePath) {
+      if (canReadComic && electronAPI) {
         try {
           setIsLoading(true);
-          const pageList = await electronAPI.getComicPages(comic.filePath);
+          const pageList = await electronAPI.getComicPages(comic.filePath!);
           setPages(pageList);
           setTotalPages(pageList.length);
         } catch (error) {
           console.error("Failed to fetch comic pages:", error);
-          // Fallback to mock pages on error
-          setTotalPages(22);
+          setTotalPages(0);
         } finally {
           setIsLoading(false);
         }
@@ -69,30 +63,31 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
       }
     };
     fetchPages();
-  }, [isElectron, electronAPI, comic.filePath]);
+  }, [canReadComic, electronAPI, comic.filePath]);
 
   // Fetch image data for current page(s)
   useEffect(() => {
     const fetchPageImage = async (pageNumber: number) => {
-      if (!isElectron || !electronAPI || !comic.filePath || !pages[pageNumber - 1]) return;
-      if (pageImageUrls[pageNumber]) return; // Already loaded
+      if (!canReadComic || !electronAPI || !pages[pageNumber - 1]) return;
+      if (pageImageUrls[pageNumber]) return;
 
       try {
-        const dataUrl = await electronAPI.getComicPageDataUrl(comic.filePath, pages[pageNumber - 1]);
+        const dataUrl = await electronAPI.getComicPageDataUrl(comic.filePath!, pages[pageNumber - 1]);
         setPageImageUrls(prev => ({ ...prev, [pageNumber]: dataUrl }));
       } catch (error) {
         console.error(`Failed to load page ${pageNumber}:`, error);
-        setPageImageUrls(prev => ({ ...prev, [pageNumber]: '/placeholder.svg' })); // Show error placeholder
+        setPageImageUrls(prev => ({ ...prev, [pageNumber]: '/placeholder.svg' }));
       }
     };
 
-    fetchPageImage(currentPage);
-    if (viewMode === 'double' && currentPage + 1 <= totalPages) {
-      fetchPageImage(currentPage + 1);
+    if (pages.length > 0) {
+      fetchPageImage(currentPage);
+      if (viewMode === 'double' && currentPage + 1 <= totalPages) {
+        fetchPageImage(currentPage + 1);
+      }
     }
-  }, [isElectron, electronAPI, comic.filePath, pages, currentPage, totalPages, viewMode, pageImageUrls]);
+  }, [canReadComic, electronAPI, comic.filePath, pages, currentPage, totalPages, viewMode, pageImageUrls]);
 
-  // --- Core Navigation Logic ---
   const goToPage = useCallback((page: number) => {
     const newPage = Math.max(1, Math.min(totalPages, page));
     setCurrentPage(newPage);
@@ -106,7 +101,6 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
     goToPage(currentPage - (viewMode === "double" ? 2 : 1));
   }, [currentPage, goToPage, viewMode]);
 
-  // --- Keyboard Shortcuts ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === " ") nextPage();
@@ -117,7 +111,6 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [nextPage, prevPage, onClose]);
 
-  // --- Control Visibility ---
   useEffect(() => {
     let timer: NodeJS.Timeout;
     const handleMouseMove = () => {
@@ -132,7 +125,6 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
     };
   }, []);
 
-  // --- Fullscreen Handling ---
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
@@ -168,7 +160,6 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
   return (
     <TooltipProvider>
       <div className="fixed inset-0 bg-background z-50 flex flex-col">
-        {/* Header */}
         <header
           className={cn(
             "bg-background/80 backdrop-blur-sm text-foreground p-2 flex items-center justify-between transition-transform duration-300 absolute top-0 left-0 right-0 z-20",
@@ -196,10 +187,20 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
           </div>
         </header>
 
-        {/* Main Reader Area */}
         <main className="flex-1 flex items-center justify-center overflow-hidden p-4">
           {isLoading ? (
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          ) : !canReadComic || totalPages === 0 ? (
+            <div className="text-center text-muted-foreground">
+              <BookOpen className="h-12 w-12 mx-auto mb-4" />
+              <h3 className="font-semibold">Cannot Read Comic</h3>
+              <p className="text-sm max-w-xs mt-2">
+                {isElectron 
+                  ? "Could not load pages from the comic file. The file may be missing or corrupted."
+                  : "Reading comics is only supported in the desktop application."
+                }
+              </p>
+            </div>
           ) : (
             <div
               className="transition-transform duration-200 flex gap-4 items-center justify-center"
@@ -215,7 +216,6 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
           )}
         </main>
 
-        {/* Thumbnail Strip */}
         <div
           className={cn(
             "bg-background/80 backdrop-blur-sm absolute bottom-0 left-0 right-0 z-20 transition-transform duration-300",
@@ -246,12 +246,11 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
           </div>
         </div>
 
-        {/* Footer Controls */}
         <footer
           className={cn(
             "bg-background/80 backdrop-blur-sm flex items-center justify-center gap-4 p-2 absolute bottom-0 left-0 right-0 z-20 transition-transform duration-300",
             !showControls && "translate-y-full",
-            showThumbnails && "-translate-y-[112px]" // Adjust based on thumbnail height
+            showThumbnails && "-translate-y-[112px]"
           )}
         >
           <Button
