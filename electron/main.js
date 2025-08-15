@@ -109,17 +109,31 @@ async function initializeKnowledgeBase() {
 app.whenReady().then(async () => {
   // Register custom protocol for serving cover images securely
   protocol.registerFileProtocol('comic-cover', async (request, callback) => {
-    const url = decodeURI(request.url.substr('comic-cover://'.length));
-    const coverPath = path.join(app.getPath('userData'), 'covers', url);
-    
     try {
-      // Check if the file exists before calling back
+      const url = decodeURI(request.url.substr('comic-cover://'.length));
+      console.log('[PROTOCOL] Requested URL:', url);
+      
+      // The URL should be just the filename, construct full path
+      const coversDir = path.join(app.getPath('userData'), 'covers');
+      const coverPath = path.join(coversDir, url);
+      
+      console.log('[PROTOCOL] Looking for cover at:', coverPath);
+      
+      // Check if the file exists
       await fs.access(coverPath);
       console.log('[PROTOCOL] Success: Serving cover from', coverPath);
       callback({ path: path.normalize(coverPath) });
     } catch (error) {
-      console.error('[PROTOCOL] Error: Cover not found at', coverPath, error.message);
-      callback({ error: -6 }); // net::ERR_FILE_NOT_FOUND
+      console.error('[PROTOCOL] Error: Cover not found:', error.message);
+      // Fallback to placeholder
+      const placeholderPath = path.join(__dirname, '../public/placeholder.svg');
+      try {
+        await fs.access(placeholderPath);
+        callback({ path: placeholderPath });
+      } catch (placeholderError) {
+        console.error('[PROTOCOL] Placeholder also not found:', placeholderError.message);
+        callback({ error: -6 }); // net::ERR_FILE_NOT_FOUND
+      }
     }
   });
 
