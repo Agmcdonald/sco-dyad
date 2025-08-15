@@ -17,6 +17,7 @@ import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { QueuedFile } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
+import { useSelection } from "@/context/SelectionContext";
 import { showSuccess } from "@/utils/toast";
 
 const formSchema = z.object({
@@ -35,6 +36,7 @@ interface EditFileModalProps {
 const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
   const { updateFile, comics } = useAppContext();
   const { knowledgeBase } = useKnowledgeBase();
+  const { setSelectedItem } = useSelection();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -82,14 +84,14 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
   }, [file, form]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    // When correcting a file, we can assume confidence is now High
-    // and it's ready to be processed (Pending).
-    updateFile({ 
+    const updatedFileData = { 
         ...file, 
         ...values, 
-        confidence: "High",
-        status: "Pending" // Reset status so it can be processed again
-    });
+        confidence: "High" as const,
+        status: "Pending" as const
+    };
+    updateFile(updatedFileData);
+    setSelectedItem({ ...updatedFileData, type: 'file' });
     showSuccess("File details updated.");
     onClose();
   };
