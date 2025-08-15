@@ -11,6 +11,19 @@ class ComicFileHandler {
     this.imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
   }
 
+  // Helper function to find all files recursively
+  async _walk(dir) {
+    let files = await fs.readdir(dir);
+    files = await Promise.all(files.map(async file => {
+        const filePath = path.join(dir, file);
+        const stats = await fs.stat(filePath);
+        if (stats.isDirectory()) return this._walk(filePath);
+        else if(stats.isFile()) return filePath;
+    }));
+    // Flatten the array of arrays
+    return files.reduce((all, folderContents) => all.concat(folderContents), []);
+  }
+
   // Check if file is a supported comic format
   isComicFile(filePath) {
     const ext = path.extname(filePath).toLowerCase();
@@ -114,8 +127,8 @@ class ComicFileHandler {
       try {
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-pages-'));
         await unrar(filePath, tempDir);
-        const files = await fs.readdir(tempDir);
-        const imageFiles = files.filter(file => this.isImageFile(file));
+        const allFiles = await this._walk(tempDir);
+        const imageFiles = allFiles.filter(file => this.isImageFile(file));
         return imageFiles.length;
       } finally {
         if (tempDir) {
@@ -225,8 +238,8 @@ class ComicFileHandler {
       tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-cover-'));
       await unrar(filePath, tempDir);
       
-      const files = await fs.readdir(tempDir);
-      const imageFiles = files
+      const allFiles = await this._walk(tempDir);
+      const imageFiles = allFiles
         .filter(file => this.isImageFile(file))
         .sort((a, b) => a.localeCompare(b));
 
@@ -234,7 +247,7 @@ class ComicFileHandler {
         throw new Error('No images found in CBR archive');
       }
 
-      const coverPathInTemp = path.join(tempDir, imageFiles[0]);
+      const coverPathInTemp = imageFiles[0];
       const baseName = path.basename(filePath, path.extname(filePath));
       const outputPath = path.join(outputDir, `${baseName}_cover.jpg`);
       
@@ -292,9 +305,10 @@ class ComicFileHandler {
       try {
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-pages-'));
         await unrar(filePath, tempDir);
-        const files = await fs.readdir(tempDir);
-        return files
+        const allFiles = await this._walk(tempDir);
+        return allFiles
           .filter(file => this.isImageFile(file))
+          .map(file => path.relative(tempDir, file).replace(/\\/g, '/')) // Return relative paths
           .sort((a, b) => a.localeCompare(b));
       } finally {
         if (tempDir) {
@@ -323,7 +337,7 @@ class ComicFileHandler {
       let tempDir = null;
       try {
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-page-'));
-        await unrar(filePath, tempDir, { filter: [pageName] });
+        await unrar(filePath, tempDir);
         const pagePath = path.join(tempDir, pageName);
         const pageData = await fs.readFile(pagePath);
         const mimeType = this.getMimeType(pageName);

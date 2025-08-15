@@ -65,14 +65,14 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
     fetchPages();
   }, [canReadComic, electronAPI, comic.filePath]);
 
-  // Fetch image data for current page(s)
+  // Fetch image data for all pages, prioritizing the current view
   useEffect(() => {
-    const fetchPageImage = async (pageNumber: number) => {
-      if (!canReadComic || !electronAPI || !pages[pageNumber - 1]) return;
-      if (pageImageUrls[pageNumber]) return;
+    const fetchPageImage = async (pageNumber: number, pageName: string) => {
+      if (!canReadComic || !electronAPI || !pageName) return;
+      if (pageImageUrls[pageNumber]) return; // Already fetched or fetching
 
       try {
-        const dataUrl = await electronAPI.getComicPageDataUrl(comic.filePath!, pages[pageNumber - 1]);
+        const dataUrl = await electronAPI.getComicPageDataUrl(comic.filePath!, pageName);
         setPageImageUrls(prev => ({ ...prev, [pageNumber]: dataUrl }));
       } catch (error) {
         console.error(`Failed to load page ${pageNumber}:`, error);
@@ -81,12 +81,22 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
     };
 
     if (pages.length > 0) {
-      fetchPageImage(currentPage);
+      // Fetch current page(s) with priority
+      fetchPageImage(currentPage, pages[currentPage - 1]);
       if (viewMode === 'double' && currentPage + 1 <= totalPages) {
-        fetchPageImage(currentPage + 1);
+        fetchPageImage(currentPage + 1, pages[currentPage]);
       }
+
+      // Lazily fetch all other pages for thumbnails
+      const timer = setTimeout(() => {
+        pages.forEach((pageName, index) => {
+          fetchPageImage(index + 1, pageName);
+        });
+      }, 100); // Small delay to let main page render first
+
+      return () => clearTimeout(timer);
     }
-  }, [canReadComic, electronAPI, comic.filePath, pages, currentPage, totalPages, viewMode, pageImageUrls]);
+  }, [canReadComic, electronAPI, comic.filePath, pages, currentPage, viewMode, totalPages, pageImageUrls]);
 
   const goToPage = useCallback((page: number) => {
     const newPage = Math.max(1, Math.min(totalPages, page));
