@@ -39,6 +39,15 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 let fileIdCounter = 0;
 let comicIdCounter = 0;
 
+// Check if a file is a mock file
+const isMockFile = (filePath: string): boolean => {
+  return filePath.startsWith('mock://') || 
+         filePath.includes('(Digital)') || 
+         filePath.includes('(Webrip)') || 
+         filePath.includes('Kileko-Empire') ||
+         filePath.includes('The Last Kryptonian-DCP');
+};
+
 const sampleComics: Comic[] = [
   {
     id: `comic-${comicIdCounter++}`,
@@ -218,6 +227,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addComic = async (comicData: NewComic, originalFile: QueuedFile) => {
+    // Check if this is a mock file - if so, handle it differently
+    if (isMockFile(originalFile.path)) {
+      // Mock file - just add to library without file operations
+      const newComic: Comic = {
+        ...comicData,
+        id: `comic-${comicIdCounter++}`,
+        coverUrl: '/placeholder.svg',
+        dateAdded: new Date(),
+      };
+      setComics(prev => [newComic, ...prev]);
+      logAction('success', `(Demo Mode) Added '${newComic.series} #${newComic.issue}' to library`, {
+        type: 'ADD_COMIC',
+        payload: { comicId: newComic.id, originalFile }
+      });
+      showSuccess(`Added '${newComic.series} #${newComic.issue}' to library`);
+      return;
+    }
+
     if (isElectron && electronAPI && databaseService) {
       try {
         // 1. Organize the physical file
