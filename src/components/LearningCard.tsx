@@ -113,7 +113,11 @@ const LearningCard = ({ file }: LearningCardProps) => {
 
   const onSubmit = (values: FormSchemaType) => {
     addComic({
-      ...values,
+      series: values.series,
+      issue: values.issue,
+      year: values.year,
+      publisher: values.publisher,
+      volume: values.volume,
       summary: `Manually mapped from file: ${file.name}`,
     }, file);
     removeFile(file.id);

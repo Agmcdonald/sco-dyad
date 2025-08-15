@@ -1,7 +1,7 @@
 import { useElectron } from '@/hooks/useElectron';
 import { Comic, NewComic } from '@/types';
 
-export interface DatabaseComic extends Comic {
+export interface DatabaseComic extends Omit<Comic, 'dateAdded'> {
   filePath: string;
   fileSize: number;
   dateAdded: string;

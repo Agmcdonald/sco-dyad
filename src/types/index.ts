@@ -65,3 +65,13 @@ export interface AppSettings {
   folderNameFormat: string;
   fileNameFormat: string;
 }
+
+export interface ComicKnowledge {
+  series: string;
+  publisher: string;
+  startYear: number;
+  volumes: Array<{
+    volume: string;
+    year: number;
+  }>;
+}

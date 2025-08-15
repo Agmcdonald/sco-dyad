@@ -24,7 +24,6 @@ const characterPublisherMap: Record<string, string> = {
   'green arrow': 'DC Comics',
   'martian manhunter': 'DC Comics',
   'shazam': 'DC Comics',
-  'captain marvel': 'DC Comics', // Shazam
   'nightwing': 'DC Comics',
   'robin': 'DC Comics',
   'batgirl': 'DC Comics',

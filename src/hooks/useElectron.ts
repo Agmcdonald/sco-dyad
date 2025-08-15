@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ComicKnowledge } from '@/types';
 
 // Type definitions for our Electron API
 interface ElectronAPI {
@@ -9,7 +10,7 @@ interface ElectronAPI {
   readComicFile: (filePath: string) => Promise<any>;
   extractCover: (filePath: string) => Promise<string>;
   scanFolder: (folderPath: string) => Promise<string[]>;
-  organizeFile: (filePath: string, targetPath: string) => Promise<boolean>;
+  organizeFile: (filePath: string, targetPath: string) => Promise<{ success: boolean; newPath?: string; error?: string; }>;
   initDatabase: () => Promise<void>;
   saveComic: (comic: any) => Promise<any>;
   getComics: () => Promise<any[]>;
@@ -20,6 +21,10 @@ interface ElectronAPI {
   showMessageBox: (options: any) => Promise<any>;
   platform: string;
   removeAllListeners: (channel: string) => void;
+  selectFilesDialog: () => Promise<string[]>;
+  selectFolderDialog: () => Promise<string[]>;
+  getKnowledgeBase: () => Promise<ComicKnowledge[]>;
+  saveKnowledgeBase: (data: ComicKnowledge[]) => Promise<void>;
 }
 
 declare global {

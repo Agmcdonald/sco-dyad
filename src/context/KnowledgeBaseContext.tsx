@@ -2,16 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 import { useElectron } from '@/hooks/useElectron';
 import defaultKnowledgeBase from '@/data/comicsKnowledge.json';
 import { showSuccess, showError } from '@/utils/toast';
-
-export interface ComicKnowledge {
-  series: string;
-  publisher: string;
-  startYear: number;
-  volumes: Array<{
-    volume: string;
-    year: number;
-  }>;
-}
+import { ComicKnowledge } from '@/types';
 
 interface KnowledgeBaseContextType {
   knowledgeBase: ComicKnowledge[];
