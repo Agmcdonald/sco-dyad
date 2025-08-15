@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import {
   Bar,
   BarChart,
+  Line,
+  LineChart,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -42,16 +44,22 @@ const CollectionInsights = () => {
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5);
 
-    // Year analysis
+    // Decade analysis
     const yearStats = comics.reduce((acc, comic) => {
       const decade = Math.floor(comic.year / 10) * 10;
       acc[decade] = (acc[decade] || 0) + 1;
       return acc;
     }, {} as Record<number, number>);
 
-    const topDecades = Object.entries(yearStats)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 5);
+    // Granular year analysis
+    const comicsByYear = comics.reduce((acc, comic) => {
+      acc[comic.year] = (acc[comic.year] || 0) + 1;
+      return acc;
+    }, {} as Record<number, number>);
+
+    const yearChartData = Object.entries(comicsByYear)
+      .map(([year, count]) => ({ name: year, comics: count }))
+      .sort((a, b) => parseInt(a.name) - parseInt(b.name));
 
     // Series analysis
     const seriesStats = comics.reduce((acc, comic) => {
@@ -92,6 +100,7 @@ const CollectionInsights = () => {
           : 0,
       publisherChartData,
       decadeChartData,
+      yearChartData,
     };
   }, [comics]);
 
@@ -242,6 +251,40 @@ const CollectionInsights = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Calendar className="h-4 w-4" />
+            Comics by Publication Year
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={insights.yearChartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="name"
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={12}
+                tickCount={10}
+              />
+              <YAxis
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={12}
+              />
+              <Tooltip
+                cursor={{ fill: "hsl(var(--muted))" }}
+                contentStyle={{
+                  backgroundColor: "hsl(var(--background))",
+                  borderColor: "hsl(var(--border))",
+                }}
+              />
+              <Line type="monotone" dataKey="comics" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

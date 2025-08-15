@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Trash2 } from "lucide-react";
 import { Comic } from "@/types";
 import { useAppContext } from "@/context/AppContext";
-import { showSuccess } from "@/utils/toast";
 
 interface DuplicateGroup {
   key: string;
@@ -16,7 +15,7 @@ interface DuplicateGroup {
 }
 
 const DuplicateDetector = () => {
-  const { comics, updateComic } = useAppContext();
+  const { comics, removeComic } = useAppContext();
   const [duplicates, setDuplicates] = useState<DuplicateGroup[]>([]);
 
   useEffect(() => {
@@ -43,18 +42,8 @@ const DuplicateDetector = () => {
     setDuplicates(duplicateGroups);
   }, [comics]);
 
-  const removeDuplicate = (comicId: string) => {
-    // In a real app, this would remove the comic from the library
-    // For now, we'll just show a success message
-    showSuccess("Duplicate removed from library");
-    
-    // Update the duplicates list
-    setDuplicates(prev => 
-      prev.map(group => ({
-        ...group,
-        comics: group.comics.filter(c => c.id !== comicId)
-      })).filter(group => group.comics.length > 1)
-    );
+  const handleRemoveDuplicate = (comicId: string) => {
+    removeComic(comicId);
   };
 
   if (duplicates.length === 0) {
@@ -109,7 +98,7 @@ const DuplicateDetector = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => removeDuplicate(comic.id)}
+                      onClick={() => handleRemoveDuplicate(comic.id)}
                     >
                       <Trash2 className="h-3 w-3 mr-1" />
                       Remove

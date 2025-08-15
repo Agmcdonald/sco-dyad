@@ -10,6 +10,7 @@ export interface NewComic {
 export interface Comic extends NewComic {
   id: string;
   coverUrl: string;
+  dateAdded: Date;
 }
 
 export type FileStatus = "Pending" | "Success" | "Warning" | "Error";

@@ -16,6 +16,7 @@ interface AppContextType {
   comics: Comic[];
   addComic: (comicData: NewComic, originalFile: QueuedFile) => void;
   updateComic: (comic: Comic) => void;
+  removeComic: (id: string) => void;
   isProcessing: boolean;
   startProcessing: () => void;
   pauseProcessing: () => void;
@@ -42,7 +43,8 @@ const sampleComics: Comic[] = [
     publisher: "Image Comics",
     volume: "1",
     coverUrl: "/placeholder.svg",
-    summary: "An epic space opera/fantasy comic about star-crossed lovers from enemy species."
+    summary: "An epic space opera/fantasy comic about star-crossed lovers from enemy species.",
+    dateAdded: new Date('2023-10-26T10:00:00Z'),
   },
   {
     id: `comic-${comicIdCounter++}`,
@@ -52,7 +54,8 @@ const sampleComics: Comic[] = [
     publisher: "Image Comics",
     volume: "1",
     coverUrl: "/placeholder.svg",
-    summary: "A post-apocalyptic horror comic following survivors in a zombie-infested world."
+    summary: "A post-apocalyptic horror comic following survivors in a zombie-infested world.",
+    dateAdded: new Date('2023-10-25T11:00:00Z'),
   },
   {
     id: `comic-${comicIdCounter++}`,
@@ -62,7 +65,8 @@ const sampleComics: Comic[] = [
     publisher: "DC Comics",
     volume: "3",
     coverUrl: "/placeholder.svg",
-    summary: "The Dark Knight's adventures in Gotham City continue in this acclaimed series."
+    summary: "The Dark Knight's adventures in Gotham City continue in this acclaimed series.",
+    dateAdded: new Date('2023-10-24T12:00:00Z'),
   },
   {
     id: `comic-${comicIdCounter++}`,
@@ -72,7 +76,8 @@ const sampleComics: Comic[] = [
     publisher: "Marvel Comics",
     volume: "5",
     coverUrl: "/placeholder.svg",
-    summary: "Your friendly neighborhood Spider-Man swings into action in New York City."
+    summary: "Your friendly neighborhood Spider-Man swings into action in New York City.",
+    dateAdded: new Date('2023-10-23T13:00:00Z'),
   },
   {
     id: `comic-${comicIdCounter++}`,
@@ -82,7 +87,8 @@ const sampleComics: Comic[] = [
     publisher: "Image Comics",
     volume: "1",
     coverUrl: "/placeholder.svg",
-    summary: "A teenage superhero discovers his powers and the complex world of heroes and villains."
+    summary: "A teenage superhero discovers his powers and the complex world of heroes and villains.",
+    dateAdded: new Date('2023-10-22T14:00:00Z'),
   }
 ];
 
@@ -121,7 +127,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             publisher: dbComic.publisher,
             volume: dbComic.volume,
             summary: dbComic.summary,
-            coverUrl: dbComic.coverUrl || '/placeholder.svg'
+            coverUrl: dbComic.coverUrl || '/placeholder.svg',
+            dateAdded: new Date(dbComic.dateAdded),
           }));
           setComics(appComics);
           if (appComics.length > 0) {
@@ -223,7 +230,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           publisher: savedComic.publisher,
           volume: savedComic.volume,
           summary: savedComic.summary,
-          coverUrl: savedComic.coverUrl || '/placeholder.svg'
+          coverUrl: savedComic.coverUrl || '/placeholder.svg',
+          dateAdded: new Date(savedComic.dateAdded),
         };
 
         setComics(prev => [uiComic, ...prev]);
@@ -246,7 +254,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       const newComic: Comic = {
         ...comicData,
         id: `comic-${comicIdCounter++}`,
-        coverUrl: '/placeholder.svg'
+        coverUrl: '/placeholder.svg',
+        dateAdded: new Date(),
       };
       setComics(prev => [newComic, ...prev]);
       logAction('success', `(Web Mode) Organized '${originalFile.name}' as '${newComic.series} #${newComic.issue}'`, {
@@ -264,7 +273,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           ...updatedComic,
           filePath: `library/${updatedComic.series}/${updatedComic.series}_${updatedComic.issue}.cbz`,
           fileSize: 25000000,
-          dateAdded: new Date().toISOString(),
+          dateAdded: updatedComic.dateAdded.toISOString(),
           lastModified: new Date().toISOString()
         });
       } catch (error) {
@@ -275,6 +284,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     setComics(prev => prev.map(c => c.id === updatedComic.id ? updatedComic : c));
     logAction('info', `Updated metadata for '${updatedComic.series} #${updatedComic.issue}'`);
+  };
+
+  const removeComic = (id: string) => {
+    const comicToRemove = comics.find(c => c.id === id);
+    if (comicToRemove) {
+      setComics(prev => prev.filter(c => c.id !== id));
+      logAction('info', `Removed comic: '${comicToRemove.series} #${comicToRemove.issue}'`);
+      showSuccess("Comic removed from library");
+    }
   };
 
   const startProcessing = () => setIsProcessing(true);
@@ -355,7 +373,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AppContext.Provider value={{ 
       files, addFile, addFiles, removeFile, updateFile, skipFile,
-      comics, addComic, updateComic,
+      comics, addComic, updateComic, removeComic,
       isProcessing, startProcessing, pauseProcessing,
       actions, logAction,
       lastUndoableAction, undoLastAction,
