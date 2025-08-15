@@ -23,21 +23,53 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/context/SettingsContext";
 import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
+import { useElectron } from "@/hooks/useElectron";
 import { showError, showSuccess } from "@/utils/toast";
 import { testApiConnection } from "@/lib/scraper";
-import { Loader2, Database } from "lucide-react";
+import { Loader2, Database, FolderOpen } from "lucide-react";
 import KnowledgeBaseManager from "@/components/KnowledgeBaseManager";
 
 const Settings = () => {
   const { theme, setTheme } = useTheme();
   const { settings, setSettings } = useSettings();
   const { knowledgeBase } = useKnowledgeBase();
+  const { isElectron, electronAPI } = useElectron();
   const [isTesting, setIsTesting] = useState(false);
+  const [libraryPath, setLibraryPath] = useState(settings.libraryPath || "");
 
-  const handleSave = () => {
-    // The settings are already updated on change thanks to the context.
-    // This button just provides user feedback.
-    showSuccess("Settings saved successfully!");
+  const handleSave = async () => {
+    const updatedSettings = { ...settings, libraryPath };
+    setSettings(updatedSettings);
+    
+    // Save to Electron if available
+    if (isElectron && electronAPI) {
+      try {
+        await electronAPI.saveSettings(updatedSettings);
+        showSuccess("Settings saved successfully!");
+      } catch (error) {
+        showError("Failed to save settings to disk");
+        console.error("Error saving settings:", error);
+      }
+    } else {
+      showSuccess("Settings saved successfully!");
+    }
+  };
+
+  const handleChooseLibraryPath = async () => {
+    if (!isElectron || !electronAPI) {
+      showError("This feature is only available in the desktop app.");
+      return;
+    }
+
+    try {
+      const result = await electronAPI.selectFolderDialog();
+      if (result && result.length > 0) {
+        setLibraryPath(result[0]);
+      }
+    } catch (error) {
+      showError("Failed to select folder");
+      console.error("Error selecting folder:", error);
+    }
   };
 
   const handleTestConnection = async () => {
@@ -117,11 +149,24 @@ const Settings = () => {
               <div className="flex items-center gap-2">
                 <Input
                   id="library-path"
-                  defaultValue="/Users/You/Documents/Comics"
-                  disabled
+                  value={libraryPath}
+                  onChange={(e) => setLibraryPath(e.target.value)}
+                  placeholder={isElectron ? "Choose a folder..." : "/Users/You/Documents/Comics"}
                 />
-                <Button variant="outline" disabled>Choose...</Button>
+                <Button 
+                  variant="outline" 
+                  onClick={handleChooseLibraryPath}
+                  disabled={!isElectron}
+                >
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Choose...
+                </Button>
               </div>
+              {!isElectron && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Library path selection is only available in the desktop app.
+                </p>
+              )}
             </CardContent>
           </Card>
           <Card>
