@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { Comic } from "@/types";
@@ -25,6 +26,7 @@ const formSchema = z.object({
   year: z.coerce.number().min(1900, "Invalid year"),
   publisher: z.string().min(1, "Publisher is required"),
   volume: z.string(),
+  summary: z.string().optional(),
 });
 
 interface EditComicModalProps {
@@ -45,6 +47,7 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
       year: comic.year,
       publisher: comic.publisher,
       volume: comic.volume,
+      summary: comic.summary || "",
     },
   });
 
@@ -79,6 +82,7 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
       year: comic.year,
       publisher: comic.publisher,
       volume: comic.volume,
+      summary: comic.summary || "",
     });
   }, [comic, form]);
 
@@ -159,6 +163,23 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                       onValueChange={field.onChange}
                       placeholder="Select or type publisher..."
                       emptyText="No publishers found."
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="summary"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Summary</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Enter a brief summary..."
+                      className="resize-none"
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />

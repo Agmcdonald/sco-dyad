@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
-import { QueuedFile, Comic, NewComic, UndoPayload } from '@/types';
+import { QueuedFile, Comic, NewComic, UndoPayload, ComicKnowledge } from '@/types';
 import { useElectronDatabaseService } from '@/services/electronDatabaseService';
 import { useElectron } from '@/hooks/useElectron';
 import { useSettings } from '@/context/SettingsContext';
@@ -9,6 +9,7 @@ import { useActionLog } from './hooks/useActionLog';
 import { useFileQueue } from './hooks/useFileQueue';
 import { useComicLibrary } from './hooks/useComicLibrary';
 import { useReadingList } from './hooks/useReadingList';
+import { useKnowledgeBase } from './KnowledgeBaseContext';
 
 interface AppContextType {
   files: QueuedFile[];
@@ -53,11 +54,30 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { files, setFiles, addFile, addFiles, removeFile, updateFile, addFilesFromPaths } = useFileQueue();
   const { comics, setComics, refreshComics } = useComicLibrary(logAction);
   const { readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted, setReadingItemPriority } = useReadingList();
+  const { knowledgeBase, addSeries } = useKnowledgeBase();
   
   const [isProcessing, setIsProcessing] = useState(false);
   const databaseService = useElectronDatabaseService();
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
+
+  const learnNewSeries = useCallback(async (comicData: NewComic) => {
+    const seriesExists = knowledgeBase.some(kb => kb.series.toLowerCase() === comicData.series.toLowerCase());
+
+    if (!seriesExists) {
+      const newKnowledgeEntry: ComicKnowledge = {
+        series: comicData.series,
+        publisher: comicData.publisher,
+        startYear: comicData.year,
+        volumes: [{
+          volume: comicData.volume,
+          year: comicData.year
+        }]
+      };
+      await addSeries(newKnowledgeEntry);
+      logAction('info', `Learned new series: "${comicData.series}" was added to the knowledge base.`);
+    }
+  }, [knowledgeBase, addSeries, logAction]);
 
   const addComic = useCallback(async (comicData: NewComic, originalFile: QueuedFile) => {
     if (isMockFile(originalFile.path)) {
@@ -68,6 +88,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         dateAdded: new Date(),
       };
       setComics(prev => [newComic, ...prev]);
+      await learnNewSeries(comicData);
       logAction('success', `(Demo Mode) Added '${newComic.series} #${newComic.issue}' to library`, {
         type: 'ADD_COMIC',
         payload: { comicId: newComic.id, originalFile }
@@ -117,6 +138,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
         await databaseService.updateComic(finalComic);
         await refreshComics();
+        await learnNewSeries(comicData);
         
         logAction('success', `Organized '${originalFile.name}' as '${finalComic.series} #${finalComic.issue}'`, {
           type: 'ADD_COMIC',
@@ -131,13 +153,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     } else {
       const newComic: Comic = { ...comicData, id: `comic-${comicIdCounter++}`, coverUrl: '/placeholder.svg', dateAdded: new Date() };
       setComics(prev => [newComic, ...prev]);
+      await learnNewSeries(comicData);
       logAction('success', `(Web Mode) Added '${newComic.series} #${newComic.issue}' to library`, {
         type: 'ADD_COMIC',
         payload: { comicId: newComic.id, originalFile }
       });
       showSuccess(`Added '${newComic.series} #${newComic.issue}' to library`);
     }
-  }, [isElectron, electronAPI, databaseService, settings, logAction, refreshComics, setComics]);
+  }, [isElectron, electronAPI, databaseService, settings, logAction, refreshComics, setComics, learnNewSeries]);
 
   const updateComic = useCallback(async (updatedComic: Comic) => {
     if (databaseService) {
