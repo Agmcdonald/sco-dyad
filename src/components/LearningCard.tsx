@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Combobox, ComboboxOption } from "@/components/ui/combobox";
-import { QueuedFile } from "@/types";
+import { QueuedFile, NewComic } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 import { showSuccess } from "@/utils/toast";
@@ -112,14 +112,16 @@ const LearningCard = ({ file }: LearningCardProps) => {
   };
 
   const onSubmit = (values: FormSchemaType) => {
-    addComic({
+    const comicData: NewComic = {
       series: values.series,
       issue: values.issue,
       year: values.year,
       publisher: values.publisher,
       volume: values.volume,
       summary: `Manually mapped from file: ${file.name}`,
-    }, file);
+    };
+    
+    addComic(comicData, file);
     removeFile(file.id);
     showSuccess(`'${values.series} #${values.issue}' added to library.`);
   };
