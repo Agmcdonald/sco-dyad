@@ -32,7 +32,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Search, Database, TrendingUp, Plus, Download, Upload, Edit, Trash2, Loader2 } from "lucide-react";
-import { useKnowledgeBase, ComicKnowledge } from "@/context/KnowledgeBaseContext";
+import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
+import { ComicKnowledge } from "@/types";
 import { showSuccess, showError } from "@/utils/toast";
 
 const KnowledgeBaseManager = () => {

@@ -105,13 +105,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
         const organizeResult = await electronAPI.organizeFile(originalFile.path, relativeTargetPath);
 
-        if (!organizeResult.success) {
+        if (!organizeResult || typeof organizeResult === 'boolean' || !organizeResult.success) {
           showError(`Failed to move file: ${originalFile.name}`);
           logAction('error', `Failed to organize file: ${originalFile.name}`);
           return;
         }
 
-        const comicToSave = { ...comicData, filePath: organizeResult.newPath, fileSize };
+        const comicToSave = { 
+          ...comicData, 
+          filePath: organizeResult.newPath || originalFile.path, 
+          fileSize 
+        };
         const savedComic = await databaseService.saveComic(comicToSave);
         const finalComic = { ...savedComic, coverUrl };
 
@@ -227,10 +231,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     try {
-      const folderPath = await electronAPI.selectFolderDialog();
-      if (folderPath && folderPath.length > 0) {
-        const filePaths = await electronAPI.scanFolder(folderPath[0]);
-        await addFilesFromPaths(filePaths.map((f: any) => f.path));
+      const folderPaths = await electronAPI.selectFolderDialog();
+      if (folderPaths && folderPaths.length > 0) {
+        const filePaths = await electronAPI.scanFolder(folderPaths[0]);
+        await addFilesFromPaths(filePaths.map((f: any) => f.path || f));
       }
     } catch (error) {
       showError("Could not scan folder.");
