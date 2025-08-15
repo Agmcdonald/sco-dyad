@@ -2,6 +2,8 @@ const fs = require('fs').promises;
 const path = require('path');
 const StreamZip = require('node-stream-zip');
 const sharp = require('sharp');
+const { unrar } = require('unrar-promise');
+const os = require('os');
 
 class ComicFileHandler {
   constructor() {
@@ -95,16 +97,33 @@ class ComicFileHandler {
 
   // Get page count from comic archive
   async getPageCount(filePath) {
-    const zip = new StreamZip.async({ file: filePath });
-    try {
-      const entries = await zip.entries();
-      const imageFiles = Object.values(entries).filter(entry => 
-        !entry.isDirectory && this.isImageFile(entry.name)
-      );
-      return imageFiles.length;
-    } finally {
-      await zip.close();
+    const fileType = this.getFileType(filePath);
+    if (fileType === 'cbz') {
+      const zip = new StreamZip.async({ file: filePath });
+      try {
+        const entries = await zip.entries();
+        const imageFiles = Object.values(entries).filter(entry => 
+          !entry.isDirectory && this.isImageFile(entry.name)
+        );
+        return imageFiles.length;
+      } finally {
+        await zip.close();
+      }
+    } else if (fileType === 'cbr') {
+      let tempDir = null;
+      try {
+        tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-pages-'));
+        await unrar(filePath, tempDir);
+        const files = await fs.readdir(tempDir);
+        const imageFiles = files.filter(file => this.isImageFile(file));
+        return imageFiles.length;
+      } finally {
+        if (tempDir) {
+          await fs.rm(tempDir, { recursive: true, force: true });
+        }
+      }
     }
+    return 0;
   }
 
   // Extract cover image from comic file
@@ -112,10 +131,11 @@ class ComicFileHandler {
     try {
       const fileType = this.getFileType(filePath);
       
-      if (fileType === 'cbz' || fileType === 'cbr') {
-        return await this.extractCoverFromArchive(filePath, outputDir);
+      if (fileType === 'cbz') {
+        return await this.extractCoverFromZipArchive(filePath, outputDir);
+      } else if (fileType === 'cbr') {
+        return await this.extractCoverFromRarArchive(filePath, outputDir);
       } else if (fileType === 'pdf') {
-        // PDF cover extraction would require additional libraries like pdf-poppler
         throw new Error('PDF cover extraction not yet implemented');
       }
       
@@ -126,33 +146,28 @@ class ComicFileHandler {
     }
   }
 
-  // Extract cover from CBZ/CBR archive
-  async extractCoverFromArchive(filePath, outputDir) {
+  // Extract cover from CBZ (ZIP) archive
+  async extractCoverFromZipArchive(filePath, outputDir) {
     const zip = new StreamZip.async({ file: filePath });
     
     try {
       const entries = await zip.entries();
-      
-      // Find image files and sort them to get the first one (likely the cover)
       const imageFiles = Object.values(entries)
         .filter(entry => !entry.isDirectory && this.isImageFile(entry.name))
         .sort((a, b) => a.name.localeCompare(b.name));
 
       if (imageFiles.length === 0) {
-        throw new Error('No images found in comic archive');
+        throw new Error('No images found in CBZ archive');
       }
 
       const coverEntry = imageFiles[0];
       const coverData = await zip.entryData(coverEntry);
       
-      // Generate output filename
       const baseName = path.basename(filePath, path.extname(filePath));
       const outputPath = path.join(outputDir, `${baseName}_cover.jpg`);
       
-      // Ensure output directory exists
       await fs.mkdir(outputDir, { recursive: true });
       
-      // Process and save the cover image
       await sharp(coverData)
         .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 85 })
@@ -164,18 +179,50 @@ class ComicFileHandler {
     }
   }
 
+  // Extract cover from CBR (RAR) archive
+  async extractCoverFromRarArchive(filePath, outputDir) {
+    let tempDir = null;
+    try {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-cover-'));
+      await unrar(filePath, tempDir);
+      
+      const files = await fs.readdir(tempDir);
+      const imageFiles = files
+        .filter(file => this.isImageFile(file))
+        .sort((a, b) => a.localeCompare(b.name));
+
+      if (imageFiles.length === 0) {
+        throw new Error('No images found in CBR archive');
+      }
+
+      const coverPathInTemp = path.join(tempDir, imageFiles[0]);
+      const baseName = path.basename(filePath, path.extname(filePath));
+      const outputPath = path.join(outputDir, `${baseName}_cover.jpg`);
+      
+      await fs.mkdir(outputDir, { recursive: true });
+      
+      await sharp(coverPathInTemp)
+        .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toFile(outputPath);
+        
+      return outputPath;
+    } finally {
+      if (tempDir) {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      }
+    }
+  }
+
   // Organize/move a file to the target location
   async organizeFile(sourcePath, targetPath, keepOriginal = false) {
     try {
-      // Ensure target directory exists
       const targetDir = path.dirname(targetPath);
       await fs.mkdir(targetDir, { recursive: true });
 
       if (keepOriginal) {
-        // Copy the file
         await fs.copyFile(sourcePath, targetPath);
       } else {
-        // Move the file
         await fs.rename(sourcePath, targetPath);
       }
 
@@ -230,15 +277,12 @@ class ComicFileHandler {
       const pageEntry = imageFiles[pageIndex];
       const pageData = await zip.entryData(pageEntry);
       
-      // Generate output filename
       const baseName = path.basename(filePath, path.extname(filePath));
       const pageExt = path.extname(pageEntry.name);
       const outputPath = path.join(outputDir, `${baseName}_page_${pageIndex + 1}${pageExt}`);
       
-      // Ensure output directory exists
       await fs.mkdir(outputDir, { recursive: true });
       
-      // Save the page
       await fs.writeFile(outputPath, pageData);
       
       return outputPath;
