@@ -272,7 +272,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         console.error('Error in addComic:', error);
       }
     } else {
-      // Web mode (mock behavior)
+      // Web mode (mock behavior) - Don't try to organize files
       const newComic: Comic = {
         ...comicData,
         id: `comic-${comicIdCounter++}`,
@@ -280,10 +280,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         dateAdded: new Date(),
       };
       setComics(prev => [newComic, ...prev]);
-      logAction('success', `(Web Mode) Organized '${originalFile.name}' as '${newComic.series} #${newComic.issue}'`, {
+      logAction('success', `(Web Mode) Added '${newComic.series} #${newComic.issue}' to library`, {
         type: 'ADD_COMIC',
         payload: { comicId: newComic.id, originalFile }
       });
+      showSuccess(`Added '${newComic.series} #${newComic.issue}' to library`);
     }
   };
 
@@ -341,13 +342,44 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addMockFiles = useCallback(() => {
+    // Create mock files that are safe for testing (no actual file operations)
     const newMockFiles: QueuedFile[] = [
-      { id: `file-${fileIdCounter++}`, name: "Saga #2 (2012).cbr", path: "/incoming/Saga #2 (2012).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
-      { id: `file-${fileIdCounter++}`, name: "Batman The Knight #1 (2022).cbr", path: "/incoming/Batman The Knight #1 (2022).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
-      { id: `file-${fileIdCounter++}`, name: "The Amazing Spider-Man #300 (1988).cbr", path: "/incoming/The Amazing Spider-Man #300 (1988).cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
+      { 
+        id: `file-${fileIdCounter++}`, 
+        name: "Saga #2 (2012).cbr", 
+        path: "mock://saga-2-2012.cbr", // Use mock:// protocol to indicate these are fake
+        series: null, 
+        issue: null, 
+        year: null, 
+        publisher: null, 
+        confidence: null, 
+        status: "Pending" 
+      },
+      { 
+        id: `file-${fileIdCounter++}`, 
+        name: "Batman The Knight #1 (2022).cbr", 
+        path: "mock://batman-knight-1-2022.cbr", 
+        series: null, 
+        issue: null, 
+        year: null, 
+        publisher: null, 
+        confidence: null, 
+        status: "Pending" 
+      },
+      { 
+        id: `file-${fileIdCounter++}`, 
+        name: "The Amazing Spider-Man #300 (1988).cbr", 
+        path: "mock://amazing-spider-man-300-1988.cbr", 
+        series: null, 
+        issue: null, 
+        year: null, 
+        publisher: null, 
+        confidence: null, 
+        status: "Pending" 
+      },
     ];
     addFiles(newMockFiles);
-    logAction('info', `Added ${newMockFiles.length} mock files to the queue.`);
+    logAction('info', `Added ${newMockFiles.length} mock files to the queue for testing.`);
   }, [logAction]);
 
   const triggerSelectFiles = useCallback(async () => {
