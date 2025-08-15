@@ -19,7 +19,12 @@ export interface ProcessingResult {
 
 // Check if a file is a mock file (used for testing)
 const isMockFile = (filePath: string): boolean => {
-  return filePath.startsWith('mock://');
+  return filePath.startsWith('mock://') || 
+         filePath.includes('(Digital)') || 
+         filePath.includes('(Webrip)') || 
+         filePath.includes('Kileko-Empire') ||
+         filePath.includes('The Last Kryptonian-DCP') ||
+         filePath.includes('Son of Ultron-Empire');
 };
 
 // Smart processor that combines parsing with knowledge base matching
@@ -52,7 +57,7 @@ export const processComicFile = async (file: QueuedFile): Promise<ProcessingResu
         publisher: parsed.publisher || bestMatch.publisher, // Prefer character-detected publisher
         volume: bestMatch.volume,
         summary: isMockFile(file.path) 
-          ? `Mock file processed using knowledge base: ${bestMatch.series} published by ${parsed.publisher || bestMatch.publisher}`
+          ? `Demo file processed using knowledge base: ${bestMatch.series} published by ${parsed.publisher || bestMatch.publisher}`
           : `Processed using knowledge base: ${bestMatch.series} published by ${parsed.publisher || bestMatch.publisher}`
       };
 
@@ -76,7 +81,7 @@ export const processComicFile = async (file: QueuedFile): Promise<ProcessingResu
           publisher: parsed.publisher,
           volume: parsed.volume || String(parsed.year),
           summary: isMockFile(file.path)
-            ? `Mock file parsed with character-based publisher detection: ${file.name}`
+            ? `Demo file parsed with character-based publisher detection: ${file.name}`
             : `Parsed from filename with character-based publisher detection: ${file.name}`
         }
       };
@@ -91,7 +96,7 @@ export const processComicFile = async (file: QueuedFile): Promise<ProcessingResu
           publisher: parsed.publisher || "Unknown Publisher",
           volume: parsed.volume || String(parsed.year),
           summary: isMockFile(file.path)
-            ? `Mock file parsed from filename: ${file.name}`
+            ? `Demo file parsed from filename: ${file.name}`
             : `Parsed from filename: ${file.name}`
         }
       };
