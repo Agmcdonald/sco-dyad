@@ -23,6 +23,7 @@ import { Slider } from "@/components/ui/slider";
 import { Comic } from "@/types";
 import { cn } from "@/lib/utils";
 import { useElectron } from "@/hooks/useElectron";
+import { showError } from "@/utils/toast";
 
 interface ComicReaderProps {
   comic: Comic;
@@ -69,6 +70,7 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
         }
       } catch (error) {
         console.error("Failed to fetch comic pages:", error);
+        showError("Failed to load comic. The file might be corrupted.");
         setTotalPages(0);
       } finally {
         setIsLoading(false);
