@@ -9,10 +9,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Grid3X3, List } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Search, Grid3X3, List, ZoomIn } from "lucide-react";
 import LibraryGrid from "@/components/LibraryGrid";
 import SeriesView from "@/components/SeriesView";
 import { useAppContext } from "@/context/AppContext";
+import useLocalStorage from "@/hooks/useLocalStorage";
 
 type ViewMode = "grid" | "series";
 
@@ -22,6 +24,7 @@ const Library = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOption, setSortOption] = useState("series-asc");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [coverSize, setCoverSize] = useLocalStorage("library-cover-size", 3);
 
   // Handle search from sidebar
   useEffect(() => {
@@ -65,7 +68,7 @@ const Library = () => {
             {searchTerm && ` (${sortedComics.length} matching "${searchTerm}")`}.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -88,6 +91,17 @@ const Library = () => {
               <SelectItem value="year-asc">Year (Oldest)</SelectItem>
             </SelectContent>
           </Select>
+          <div className="flex items-center gap-2">
+            <ZoomIn className="h-4 w-4 text-muted-foreground" />
+            <Slider
+              value={[coverSize]}
+              onValueChange={([value]) => setCoverSize(value)}
+              min={1}
+              max={5}
+              step={1}
+              className="w-32"
+            />
+          </div>
           <div className="flex border rounded-md">
             <Button
               variant={viewMode === "grid" ? "default" : "ghost"}
@@ -110,7 +124,7 @@ const Library = () => {
       </div>
       <div className="flex-1 overflow-auto pb-4">
         {viewMode === "grid" ? (
-          <LibraryGrid comics={sortedComics} />
+          <LibraryGrid comics={sortedComics} coverSize={coverSize} />
         ) : (
           <SeriesView comics={sortedComics} />
         )}
