@@ -34,7 +34,11 @@ export const useReadingList = () => {
 
   const toggleReadingItemCompleted = (itemId: string) => {
     setReadingList(prev => prev.map(item => 
-      item.id === itemId ? { ...item, completed: !item.completed } : item
+      item.id === itemId ? { 
+        ...item, 
+        completed: !item.completed,
+        dateCompleted: !item.completed ? new Date() : undefined
+      } : item
     ));
     const item = readingList.find(i => i.id === itemId);
     if (item && !item.completed) {
@@ -48,5 +52,19 @@ export const useReadingList = () => {
     ));
   };
 
-  return { readingList, setReadingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted, setReadingItemPriority };
+  const setReadingItemRating = (itemId: string, rating: number) => {
+    setReadingList(prev => prev.map(item => 
+      item.id === itemId ? { ...item, rating } : item
+    ));
+  };
+
+  return { 
+    readingList, 
+    setReadingList, 
+    addToReadingList, 
+    removeFromReadingList, 
+    toggleReadingItemCompleted, 
+    setReadingItemPriority,
+    setReadingItemRating
+  };
 };
