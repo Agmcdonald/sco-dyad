@@ -66,7 +66,8 @@ const SmartSuggestions = () => {
         action: 'Add Series',
         priority: 'low',
         count: unknownSeries.length,
-        path: '/app/settings'
+        path: '/app/settings',
+        targetTab: 'advanced' // This will set the correct tab
       });
     }
 
@@ -91,7 +92,17 @@ const SmartSuggestions = () => {
 
   const handleActionClick = (suggestion: any) => {
     if (suggestion.path) {
-      navigate(suggestion.path, { state: suggestion.state });
+      if (suggestion.targetTab) {
+        // Navigate to settings with specific tab
+        navigate(suggestion.path, { 
+          state: { 
+            ...suggestion.state,
+            targetTab: suggestion.targetTab 
+          } 
+        });
+      } else {
+        navigate(suggestion.path, { state: suggestion.state });
+      }
     }
   };
 

@@ -16,6 +16,7 @@ import {
   PanelBottom,
   X,
   Loader2,
+  CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +24,8 @@ import { Slider } from "@/components/ui/slider";
 import { Comic } from "@/types";
 import { cn } from "@/lib/utils";
 import { useElectron } from "@/hooks/useElectron";
-import { showError } from "@/utils/toast";
+import { useAppContext } from "@/context/AppContext";
+import { showError, showSuccess } from "@/utils/toast";
 
 interface ComicReaderProps {
   comic: Comic;
@@ -32,6 +34,7 @@ interface ComicReaderProps {
 
 const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
   const { isElectron, electronAPI } = useElectron();
+  const { addToReadingList, readingList, toggleReadingItemCompleted, logAction } = useAppContext();
   const [pages, setPages] = useState<string[]>([]);
   const [pageImageUrls, setPageImageUrls] = useState<Record<number, string>>({});
   const [totalPages, setTotalPages] = useState(0);
@@ -46,6 +49,11 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
   const canReadComic = isElectron && !!comic.filePath;
   const isCbr = comic.filePath?.toLowerCase().endsWith('.cbr');
   const fetchedPages = useRef(new Set());
+
+  // Check if comic is in reading list and if it's completed
+  const readingListItem = readingList.find(item => item.comicId === comic.id);
+  const isInReadingList = !!readingListItem;
+  const isMarkedAsRead = readingListItem?.completed || false;
 
   // Fetch page list from Electron backend
   useEffect(() => {
@@ -85,9 +93,9 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
     };
   }, [canReadComic, electronAPI, comic.filePath, isCbr]);
 
-  // Fetch image data for pages
+  // Preload images for current page and nearby pages
   useEffect(() => {
-    const fetchPageImage = async (pageNumber: number, pageName: string) => {
+    const preloadPage = async (pageNumber: number, pageName: string) => {
       if (!canReadComic || !electronAPI || !pageName || fetchedPages.current.has(pageNumber)) {
         return;
       }
@@ -111,12 +119,75 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
     };
 
     if (pages.length > 0) {
-      fetchPageImage(currentPage, pages[currentPage - 1]);
+      // Preload current page and next few pages
+      const pagesToPreload = [];
+      
+      // Current page(s)
+      pagesToPreload.push(currentPage);
       if (viewMode === 'double' && currentPage + 1 <= totalPages) {
-        fetchPageImage(currentPage + 1, pages[currentPage]);
+        pagesToPreload.push(currentPage + 1);
       }
+      
+      // Next few pages for smoother navigation
+      for (let i = 1; i <= 3; i++) {
+        const nextPage = currentPage + i;
+        if (nextPage <= totalPages) {
+          pagesToPreload.push(nextPage);
+        }
+      }
+      
+      // Previous page for back navigation
+      if (currentPage > 1) {
+        pagesToPreload.push(currentPage - 1);
+      }
+
+      // Preload all identified pages
+      pagesToPreload.forEach(pageNum => {
+        if (pageNum >= 1 && pageNum <= totalPages) {
+          preloadPage(pageNum, pages[pageNum - 1]);
+        }
+      });
     }
   }, [canReadComic, electronAPI, comic.filePath, pages, currentPage, viewMode, totalPages, isCbr, cbrTempDir]);
+
+  // Preload thumbnail images when thumbnails are shown
+  useEffect(() => {
+    if (showThumbnails && pages.length > 0) {
+      // Preload all thumbnails (but with lower priority)
+      setTimeout(() => {
+        pages.forEach((pageName, index) => {
+          const pageNumber = index + 1;
+          if (!fetchedPages.current.has(pageNumber)) {
+            // Add a small delay between thumbnail loads to not overwhelm the system
+            setTimeout(() => {
+              if (!canReadComic || !electronAPI || !pageName) return;
+              
+              fetchedPages.current.add(pageNumber);
+              
+              const loadThumbnail = async () => {
+                try {
+                  let dataUrl;
+                  if (isCbr && cbrTempDir) {
+                    dataUrl = await electronAPI.getPageDataUrlFromTemp(cbrTempDir, pageName);
+                  } else if (!isCbr) {
+                    dataUrl = await electronAPI.getComicPageDataUrl(comic.filePath!, pageName);
+                  }
+                  
+                  if (dataUrl) {
+                    setPageImageUrls(prev => ({ ...prev, [pageNumber]: dataUrl }));
+                  }
+                } catch (error) {
+                  console.error(`Failed to load thumbnail ${pageNumber}:`, error);
+                }
+              };
+              
+              loadThumbnail();
+            }, index * 100); // Stagger the loads
+          }
+        });
+      }, 500); // Wait a bit before starting thumbnail preload
+    }
+  }, [showThumbnails, pages, canReadComic, electronAPI, comic.filePath, isCbr, cbrTempDir]);
 
   const goToPage = useCallback((page: number) => {
     const newPage = Math.max(1, Math.min(totalPages, page));
@@ -131,15 +202,37 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
     goToPage(currentPage - (viewMode === "double" ? 2 : 1));
   }, [currentPage, goToPage, viewMode]);
 
+  const handleMarkAsRead = () => {
+    if (!isInReadingList) {
+      // Add to reading list first, then mark as read
+      addToReadingList(comic);
+      // The reading list item will be created, so we need to wait a moment
+      setTimeout(() => {
+        const newItem = readingList.find(item => item.comicId === comic.id);
+        if (newItem) {
+          toggleReadingItemCompleted(newItem.id);
+        }
+      }, 100);
+    } else if (readingListItem) {
+      // Toggle read status
+      toggleReadingItemCompleted(readingListItem.id);
+    }
+    
+    const action = isMarkedAsRead ? 'unmarked' : 'marked';
+    logAction('info', `${action} "${comic.series} #${comic.issue}" as read`);
+    showSuccess(`${action === 'marked' ? 'Marked' : 'Unmarked'} as read: ${comic.series} #${comic.issue}`);
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === " ") nextPage();
       if (e.key === "ArrowLeft") prevPage();
       if (e.key === "Escape") onClose();
+      if (e.key === "r" || e.key === "R") handleMarkAsRead();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [nextPage, prevPage, onClose]);
+  }, [nextPage, prevPage, onClose, handleMarkAsRead]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -211,6 +304,12 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
             <Badge variant="secondary">
               Page {currentPage} / {totalPages}
             </Badge>
+            {isMarkedAsRead && (
+              <Badge variant="default" className="bg-green-600">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Read
+              </Badge>
+            )}
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
@@ -257,19 +356,21 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
               <div
                 key={pageId}
                 className={cn(
-                  "h-24 w-16 rounded-sm cursor-pointer border-2 flex-shrink-0 bg-muted",
+                  "h-24 w-16 rounded-sm cursor-pointer border-2 flex-shrink-0 bg-muted flex items-center justify-center",
                   currentPage === pageId
                     ? "border-primary"
                     : "border-transparent hover:border-muted-foreground"
                 )}
                 onClick={() => goToPage(pageId)}
               >
-                {pageImageUrls[pageId] && (
+                {pageImageUrls[pageId] ? (
                   <img
                     src={pageImageUrls[pageId]}
                     alt={`Thumbnail ${pageId}`}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover rounded-sm"
                   />
+                ) : (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 )}
               </div>
             ))}
@@ -311,6 +412,22 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
           </Button>
 
           <div className="h-6 border-l mx-2" />
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={isMarkedAsRead ? "default" : "outline"}
+                size="icon"
+                onClick={handleMarkAsRead}
+                className={isMarkedAsRead ? "bg-green-600 hover:bg-green-700" : ""}
+              >
+                <CheckCircle className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{isMarkedAsRead ? "Mark as Unread" : "Mark as Read"} (R)</p>
+            </TooltipContent>
+          </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>

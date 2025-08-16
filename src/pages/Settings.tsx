@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,13 +35,24 @@ const Settings = () => {
   const { settings, setSettings } = useSettings();
   const { knowledgeBase } = useKnowledgeBase();
   const { isElectron, electronAPI } = useElectron();
+  const location = useLocation();
   const [isTesting, setIsTesting] = useState(false);
   const [libraryPath, setLibraryPath] = useState("");
+  const [activeTab, setActiveTab] = useState("general");
 
   // Initialize libraryPath from settings
   useEffect(() => {
     setLibraryPath(settings.libraryPath || "");
   }, [settings.libraryPath]);
+
+  // Handle navigation from other components
+  useEffect(() => {
+    if (location.state?.targetTab) {
+      setActiveTab(location.state.targetTab);
+      // Clear the state to prevent issues with back navigation
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const handleSave = async () => {
     const updatedSettings = { ...settings, libraryPath };
@@ -103,7 +115,7 @@ const Settings = () => {
           Manage your application and library preferences.
         </p>
       </div>
-      <Tabs defaultValue="general" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="library">Library</TabsTrigger>
