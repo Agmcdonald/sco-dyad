@@ -75,7 +75,11 @@ const ReadingList = () => {
           key={rating}
           variant={currentRating === parseInt(rating) ? "default" : "ghost"}
           size="sm"
-          className="h-8 w-8 p-0 text-lg"
+          className={`h-8 w-8 p-0 text-lg ${
+            currentRating === parseInt(rating) 
+              ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2" 
+              : "hover:bg-muted"
+          }`}
           title={label}
           onClick={() => onRatingChange(itemId, parseInt(rating), isRecentlyRead)}
         >
@@ -171,12 +175,12 @@ const ReadingList = () => {
                           <div className="flex items-center gap-2 mb-1">
                             <h4 className={`font-medium ${item.completed ? 'line-through' : ''}`}>
                               {item.title}
+                              {item.rating !== undefined && (
+                                <span className="ml-3 text-lg" title={RATING_EMOJIS[item.rating as keyof typeof RATING_EMOJIS]?.label}>
+                                  {RATING_EMOJIS[item.rating as keyof typeof RATING_EMOJIS]?.emoji}
+                                </span>
+                              )}
                             </h4>
-                            {item.completed && item.rating !== undefined && (
-                              <span className="text-lg" title={RATING_EMOJIS[item.rating as keyof typeof RATING_EMOJIS]?.label}>
-                                {RATING_EMOJIS[item.rating as keyof typeof RATING_EMOJIS]?.emoji}
-                              </span>
-                            )}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             {item.publisher} • {item.year}
@@ -238,12 +242,14 @@ const ReadingList = () => {
                         
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-medium">{item.title}</h4>
-                            {item.rating !== undefined && (
-                              <span className="text-lg" title={RATING_EMOJIS[item.rating as keyof typeof RATING_EMOJIS]?.label}>
-                                {RATING_EMOJIS[item.rating as keyof typeof RATING_EMOJIS]?.emoji}
-                              </span>
-                            )}
+                            <h4 className="font-medium">
+                              {item.title}
+                              {item.rating !== undefined && (
+                                <span className="ml-3 text-lg" title={RATING_EMOJIS[item.rating as keyof typeof RATING_EMOJIS]?.label}>
+                                  {RATING_EMOJIS[item.rating as keyof typeof RATING_EMOJIS]?.emoji}
+                                </span>
+                              )}
+                            </h4>
                           </div>
                           <div className="text-sm text-muted-foreground mb-2">
                             {item.publisher} • {item.year} • Read {item.dateRead.toLocaleDateString()}

@@ -10,23 +10,35 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Search, Grid3X3, List, ZoomIn, ArrowLeft } from "lucide-react";
+import { Search, Grid3X3, List, ZoomIn, ArrowLeft, Building } from "lucide-react";
 import LibraryGrid from "@/components/LibraryGrid";
 import SeriesView from "@/components/SeriesView";
+import PublisherView from "@/components/PublisherView";
 import { useAppContext } from "@/context/AppContext";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { Comic } from "@/types";
 
-type ViewMode = "grid" | "series";
+type ViewMode = "grid" | "series" | "publisher";
+
+const RATING_EMOJIS = {
+  0: { emoji: '🤮', label: 'Trash / Who Approved This' },
+  1: { emoji: '🤬', label: 'What a Waste of Time' },
+  2: { emoji: '😒', label: 'Nothing Special' },
+  3: { emoji: '😐', label: 'Its Fine' },
+  4: { emoji: '🙂', label: 'I Like It' },
+  5: { emoji: '😁', label: 'Great Issue' },
+  6: { emoji: '🤯', label: 'Holy Cow! My Mind is Blown!' },
+};
 
 const Library = () => {
-  const { comics } = useAppContext();
+  const { comics, readingList, recentlyRead } = useAppContext();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOption, setSortOption] = useState("series-asc");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [coverSize, setCoverSize] = useLocalStorage("library-cover-size", 3);
   const [isDrilledDown, setIsDrilledDown] = useState(false);
+  const [ratingFilter, setRatingFilter] = useState<string>("all");
 
   // Handle search from sidebar
   useEffect(() => {
@@ -37,10 +49,34 @@ const Library = () => {
     }
   }, [location.state]);
 
-  const filteredComics = useMemo(() => comics.filter((comic) =>
-    comic.series.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    comic.publisher.toLowerCase().includes(searchTerm.toLowerCase())
-  ), [comics, searchTerm]);
+  // Get comics with ratings
+  const comicsWithRatings = useMemo(() => {
+    return comics.map(comic => {
+      const readingListItem = readingList.find(item => item.comicId === comic.id);
+      const recentlyReadItem = recentlyRead.find(item => item.comicId === comic.id);
+      const rating = readingListItem?.rating ?? recentlyReadItem?.rating;
+      return { ...comic, rating };
+    });
+  }, [comics, readingList, recentlyRead]);
+
+  const filteredComics = useMemo(() => {
+    let filtered = comicsWithRatings.filter((comic) =>
+      comic.series.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      comic.publisher.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // Apply rating filter
+    if (ratingFilter !== "all") {
+      if (ratingFilter === "unrated") {
+        filtered = filtered.filter(comic => comic.rating === undefined);
+      } else {
+        const targetRating = parseInt(ratingFilter);
+        filtered = filtered.filter(comic => comic.rating === targetRating);
+      }
+    }
+
+    return filtered;
+  }, [comicsWithRatings, searchTerm, ratingFilter]);
 
   const sortedAndGroupedComics = useMemo(() => {
     const comicsToSort = [...filteredComics];
@@ -126,6 +162,20 @@ const Library = () => {
               }}
             />
           </div>
+          <Select value={ratingFilter} onValueChange={setRatingFilter}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Rating" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Ratings</SelectItem>
+              <SelectItem value="unrated">Unrated</SelectItem>
+              {Object.entries(RATING_EMOJIS).map(([rating, { emoji, label }]) => (
+                <SelectItem key={rating} value={rating}>
+                  {emoji} {rating}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={sortOption} onValueChange={(value) => {
             setSortOption(value);
             setIsDrilledDown(false);
@@ -168,9 +218,17 @@ const Library = () => {
               variant={viewMode === "series" ? "default" : "ghost"}
               size="sm"
               onClick={() => setViewMode("series")}
-              className="rounded-l-none"
+              className="rounded-none"
             >
               <List className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "publisher" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("publisher")}
+              className="rounded-l-none"
+            >
+              <Building className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -182,8 +240,10 @@ const Library = () => {
             coverSize={coverSize}
             onSeriesDoubleClick={handleSeriesDoubleClick}
           />
-        ) : (
+        ) : viewMode === "series" ? (
           <SeriesView comics={sortedAndGroupedComics} />
+        ) : (
+          <PublisherView comics={filteredComics} />
         )}
       </div>
     </div>
