@@ -33,7 +33,7 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
   const { isElectron, electronAPI } = useElectron();
   const [pages, setPages] = useState<string[]>([]);
   const [pageImageUrls, setPageImageUrls] = useState<Record<number, string>>({});
-  const [totalPages, setTotalPages] = useState(22); // Default for web mode
+  const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [viewMode, setViewMode] = useState<"single" | "double">("single");
@@ -61,6 +61,7 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
         }
       } else {
         setIsLoading(false);
+        setTotalPages(22); // Default for web mode
       }
     };
     fetchPages();
@@ -90,11 +91,13 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
         fetchPageImage(currentPage + 1, pages[currentPage]);
       }
 
-      // Lazily fetch all other pages for thumbnails
-      const timer = setTimeout(() => {
-        pages.forEach((pageName, index) => {
-          fetchPageImage(index + 1, pageName);
-        });
+      // Lazily and sequentially fetch all other pages for thumbnails
+      const timer = setTimeout(async () => {
+        for (const [index, pageName] of pages.entries()) {
+          await fetchPageImage(index + 1, pageName);
+          // Small delay to keep the UI responsive
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
       }, 100);
 
       return () => clearTimeout(timer);
