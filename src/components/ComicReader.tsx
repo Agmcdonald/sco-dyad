@@ -32,9 +32,31 @@ interface ComicReaderProps {
   onClose: () => void;
 }
 
+const RATING_EMOJIS = {
+  0: { emoji: '🤮', label: 'Trash / Who Approved This' },
+  1: { emoji: '🤬', label: 'What a Waste of Time' },
+  2: { emoji: '😒', label: 'Nothing Special' },
+  3: { emoji: '😐', label: 'Its Fine' },
+  4: { emoji: '🙂', label: 'I Like It' },
+  5: { emoji: '😁', label: 'Great Issue' },
+  6: { emoji: '🤯', label: 'Holy Cow! My Mind is Blown!' },
+};
+
 const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
-  const { isElectron, electronAPI } = useElectron();
-  const { addToReadingList, readingList, toggleReadingItemCompleted, logAction, addToRecentlyRead } = useAppContext();
+  const { 
+    isElectron, 
+    electronAPI 
+  } = useElectron();
+  const { 
+    addToReadingList, 
+    readingList, 
+    recentlyRead,
+    toggleReadingItemCompleted, 
+    logAction, 
+    addToRecentlyRead,
+    setReadingItemRating,
+    updateRecentRating
+  } = useAppContext();
   const [pages, setPages] = useState<string[]>([]);
   const [pageImageUrls, setPageImageUrls] = useState<Record<number, string>>({});
   const [totalPages, setTotalPages] = useState(0);
@@ -51,12 +73,12 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
   const fetchedPages = useRef(new Set());
   const hasAddedToRecent = useRef(false);
 
-  // Check if comic is in reading list and if it's completed
   const readingListItem = readingList.find(item => item.comicId === comic.id);
+  const recentlyReadItem = recentlyRead.find(item => item.comicId === comic.id);
+  const rating = readingListItem?.rating ?? recentlyReadItem?.rating;
   const isInReadingList = !!readingListItem;
   const isMarkedAsRead = readingListItem?.completed || false;
 
-  // Add to recently read when comic reader opens
   useEffect(() => {
     if (!hasAddedToRecent.current) {
       addToRecentlyRead(comic);
@@ -64,7 +86,6 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
     }
   }, [comic, addToRecentlyRead]);
 
-  // Fetch page list from Electron backend
   useEffect(() => {
     const fetchPages = async () => {
       if (!canReadComic || !electronAPI) {
@@ -102,7 +123,6 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
     };
   }, [canReadComic, electronAPI, comic.filePath, isCbr]);
 
-  // Preload images for current page and nearby pages
   useEffect(() => {
     const preloadPage = async (pageNumber: number, pageName: string) => {
       if (!canReadComic || !electronAPI || !pageName || fetchedPages.current.has(pageNumber)) {
@@ -128,29 +148,13 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
     };
 
     if (pages.length > 0) {
-      // Preload current page and next few pages
-      const pagesToPreload = [];
-      
-      // Current page(s)
-      pagesToPreload.push(currentPage);
-      if (viewMode === 'double' && currentPage + 1 <= totalPages) {
-        pagesToPreload.push(currentPage + 1);
-      }
-      
-      // Next few pages for smoother navigation
+      const pagesToPreload = [currentPage];
+      if (viewMode === 'double' && currentPage + 1 <= totalPages) pagesToPreload.push(currentPage + 1);
       for (let i = 1; i <= 3; i++) {
-        const nextPage = currentPage + i;
-        if (nextPage <= totalPages) {
-          pagesToPreload.push(nextPage);
-        }
+        if (currentPage + i <= totalPages) pagesToPreload.push(currentPage + i);
       }
-      
-      // Previous page for back navigation
-      if (currentPage > 1) {
-        pagesToPreload.push(currentPage - 1);
-      }
+      if (currentPage > 1) pagesToPreload.push(currentPage - 1);
 
-      // Preload all identified pages
       pagesToPreload.forEach(pageNum => {
         if (pageNum >= 1 && pageNum <= totalPages) {
           preloadPage(pageNum, pages[pageNum - 1]);
@@ -158,45 +162,6 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
       });
     }
   }, [canReadComic, electronAPI, comic.filePath, pages, currentPage, viewMode, totalPages, isCbr, cbrTempDir]);
-
-  // Preload thumbnail images when thumbnails are shown
-  useEffect(() => {
-    if (showThumbnails && pages.length > 0) {
-      // Preload all thumbnails (but with lower priority)
-      setTimeout(() => {
-        pages.forEach((pageName, index) => {
-          const pageNumber = index + 1;
-          if (!fetchedPages.current.has(pageNumber)) {
-            // Add a small delay between thumbnail loads to not overwhelm the system
-            setTimeout(() => {
-              if (!canReadComic || !electronAPI || !pageName) return;
-              
-              fetchedPages.current.add(pageNumber);
-              
-              const loadThumbnail = async () => {
-                try {
-                  let dataUrl;
-                  if (isCbr && cbrTempDir) {
-                    dataUrl = await electronAPI.getPageDataUrlFromTemp(cbrTempDir, pageName);
-                  } else if (!isCbr) {
-                    dataUrl = await electronAPI.getComicPageDataUrl(comic.filePath!, pageName);
-                  }
-                  
-                  if (dataUrl) {
-                    setPageImageUrls(prev => ({ ...prev, [pageNumber]: dataUrl }));
-                  }
-                } catch (error) {
-                  console.error(`Failed to load thumbnail ${pageNumber}:`, error);
-                }
-              };
-              
-              loadThumbnail();
-            }, index * 50); // Faster staggered loading
-          }
-        });
-      }, 200); // Shorter wait before starting thumbnail preload
-    }
-  }, [showThumbnails, pages, canReadComic, electronAPI, comic.filePath, isCbr, cbrTempDir]);
 
   const goToPage = useCallback((page: number) => {
     const newPage = Math.max(1, Math.min(totalPages, page));
@@ -213,23 +178,29 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
 
   const handleMarkAsRead = () => {
     if (!isInReadingList) {
-      // Add to reading list first, then mark as read
       addToReadingList(comic);
-      // The reading list item will be created, so we need to wait a moment
       setTimeout(() => {
         const newItem = readingList.find(item => item.comicId === comic.id);
-        if (newItem) {
-          toggleReadingItemCompleted(newItem.id);
-        }
+        if (newItem) toggleReadingItemCompleted(newItem.id);
       }, 100);
     } else if (readingListItem) {
-      // Toggle read status
       toggleReadingItemCompleted(readingListItem.id);
     }
     
     const action = isMarkedAsRead ? 'unmarked' : 'marked';
     logAction('info', `${action} "${comic.series} #${comic.issue}" as read`);
     showSuccess(`${action === 'marked' ? 'Marked' : 'Unmarked'} as read: ${comic.series} #${comic.issue}`);
+  };
+
+  const handleRateComic = (newRating: number) => {
+    if (readingListItem) {
+      setReadingItemRating(readingListItem.id, newRating);
+      if (!readingListItem.completed) {
+        toggleReadingItemCompleted(readingListItem.id);
+      }
+    }
+    updateRecentRating(comic.id, newRating);
+    showSuccess(`Rated "${comic.series} #${comic.issue}"`);
   };
 
   useEffect(() => {
@@ -261,19 +232,15 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
       setIsFullscreen(true);
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-        setIsFullscreen(false);
-      }
+    } else if (document.exitFullscreen) {
+      document.exitFullscreen();
+      setIsFullscreen(false);
     }
   };
 
   const renderPage = (pageNumber: number) => {
     if (pageNumber < 1 || pageNumber > totalPages) return null;
-    
     const imageUrl = pageImageUrls[pageNumber];
-
     return (
       <div className="w-full h-full flex items-center justify-center">
         {!imageUrl ? (
@@ -288,6 +255,27 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
       </div>
     );
   };
+
+  const RatingSelector = ({ currentRating, onRatingChange }: any) => (
+    <div className="flex gap-1">
+      {Object.entries(RATING_EMOJIS).map(([rating, { emoji, label }]) => (
+        <Button
+          key={rating}
+          variant={currentRating === parseInt(rating) ? "default" : "ghost"}
+          size="sm"
+          className={`h-8 w-8 p-0 text-lg ${
+            currentRating === parseInt(rating) 
+              ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2" 
+              : "hover:bg-muted"
+          }`}
+          title={label}
+          onClick={() => onRatingChange(parseInt(rating))}
+        >
+          {emoji}
+        </Button>
+      ))}
+    </div>
+  );
 
   return (
     <TooltipProvider>
@@ -304,8 +292,13 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
               Back
             </Button>
             <div>
-              <h2 className="font-semibold text-sm truncate">
+              <h2 className="font-semibold text-sm truncate flex items-center">
                 {comic.series} #{comic.issue}
+                {rating !== undefined && (
+                  <span className="ml-2 text-lg" title={RATING_EMOJIS[rating as keyof typeof RATING_EMOJIS]?.label}>
+                    {RATING_EMOJIS[rating as keyof typeof RATING_EMOJIS]?.emoji}
+                  </span>
+                )}
               </h2>
             </div>
           </div>
@@ -388,7 +381,7 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
 
         <footer
           className={cn(
-            "bg-background/80 backdrop-blur-sm flex items-center justify-center gap-4 p-2 absolute bottom-0 left-0 right-0 z-20 transition-transform duration-300",
+            "bg-background/80 backdrop-blur-sm flex items-center justify-center gap-2 p-2 absolute bottom-0 left-0 right-0 z-20 transition-transform duration-300",
             !showControls && "translate-y-full",
             showThumbnails && "-translate-y-[112px]"
           )}
@@ -401,16 +394,14 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <div className="flex items-center gap-2">
-            <Slider
-              value={[currentPage]}
-              onValueChange={([value]) => goToPage(value)}
-              max={totalPages}
-              min={1}
-              step={1}
-              className="w-48"
-            />
-          </div>
+          <Slider
+            value={[currentPage]}
+            onValueChange={([value]) => goToPage(value)}
+            max={totalPages}
+            min={1}
+            step={1}
+            className="w-32"
+          />
           <Button
             variant="outline"
             size="icon"
@@ -419,6 +410,10 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
+
+          <div className="h-6 border-l mx-2" />
+          
+          <RatingSelector currentRating={rating} onRatingChange={handleRateComic} />
 
           <div className="h-6 border-l mx-2" />
 
