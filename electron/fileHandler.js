@@ -118,19 +118,30 @@ class ComicFileHandler {
     }
   }
 
-  // Get page count from comic archive
+  // Get page count from comic archive - FIXED VERSION
   async getPageCount(filePath) {
     const fileType = this.getFileType(filePath);
+    
     if (fileType === 'cbz') {
-      const zip = new StreamZip.async({ file: filePath });
+      let zip;
       try {
+        zip = new StreamZip.async({ file: filePath });
         const entries = await zip.entries();
         const imageFiles = Object.values(entries).filter(entry => 
           !entry.isDirectory && this.isImageFile(entry.name)
         );
         return imageFiles.length;
+      } catch (error) {
+        console.warn(`Could not get page count for CBZ ${filePath}:`, error.message);
+        return 0;
       } finally {
-        await zip.close();
+        if (zip) {
+          try {
+            await zip.close();
+          } catch (closeError) {
+            console.warn('Error closing zip file:', closeError.message);
+          }
+        }
       }
     } else if (fileType === 'cbr') {
       let tempDir = null;
@@ -213,9 +224,9 @@ class ComicFileHandler {
 
   // Extract cover from CBZ (ZIP) archive
   async extractCoverFromZipArchive(filePath, outputDir) {
-    const zip = new StreamZip.async({ file: filePath });
-    
+    let zip;
     try {
+      zip = new StreamZip.async({ file: filePath });
       const entries = await zip.entries();
       const imageFiles = Object.values(entries)
         .filter(entry => !entry.isDirectory && this.isImageFile(entry.name))
@@ -240,7 +251,13 @@ class ComicFileHandler {
       
       return outputPath;
     } finally {
-      await zip.close();
+      if (zip) {
+        try {
+          await zip.close();
+        } catch (closeError) {
+          console.warn('Error closing zip file:', closeError.message);
+        }
+      }
     }
   }
 
@@ -303,15 +320,22 @@ class ComicFileHandler {
     const fileType = this.getFileType(filePath);
     
     if (fileType === 'cbz') {
-      const zip = new StreamZip.async({ file: filePath });
+      let zip;
       try {
+        zip = new StreamZip.async({ file: filePath });
         const entries = await zip.entries();
         return Object.values(entries)
           .filter(entry => !entry.isDirectory && this.isImageFile(entry.name))
           .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
           .map(entry => entry.name);
       } finally {
-        await zip.close();
+        if (zip) {
+          try {
+            await zip.close();
+          } catch (closeError) {
+            console.warn('Error closing zip file:', closeError.message);
+          }
+        }
       }
     }
     
@@ -323,13 +347,20 @@ class ComicFileHandler {
     const fileType = this.getFileType(filePath);
     
     if (fileType === 'cbz') {
-      const zip = new StreamZip.async({ file: filePath });
+      let zip;
       try {
+        zip = new StreamZip.async({ file: filePath });
         const pageData = await zip.entryData(pageName);
         const mimeType = this.getMimeType(pageName);
         return `data:${mimeType};base64,${pageData.toString('base64')}`;
       } finally {
-        await zip.close();
+        if (zip) {
+          try {
+            await zip.close();
+          } catch (closeError) {
+            console.warn('Error closing zip file:', closeError.message);
+          }
+        }
       }
     }
     
