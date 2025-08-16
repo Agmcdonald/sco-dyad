@@ -31,6 +31,21 @@ export interface ReadingListItem {
   priority: 'low' | 'medium' | 'high';
   completed: boolean;
   dateAdded: Date;
+  rating?: number; // 0-6 rating system
+  dateCompleted?: Date;
+}
+
+export interface RecentlyReadComic {
+  id: string;
+  comicId: string;
+  title: string;
+  series: string;
+  issue: string;
+  publisher: string;
+  year: number;
+  coverUrl: string;
+  dateRead: Date;
+  rating?: number; // 0-6 rating system
 }
 
 export type FileStatus = "Pending" | "Success" | "Warning" | "Error";

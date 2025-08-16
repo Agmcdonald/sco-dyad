@@ -9,6 +9,7 @@ import { useActionLog } from './hooks/useActionLog';
 import { useFileQueue } from './hooks/useFileQueue';
 import { useComicLibrary } from './hooks/useComicLibrary';
 import { useReadingList } from './hooks/useReadingList';
+import { useRecentlyRead } from './hooks/useRecentlyRead';
 import { useKnowledgeBase } from './KnowledgeBaseContext';
 
 interface AppContextType {
@@ -38,6 +39,10 @@ interface AppContextType {
   removeFromReadingList: (itemId: string) => void;
   toggleReadingItemCompleted: (itemId: string) => void;
   setReadingItemPriority: (itemId: string, priority: 'low' | 'medium' | 'high') => void;
+  setReadingItemRating: (itemId: string, rating: number) => void;
+  recentlyRead: any[];
+  addToRecentlyRead: (comic: Comic, rating?: number) => void;
+  updateRecentRating: (comicId: string, rating: number) => void;
   refreshComics: () => Promise<void>;
 }
 
@@ -53,7 +58,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { actions, logAction, setActions } = useActionLog();
   const { files, setFiles, addFile, addFiles, removeFile, updateFile, addFilesFromPaths } = useFileQueue();
   const { comics, setComics, refreshComics } = useComicLibrary(logAction);
-  const { readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted, setReadingItemPriority } = useReadingList();
+  const { readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted, setReadingItemPriority, setReadingItemRating } = useReadingList();
+  const { recentlyRead, addToRecentlyRead, updateRecentRating } = useRecentlyRead();
   const { knowledgeBase, addSeries } = useKnowledgeBase();
   
   const [isProcessing, setIsProcessing] = useState(false);
@@ -303,7 +309,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       isProcessing, startProcessing: () => setIsProcessing(true), pauseProcessing: () => setIsProcessing(false),
       actions, logAction, lastUndoableAction, undoLastAction,
       addMockFiles, triggerSelectFiles, triggerScanFolder, addFilesFromDrop,
-      readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted, setReadingItemPriority,
+      readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted, setReadingItemPriority, setReadingItemRating,
+      recentlyRead, addToRecentlyRead, updateRecentRating,
       refreshComics
     }}>
       {children}

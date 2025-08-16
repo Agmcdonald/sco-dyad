@@ -34,7 +34,7 @@ interface ComicReaderProps {
 
 const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
   const { isElectron, electronAPI } = useElectron();
-  const { addToReadingList, readingList, toggleReadingItemCompleted, logAction } = useAppContext();
+  const { addToReadingList, readingList, toggleReadingItemCompleted, logAction, addToRecentlyRead } = useAppContext();
   const [pages, setPages] = useState<string[]>([]);
   const [pageImageUrls, setPageImageUrls] = useState<Record<number, string>>({});
   const [totalPages, setTotalPages] = useState(0);
@@ -49,11 +49,20 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
   const canReadComic = isElectron && !!comic.filePath;
   const isCbr = comic.filePath?.toLowerCase().endsWith('.cbr');
   const fetchedPages = useRef(new Set());
+  const hasAddedToRecent = useRef(false);
 
   // Check if comic is in reading list and if it's completed
   const readingListItem = readingList.find(item => item.comicId === comic.id);
   const isInReadingList = !!readingListItem;
   const isMarkedAsRead = readingListItem?.completed || false;
+
+  // Add to recently read when comic reader opens
+  useEffect(() => {
+    if (!hasAddedToRecent.current) {
+      addToRecentlyRead(comic);
+      hasAddedToRecent.current = true;
+    }
+  }, [comic, addToRecentlyRead]);
 
   // Fetch page list from Electron backend
   useEffect(() => {
@@ -182,10 +191,10 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
               };
               
               loadThumbnail();
-            }, index * 100); // Stagger the loads
+            }, index * 50); // Faster staggered loading
           }
         });
-      }, 500); // Wait a bit before starting thumbnail preload
+      }, 200); // Shorter wait before starting thumbnail preload
     }
   }, [showThumbnails, pages, canReadComic, electronAPI, comic.filePath, isCbr, cbrTempDir]);
 

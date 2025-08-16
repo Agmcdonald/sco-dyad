@@ -1,23 +1,50 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { BookOpen, Plus, X, Star } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BookOpen, Plus, X, Star, Clock } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import AddToReadingListModal from "./AddToReadingListModal";
+
+const RATING_EMOJIS = {
+  0: { emoji: '🤮', label: 'Trash / Who Approved This' },
+  1: { emoji: '🤬', label: 'What a Waste of Time' },
+  2: { emoji: '😒', label: 'Nothing Special' },
+  3: { emoji: '😐', label: 'Its Fine' },
+  4: { emoji: '🙂', label: 'I Like It' },
+  5: { emoji: '😁', label: 'Great Issue' },
+  6: { emoji: '🤯', label: 'Holy Cow! My Mind is Blown!' },
+};
 
 const ReadingList = () => {
   const { 
     readingList, 
     toggleReadingItemCompleted, 
     removeFromReadingList, 
-    setReadingItemPriority 
+    setReadingItemRating,
+    recentlyRead,
+    updateRecentRating
   } = useAppContext();
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("reading-list");
+
+  // Auto-show completed when a comic is marked as read
+  useEffect(() => {
+    const hasNewlyCompleted = readingList.some(item => 
+      item.completed && 
+      item.dateCompleted && 
+      new Date().getTime() - new Date(item.dateCompleted).getTime() < 5000 // Within last 5 seconds
+    );
+    
+    if (hasNewlyCompleted && !showCompleted) {
+      setShowCompleted(true);
+    }
+  }, [readingList, showCompleted]);
 
   const filteredList = readingList.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -26,16 +53,37 @@ const ReadingList = () => {
     return matchesSearch && matchesCompleted;
   });
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-green-100 text-green-800';
+  const handleRatingChange = (itemId: string, rating: number, isRecentlyRead = false) => {
+    if (isRecentlyRead) {
+      // Find the comic ID from recently read
+      const recentItem = recentlyRead.find(item => item.id === itemId);
+      if (recentItem) {
+        updateRecentRating(recentItem.comicId, rating);
+      }
+    } else {
+      setReadingItemRating(itemId, rating);
     }
   };
 
   const completedCount = readingList.filter(item => item.completed).length;
   const totalCount = readingList.length;
+
+  const RatingSelector = ({ currentRating, onRatingChange, itemId, isRecentlyRead = false }: any) => (
+    <div className="flex gap-1">
+      {Object.entries(RATING_EMOJIS).map(([rating, { emoji, label }]) => (
+        <Button
+          key={rating}
+          variant={currentRating === parseInt(rating) ? "default" : "ghost"}
+          size="sm"
+          className="h-8 w-8 p-0 text-lg"
+          title={label}
+          onClick={() => onRatingChange(itemId, parseInt(rating), isRecentlyRead)}
+        >
+          {emoji}
+        </Button>
+      ))}
+    </div>
+  );
 
   return (
     <>
@@ -46,10 +94,10 @@ const ReadingList = () => {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <BookOpen className="h-5 w-5" />
-                  Reading List
+                  Reading & Recently Read
                 </CardTitle>
                 <CardDescription>
-                  Track comics you want to read and mark your progress
+                  Track comics you want to read and rate the ones you've finished
                 </CardDescription>
               </div>
               <div className="text-right">
@@ -70,99 +118,152 @@ const ReadingList = () => {
                 <div className="text-xs text-muted-foreground">Completed</div>
               </div>
               <div className="p-3 border rounded-lg">
-                <div className="text-lg font-bold text-orange-600">{totalCount - completedCount}</div>
-                <div className="text-xs text-muted-foreground">Remaining</div>
+                <div className="text-lg font-bold text-orange-600">{recentlyRead.length}</div>
+                <div className="text-xs text-muted-foreground">Recently Read</div>
               </div>
             </div>
 
-            {/* Search and Filters */}
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <Input
-                  placeholder="Search reading list..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="show-completed"
-                  checked={showCompleted}
-                  onCheckedChange={(checked) => setShowCompleted(Boolean(checked))}
-                />
-                <label htmlFor="show-completed" className="text-sm">
-                  Show completed
-                </label>
-              </div>
-            </div>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="reading-list">Reading List</TabsTrigger>
+                <TabsTrigger value="recently-read">Recently Read</TabsTrigger>
+              </TabsList>
 
-            {/* Reading List Items */}
-            <div className="space-y-3">
-              {filteredList.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No comics in your reading list</p>
-                  <p className="text-sm">Add comics from your library to get started</p>
-                </div>
-              ) : (
-                filteredList.map((item) => (
-                  <div key={item.id} className={`flex items-center gap-4 p-4 border rounded-lg ${item.completed ? 'opacity-60' : ''}`}>
-                    <Checkbox
-                      checked={item.completed}
-                      onCheckedChange={() => toggleReadingItemCompleted(item.id)}
+              <TabsContent value="reading-list" className="space-y-4">
+                {/* Search and Filters */}
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Search reading list..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                    
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className={`font-medium ${item.completed ? 'line-through' : ''}`}>
-                          {item.title}
-                        </h4>
-                        <Badge className={getPriorityColor(item.priority)}>
-                          {item.priority}
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {item.publisher} • {item.year}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {!item.completed && (
-                        <select
-                          value={item.priority}
-                          onChange={(e) => setReadingItemPriority(item.id, e.target.value as any)}
-                          className="text-xs border rounded px-2 py-1 bg-background"
-                        >
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
-                        </select>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeFromReadingList(item.id)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
                   </div>
-                ))
-              )}
-            </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="show-completed"
+                      checked={showCompleted}
+                      onCheckedChange={(checked) => setShowCompleted(Boolean(checked))}
+                    />
+                    <label htmlFor="show-completed" className="text-sm">
+                      Show completed
+                    </label>
+                  </div>
+                </div>
 
-            {/* Quick Actions */}
-            <div className="flex gap-2 pt-4 border-t">
-              <Button variant="outline" size="sm" onClick={() => setIsModalOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add from Library
-              </Button>
-              <Button variant="outline" size="sm" disabled>
-                <Star className="h-4 w-4 mr-2" />
-                Add Wishlist Item
-              </Button>
-            </div>
+                {/* Reading List Items */}
+                <div className="space-y-3">
+                  {filteredList.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No comics in your reading list</p>
+                      <p className="text-sm">Add comics from your library to get started</p>
+                    </div>
+                  ) : (
+                    filteredList.map((item) => (
+                      <div key={item.id} className={`flex items-center gap-4 p-4 border rounded-lg ${item.completed ? 'opacity-60' : ''}`}>
+                        <Checkbox
+                          checked={item.completed}
+                          onCheckedChange={() => toggleReadingItemCompleted(item.id)}
+                        />
+                        
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className={`font-medium ${item.completed ? 'line-through' : ''}`}>
+                              {item.title}
+                            </h4>
+                            {item.completed && item.rating !== undefined && (
+                              <span className="text-lg" title={RATING_EMOJIS[item.rating as keyof typeof RATING_EMOJIS]?.label}>
+                                {RATING_EMOJIS[item.rating as keyof typeof RATING_EMOJIS]?.emoji}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {item.publisher} • {item.year}
+                          </div>
+                          {item.completed && (
+                            <div className="mt-2">
+                              <div className="text-xs text-muted-foreground mb-1">Rate this comic:</div>
+                              <RatingSelector 
+                                currentRating={item.rating} 
+                                onRatingChange={handleRatingChange}
+                                itemId={item.id}
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFromReadingList(item.id)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Quick Actions */}
+                <div className="flex gap-2 pt-4 border-t">
+                  <Button variant="outline" size="sm" onClick={() => setIsModalOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add from Library
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="recently-read" className="space-y-4">
+                <div className="space-y-3">
+                  {recentlyRead.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No recently read comics</p>
+                      <p className="text-sm">Comics you read will appear here</p>
+                    </div>
+                  ) : (
+                    recentlyRead.map((item) => (
+                      <div key={item.id} className="flex items-center gap-4 p-4 border rounded-lg">
+                        <div className="w-12 h-16 bg-muted rounded flex-shrink-0 overflow-hidden">
+                          <img 
+                            src={item.coverUrl} 
+                            alt={item.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-medium">{item.title}</h4>
+                            {item.rating !== undefined && (
+                              <span className="text-lg" title={RATING_EMOJIS[item.rating as keyof typeof RATING_EMOJIS]?.label}>
+                                {RATING_EMOJIS[item.rating as keyof typeof RATING_EMOJIS]?.emoji}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground mb-2">
+                            {item.publisher} • {item.year} • Read {item.dateRead.toLocaleDateString()}
+                          </div>
+                          <div>
+                            <div className="text-xs text-muted-foreground mb-1">Rate this comic:</div>
+                            <RatingSelector 
+                              currentRating={item.rating} 
+                              onRatingChange={handleRatingChange}
+                              itemId={item.id}
+                              isRecentlyRead={true}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>
