@@ -300,21 +300,6 @@ class ComicFileHandler {
       } finally {
         await zip.close();
       }
-    } else if (fileType === 'cbr') {
-      let tempDir = null;
-      try {
-        tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-pages-'));
-        await unrar(filePath, tempDir);
-        const allFiles = await this._walk(tempDir);
-        return allFiles
-          .filter(file => this.isImageFile(file))
-          .map(file => path.relative(tempDir, file).replace(/\\/g, '/')) // Return relative paths
-          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
-      } finally {
-        if (tempDir) {
-          await fs.rm(tempDir, { recursive: true, force: true });
-        }
-      }
     }
     
     throw new Error(`Unsupported file type for page extraction: ${fileType}`);
@@ -332,20 +317,6 @@ class ComicFileHandler {
         return `data:${mimeType};base64,${pageData.toString('base64')}`;
       } finally {
         await zip.close();
-      }
-    } else if (fileType === 'cbr') {
-      let tempDir = null;
-      try {
-        tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-page-'));
-        await unrar(filePath, tempDir);
-        const pagePath = path.join(tempDir, pageName);
-        const pageData = await fs.readFile(pagePath);
-        const mimeType = this.getMimeType(pageName);
-        return `data:${mimeType};base64,${pageData.toString('base64')}`;
-      } finally {
-        if (tempDir) {
-          await fs.rm(tempDir, { recursive: true, force: true });
-        }
       }
     }
     
@@ -368,6 +339,40 @@ class ComicFileHandler {
         return 'image/bmp';
       default:
         return 'image/jpeg';
+    }
+  }
+
+  // New methods for reliable CBR reading
+  async prepareCbrForReading(filePath) {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-reader-'));
+    try {
+        await unrar(filePath, tempDir);
+        const allFiles = await this._walk(tempDir);
+        const pages = allFiles
+            .filter(file => this.isImageFile(file))
+            .map(file => path.relative(tempDir, file).replace(/\\/g, '/'))
+            .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+        return { tempDir, pages };
+    } catch (error) {
+        await fs.rm(tempDir, { recursive: true, force: true }).catch(e => console.error(`Failed to clean up temp dir ${tempDir}`, e));
+        console.error(`Failed to prepare CBR for reading: ${filePath}`, error);
+        throw error;
+    }
+  }
+
+  async getPageDataUrlFromTemp(tempDir, pageName) {
+    const safePagePath = path.join(tempDir, pageName);
+    if (!safePagePath.startsWith(tempDir)) {
+        throw new Error('Invalid page path');
+    }
+    const pageData = await fs.readFile(safePagePath);
+    const mimeType = this.getMimeType(pageName);
+    return `data:${mimeType};base64,${pageData.toString('base64')}`;
+  }
+
+  async cleanupTempDir(tempDir) {
+    if (tempDir && tempDir.startsWith(os.tmpdir())) {
+        await fs.rm(tempDir, { recursive: true, force: true });
     }
   }
 }

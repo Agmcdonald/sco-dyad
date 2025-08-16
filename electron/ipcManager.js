@@ -78,6 +78,9 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   // Comic Reader operations
   ipcMain.handle('get-comic-pages', (event, filePath) => fileHandler.getPages(filePath));
   ipcMain.handle('get-comic-page-data-url', (event, filePath, pageName) => fileHandler.extractPageAsDataUrl(filePath, pageName));
+  ipcMain.handle('reader:prepare-cbr', (event, filePath) => fileHandler.prepareCbrForReading(filePath));
+  ipcMain.handle('reader:get-page-from-temp', (event, tempDir, pageName) => fileHandler.getPageDataUrlFromTemp(tempDir, pageName));
+  ipcMain.handle('reader:cleanup-temp-dir', (event, tempDir) => fileHandler.cleanupTempDir(tempDir));
 
   // Database operations
   ipcMain.handle('init-database', () => true);

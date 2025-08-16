@@ -34,6 +34,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Comic Reader operations
   getComicPages: (filePath) => ipcRenderer.invoke('get-comic-pages', filePath),
   getComicPageDataUrl: (filePath, pageName) => ipcRenderer.invoke('get-comic-page-data-url', filePath, pageName),
+  prepareCbrForReading: (filePath) => ipcRenderer.invoke('reader:prepare-cbr', filePath),
+  getPageDataUrlFromTemp: (tempDir, pageName) => ipcRenderer.invoke('reader:get-page-from-temp', tempDir, pageName),
+  cleanupTempDir: (tempDir) => ipcRenderer.invoke('reader:cleanup-temp-dir', tempDir),
 
   // Database operations
   initDatabase: () => ipcRenderer.invoke('init-database'),

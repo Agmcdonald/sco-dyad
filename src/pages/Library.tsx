@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Search, Grid3X3, List, ZoomIn } from "lucide-react";
+import { Search, Grid3X3, List, ZoomIn, ArrowLeft } from "lucide-react";
 import LibraryGrid from "@/components/LibraryGrid";
 import SeriesView from "@/components/SeriesView";
 import { useAppContext } from "@/context/AppContext";
@@ -26,11 +26,13 @@ const Library = () => {
   const [sortOption, setSortOption] = useState("series-asc");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [coverSize, setCoverSize] = useLocalStorage("library-cover-size", 3);
+  const [isDrilledDown, setIsDrilledDown] = useState(false);
 
   // Handle search from sidebar
   useEffect(() => {
     if (location.state?.searchTerm) {
       setSearchTerm(location.state.searchTerm);
+      setIsDrilledDown(false);
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
@@ -85,7 +87,14 @@ const Library = () => {
     if (sortOption.startsWith('series-')) {
       setSearchTerm(seriesName);
       setSortOption('issue-asc');
+      setIsDrilledDown(true);
     }
+  };
+
+  const handleBackToSeriesView = () => {
+    setSearchTerm('');
+    setSortOption('series-asc');
+    setIsDrilledDown(false);
   };
 
   return (
@@ -99,16 +108,28 @@ const Library = () => {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {isDrilledDown && (
+            <Button variant="outline" onClick={handleBackToSeriesView}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Series
+            </Button>
+          )}
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by series or publisher..."
               className="pl-8 w-full md:w-64"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setIsDrilledDown(false);
+              }}
             />
           </div>
-          <Select value={sortOption} onValueChange={setSortOption}>
+          <Select value={sortOption} onValueChange={(value) => {
+            setSortOption(value);
+            setIsDrilledDown(false);
+          }}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>

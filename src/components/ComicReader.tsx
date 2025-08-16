@@ -41,31 +41,47 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
   const [showControls, setShowControls] = useState(true);
   const [showThumbnails, setShowThumbnails] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [cbrTempDir, setCbrTempDir] = useState<string | null>(null);
   const canReadComic = isElectron && !!comic.filePath;
+  const isCbr = comic.filePath?.toLowerCase().endsWith('.cbr');
   const fetchedPages = useRef(new Set());
 
   // Fetch page list from Electron backend
   useEffect(() => {
     const fetchPages = async () => {
-      if (canReadComic && electronAPI) {
-        try {
-          setIsLoading(true);
+      if (!canReadComic || !electronAPI) {
+        setIsLoading(false);
+        setTotalPages(isElectron ? 0 : 22);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        if (isCbr) {
+          const { tempDir, pages: pageList } = await electronAPI.prepareCbrForReading(comic.filePath!);
+          setCbrTempDir(tempDir);
+          setPages(pageList);
+          setTotalPages(pageList.length);
+        } else {
           const pageList = await electronAPI.getComicPages(comic.filePath!);
           setPages(pageList);
           setTotalPages(pageList.length);
-        } catch (error) {
-          console.error("Failed to fetch comic pages:", error);
-          setTotalPages(0);
-        } finally {
-          setIsLoading(false);
         }
-      } else {
+      } catch (error) {
+        console.error("Failed to fetch comic pages:", error);
+        setTotalPages(0);
+      } finally {
         setIsLoading(false);
-        setTotalPages(22); // Default for web mode
       }
     };
     fetchPages();
-  }, [canReadComic, electronAPI, comic.filePath]);
+
+    return () => {
+      if (cbrTempDir && electronAPI) {
+        electronAPI.cleanupTempDir(cbrTempDir);
+      }
+    };
+  }, [canReadComic, electronAPI, comic.filePath, isCbr]);
 
   // Fetch image data for pages
   useEffect(() => {
@@ -76,8 +92,16 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
       fetchedPages.current.add(pageNumber);
 
       try {
-        const dataUrl = await electronAPI.getComicPageDataUrl(comic.filePath!, pageName);
-        setPageImageUrls(prev => ({ ...prev, [pageNumber]: dataUrl }));
+        let dataUrl;
+        if (isCbr && cbrTempDir) {
+          dataUrl = await electronAPI.getPageDataUrlFromTemp(cbrTempDir, pageName);
+        } else if (!isCbr) {
+          dataUrl = await electronAPI.getComicPageDataUrl(comic.filePath!, pageName);
+        }
+        
+        if (dataUrl) {
+          setPageImageUrls(prev => ({ ...prev, [pageNumber]: dataUrl }));
+        }
       } catch (error) {
         console.error(`Failed to load page ${pageNumber}:`, error);
         setPageImageUrls(prev => ({ ...prev, [pageNumber]: '/placeholder.svg' }));
@@ -85,24 +109,12 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
     };
 
     if (pages.length > 0) {
-      // Fetch current page(s) with priority
       fetchPageImage(currentPage, pages[currentPage - 1]);
       if (viewMode === 'double' && currentPage + 1 <= totalPages) {
         fetchPageImage(currentPage + 1, pages[currentPage]);
       }
-
-      // Lazily and sequentially fetch all other pages for thumbnails
-      const timer = setTimeout(async () => {
-        for (const [index, pageName] of pages.entries()) {
-          await fetchPageImage(index + 1, pageName);
-          // Small delay to keep the UI responsive
-          await new Promise(resolve => setTimeout(resolve, 10));
-        }
-      }, 100);
-
-      return () => clearTimeout(timer);
     }
-  }, [canReadComic, electronAPI, comic.filePath, pages, currentPage, viewMode, totalPages]);
+  }, [canReadComic, electronAPI, comic.filePath, pages, currentPage, viewMode, totalPages, isCbr, cbrTempDir]);
 
   const goToPage = useCallback((page: number) => {
     const newPage = Math.max(1, Math.min(totalPages, page));
