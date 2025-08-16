@@ -206,7 +206,7 @@ class ComicFileHandler {
       const entries = await zip.entries();
       const imageFiles = Object.values(entries)
         .filter(entry => !entry.isDirectory && this.isImageFile(entry.name))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
       if (imageFiles.length === 0) {
         throw new Error('No images found in CBZ archive');
@@ -241,7 +241,7 @@ class ComicFileHandler {
       const allFiles = await this._walk(tempDir);
       const imageFiles = allFiles
         .filter(file => this.isImageFile(file))
-        .sort((a, b) => a.localeCompare(b));
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
       if (imageFiles.length === 0) {
         throw new Error('No images found in CBR archive');
@@ -295,7 +295,7 @@ class ComicFileHandler {
         const entries = await zip.entries();
         return Object.values(entries)
           .filter(entry => !entry.isDirectory && this.isImageFile(entry.name))
-          .sort((a, b) => a.name.localeCompare(b.name))
+          .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
           .map(entry => entry.name);
       } finally {
         await zip.close();
@@ -309,7 +309,7 @@ class ComicFileHandler {
         return allFiles
           .filter(file => this.isImageFile(file))
           .map(file => path.relative(tempDir, file).replace(/\\/g, '/')) // Return relative paths
-          .sort((a, b) => a.localeCompare(b));
+          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
       } finally {
         if (tempDir) {
           await fs.rm(tempDir, { recursive: true, force: true });

@@ -21,7 +21,7 @@ interface AppContextType {
   comics: Comic[];
   addComic: (comicData: NewComic, originalFile: QueuedFile) => Promise<void>;
   updateComic: (comic: Comic) => Promise<void>;
-  removeComic: (id: string) => Promise<void>;
+  removeComic: (id: string, deleteFile?: boolean) => Promise<void>;
   isProcessing: boolean;
   startProcessing: () => void;
   pauseProcessing: () => void;
@@ -181,21 +181,29 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     logAction('info', `Updated metadata for '${updatedComic.series} #${updatedComic.issue}'`);
   }, [databaseService, logAction, refreshComics, setComics]);
 
-  const removeComic = useCallback(async (id: string) => {
+  const removeComic = useCallback(async (id: string, deleteFile: boolean = false) => {
     const comicToRemove = comics.find(c => c.id === id);
-    if (comicToRemove) {
-      if (databaseService) {
-        try {
-          await databaseService.deleteComic(id);
-          await refreshComics();
-        } catch (error) {
-          console.error('Error deleting comic from database:', error);
-        }
+    if (!comicToRemove) return;
+
+    if (isElectron && electronAPI) {
+      try {
+        const filePath = deleteFile ? comicToRemove.filePath : undefined;
+        await electronAPI.deleteComic(id, filePath);
+        await refreshComics();
+        const message = deleteFile ? `Permanently deleted '${comicToRemove.series} #${comicToRemove.issue}'` : `Removed '${comicToRemove.series} #${comicToRemove.issue}' from library`;
+        logAction('info', message);
+        showSuccess(message);
+      } catch (error) {
+        console.error('Error deleting comic:', error);
+        showError("Failed to delete comic.");
       }
-      logAction('info', `Removed comic: '${comicToRemove.series} #${comicToRemove.issue}'`);
+    } else {
+      // Web mode logic
+      setComics(prev => prev.filter(c => c.id !== id));
+      logAction('info', `(Web Mode) Removed comic: '${comicToRemove.series} #${comicToRemove.issue}'`);
       showSuccess("Comic removed from library");
     }
-  }, [comics, databaseService, logAction, refreshComics]);
+  }, [comics, isElectron, electronAPI, logAction, refreshComics, setComics]);
 
   const skipFile = useCallback((file: QueuedFile) => {
     removeFile(file.id);

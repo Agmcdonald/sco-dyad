@@ -83,7 +83,19 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('init-database', () => true);
   ipcMain.handle('get-comics', () => database.getComics());
   ipcMain.handle('update-comic', (event, comic) => database.updateComic(comic));
-  ipcMain.handle('delete-comic', (event, comicId) => database.deleteComic(comicId));
+  
+  ipcMain.handle('delete-comic', async (event, comicId, filePath) => {
+    if (filePath) {
+      try {
+        await fs.unlink(filePath);
+      } catch (error) {
+        console.error(`Failed to delete file: ${filePath}`, error);
+        // We can decide whether to stop or continue. Let's continue and just remove from DB.
+        // throw new Error(`Failed to delete file: ${error.message}`);
+      }
+    }
+    return database.deleteComic(comicId);
+  });
 
   ipcMain.handle('save-comic', async (event, comic) => {
     if (!comic.id) {
