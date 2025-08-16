@@ -20,6 +20,16 @@ import { useAppContext } from "@/context/AppContext";
 import { useSelection } from "@/context/SelectionContext";
 import { useElectron } from "@/hooks/useElectron";
 
+const RATING_EMOJIS = {
+  0: { emoji: '🤮', label: 'Trash / Who Approved This' },
+  1: { emoji: '🤬', label: 'What a Waste of Time' },
+  2: { emoji: '😒', label: 'Nothing Special' },
+  3: { emoji: '😐', label: 'Its Fine' },
+  4: { emoji: '🙂', label: 'I Like It' },
+  5: { emoji: '😁', label: 'Great Issue' },
+  6: { emoji: '🤯', label: 'Holy Cow! My Mind is Blown!' },
+};
+
 interface ComicInspectorProps {
   comic: Comic;
 }
@@ -27,11 +37,16 @@ interface ComicInspectorProps {
 const ComicInspector = ({ comic }: ComicInspectorProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReaderOpen, setIsReaderOpen] = useState(false);
-  const { readingList, addToReadingList, removeComic } = useAppContext();
+  const { readingList, addToReadingList, removeComic, recentlyRead } = useAppContext();
   const { setSelectedItem } = useSelection();
   const { isElectron } = useElectron();
 
   const isInReadingList = readingList.some(item => item.comicId === comic.id);
+
+  // Get rating from reading list or recently read
+  const readingListItem = readingList.find(item => item.comicId === comic.id);
+  const recentlyReadItem = recentlyRead.find(item => item.comicId === comic.id);
+  const rating = readingListItem?.rating ?? recentlyReadItem?.rating;
 
   const handleRemoveFromLibrary = () => {
     removeComic(comic.id, false);
@@ -47,7 +62,14 @@ const ComicInspector = ({ comic }: ComicInspectorProps) => {
     <>
       <div className="flex flex-col h-full bg-background border-l">
         <div className="p-4 border-b">
-          <h3 className="font-semibold truncate">{comic.series} #{comic.issue}</h3>
+          <h3 className="font-semibold truncate">
+            {comic.series} #{comic.issue}
+            {rating !== undefined && (
+              <span className="ml-3 text-lg" title={RATING_EMOJIS[rating as keyof typeof RATING_EMOJIS]?.label}>
+                {RATING_EMOJIS[rating as keyof typeof RATING_EMOJIS]?.emoji}
+              </span>
+            )}
+          </h3>
           <p className="text-sm text-muted-foreground">{comic.year}</p>
         </div>
         <div className="flex-1 p-4 space-y-4 overflow-y-auto">
