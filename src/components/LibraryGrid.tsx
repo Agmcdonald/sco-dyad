@@ -4,9 +4,10 @@ import { Comic } from "@/types";
 interface LibraryGridProps {
   comics: Comic[];
   coverSize: number;
+  onSeriesDoubleClick?: (seriesName: string) => void;
 }
 
-const LibraryGrid = ({ comics, coverSize }: LibraryGridProps) => {
+const LibraryGrid = ({ comics, coverSize, onSeriesDoubleClick }: LibraryGridProps) => {
   if (comics.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center rounded-lg border-2 border-dashed border-muted-foreground/50 p-12">
@@ -31,7 +32,11 @@ const LibraryGrid = ({ comics, coverSize }: LibraryGridProps) => {
   return (
     <div className={`grid ${gridClass} gap-4`}>
       {comics.map((comic) => (
-        <ComicCard key={comic.id} comic={comic} />
+        <ComicCard 
+          key={comic.id} 
+          comic={comic} 
+          onDoubleClick={onSeriesDoubleClick}
+        />
       ))}
     </div>
   );

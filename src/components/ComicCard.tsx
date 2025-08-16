@@ -7,9 +7,10 @@ import { useState } from "react";
 
 interface ComicCardProps {
   comic: Comic;
+  onDoubleClick?: (seriesName: string) => void;
 }
 
-const ComicCard = ({ comic }: ComicCardProps) => {
+const ComicCard = ({ comic, onDoubleClick }: ComicCardProps) => {
   const { selectedItem, setSelectedItem } = useSelection();
   const [imageError, setImageError] = useState(false);
 
@@ -20,6 +21,12 @@ const ComicCard = ({ comic }: ComicCardProps) => {
       setSelectedItem(null); // Allow deselecting
     } else {
       setSelectedItem({ ...comic, type: 'comic' });
+    }
+  };
+
+  const handleDoubleClick = () => {
+    if (onDoubleClick) {
+      onDoubleClick(comic.series);
     }
   };
 
@@ -39,6 +46,7 @@ const ComicCard = ({ comic }: ComicCardProps) => {
         isSelected && "ring-2 ring-primary shadow-lg scale-105"
       )}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
     >
       <AspectRatio ratio={2 / 3}>
         {!imageError ? (
