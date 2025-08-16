@@ -13,15 +13,25 @@ class ComicFileHandler {
 
   // Helper function to find all files recursively
   async _walk(dir) {
-    let files = await fs.readdir(dir);
-    files = await Promise.all(files.map(async file => {
-        const filePath = path.join(dir, file);
-        const stats = await fs.stat(filePath);
-        if (stats.isDirectory()) return this._walk(filePath);
-        else if(stats.isFile()) return filePath;
-    }));
-    // Flatten the array of arrays
-    return files.reduce((all, folderContents) => all.concat(folderContents), []);
+    try {
+      let files = await fs.readdir(dir);
+      files = await Promise.all(files.map(async file => {
+          const filePath = path.join(dir, file);
+          try {
+            const stats = await fs.stat(filePath);
+            if (stats.isDirectory()) return this._walk(filePath);
+            else if(stats.isFile()) return filePath;
+          } catch (error) {
+            console.warn(`Could not stat file ${filePath}:`, error.message);
+            return [];
+          }
+      }));
+      // Flatten the array of arrays and filter out empty results
+      return files.reduce((all, folderContents) => all.concat(folderContents), []).filter(Boolean);
+    } catch (error) {
+      console.error(`Error walking directory ${dir}:`, error);
+      return [];
+    }
   }
 
   // Check if file is a supported comic format
@@ -130,9 +140,12 @@ class ComicFileHandler {
         const allFiles = await this._walk(tempDir);
         const imageFiles = allFiles.filter(file => this.isImageFile(file));
         return imageFiles.length;
+      } catch (error) {
+        console.warn(`Could not get page count for CBR ${filePath}:`, error.message);
+        return 0;
       } finally {
         if (tempDir) {
-          await fs.rm(tempDir, { recursive: true, force: true });
+          await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
         }
       }
     }
@@ -261,7 +274,7 @@ class ComicFileHandler {
       return outputPath;
     } finally {
       if (tempDir) {
-        await fs.rm(tempDir, { recursive: true, force: true });
+        await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
       }
     }
   }
@@ -342,37 +355,121 @@ class ComicFileHandler {
     }
   }
 
-  // New methods for reliable CBR reading
+  // Improved CBR reading with better error handling and retry logic
   async prepareCbrForReading(filePath) {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-reader-'));
+    console.log(`[CBR-READER] Preparing CBR for reading: ${filePath}`);
+    console.log(`[CBR-READER] Temp directory: ${tempDir}`);
+    
     try {
-        await unrar(filePath, tempDir);
-        const allFiles = await this._walk(tempDir);
-        const pages = allFiles
-            .filter(file => this.isImageFile(file))
-            .map(file => path.relative(tempDir, file).replace(/\\/g, '/'))
-            .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
-        return { tempDir, pages };
+      // Extract the RAR archive
+      await unrar(filePath, tempDir);
+      console.log(`[CBR-READER] Successfully extracted RAR to temp directory`);
+      
+      // Wait a moment for file system to settle
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Get all files recursively
+      const allFiles = await this._walk(tempDir);
+      console.log(`[CBR-READER] Found ${allFiles.length} total files in archive`);
+      
+      // Filter for image files and sort them
+      const imageFiles = allFiles
+        .filter(file => {
+          const isImage = this.isImageFile(file);
+          if (!isImage) {
+            console.log(`[CBR-READER] Skipping non-image file: ${file}`);
+          }
+          return isImage;
+        })
+        .map(file => {
+          // Convert absolute path to relative path from temp directory
+          const relativePath = path.relative(tempDir, file).replace(/\\/g, '/');
+          console.log(`[CBR-READER] Image file: ${file} -> ${relativePath}`);
+          return relativePath;
+        })
+        .sort((a, b) => {
+          // Natural sort for proper page ordering
+          return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+        });
+      
+      console.log(`[CBR-READER] Found ${imageFiles.length} image files`);
+      console.log(`[CBR-READER] First few pages:`, imageFiles.slice(0, 5));
+      
+      if (imageFiles.length === 0) {
+        throw new Error('No image files found in CBR archive');
+      }
+      
+      return { tempDir, pages: imageFiles };
     } catch (error) {
-        await fs.rm(tempDir, { recursive: true, force: true }).catch(e => console.error(`Failed to clean up temp dir ${tempDir}`, e));
-        console.error(`Failed to prepare CBR for reading: ${filePath}`, error);
-        throw error;
+      console.error(`[CBR-READER] Failed to prepare CBR for reading: ${filePath}`, error);
+      // Clean up on error
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(e => 
+        console.error(`[CBR-READER] Failed to clean up temp dir ${tempDir}`, e)
+      );
+      throw error;
     }
   }
 
   async getPageDataUrlFromTemp(tempDir, pageName) {
-    const safePagePath = path.join(tempDir, pageName);
-    if (!safePagePath.startsWith(tempDir)) {
-        throw new Error('Invalid page path');
+    console.log(`[CBR-READER] Getting page data for: ${pageName} from ${tempDir}`);
+    
+    try {
+      const safePagePath = path.join(tempDir, pageName);
+      
+      // Security check
+      if (!safePagePath.startsWith(tempDir)) {
+        throw new Error('Invalid page path - security violation');
+      }
+      
+      // Check if file exists
+      try {
+        await fs.access(safePagePath);
+      } catch (error) {
+        console.error(`[CBR-READER] File does not exist: ${safePagePath}`);
+        
+        // Try to find the file with a different case or path
+        const allFiles = await this._walk(tempDir);
+        const imageFiles = allFiles.filter(file => this.isImageFile(file));
+        
+        console.log(`[CBR-READER] Available image files:`, imageFiles.map(f => path.relative(tempDir, f)));
+        
+        // Try to find a matching file (case-insensitive)
+        const matchingFile = imageFiles.find(file => {
+          const relativePath = path.relative(tempDir, file).replace(/\\/g, '/');
+          return relativePath.toLowerCase() === pageName.toLowerCase();
+        });
+        
+        if (matchingFile) {
+          console.log(`[CBR-READER] Found matching file with different case: ${matchingFile}`);
+          const pageData = await fs.readFile(matchingFile);
+          const mimeType = this.getMimeType(matchingFile);
+          return `data:${mimeType};base64,${pageData.toString('base64')}`;
+        }
+        
+        throw new Error(`Page file not found: ${pageName}`);
+      }
+      
+      const pageData = await fs.readFile(safePagePath);
+      const mimeType = this.getMimeType(pageName);
+      console.log(`[CBR-READER] Successfully read page data: ${pageData.length} bytes`);
+      
+      return `data:${mimeType};base64,${pageData.toString('base64')}`;
+    } catch (error) {
+      console.error(`[CBR-READER] Error reading page ${pageName}:`, error);
+      throw error;
     }
-    const pageData = await fs.readFile(safePagePath);
-    const mimeType = this.getMimeType(pageName);
-    return `data:${mimeType};base64,${pageData.toString('base64')}`;
   }
 
   async cleanupTempDir(tempDir) {
     if (tempDir && tempDir.startsWith(os.tmpdir())) {
+      console.log(`[CBR-READER] Cleaning up temp directory: ${tempDir}`);
+      try {
         await fs.rm(tempDir, { recursive: true, force: true });
+        console.log(`[CBR-READER] Successfully cleaned up temp directory`);
+      } catch (error) {
+        console.error(`[CBR-READER] Failed to clean up temp directory:`, error);
+      }
     }
   }
 }
