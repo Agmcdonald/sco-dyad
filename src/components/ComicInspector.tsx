@@ -2,10 +2,23 @@ import { useState } from "react";
 import { Comic } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Tag, BookOpen, PlusCircle, Users } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Tag, BookOpen, PlusCircle, Users, Trash2 } from "lucide-react";
 import EditComicModal from "./EditComicModal";
 import ComicReader from "./ComicReader";
 import { useAppContext } from "@/context/AppContext";
+import { useSelection } from "@/context/SelectionContext";
+import { useElectron } from "@/hooks/useElectron";
 
 interface ComicInspectorProps {
   comic: Comic;
@@ -14,9 +27,21 @@ interface ComicInspectorProps {
 const ComicInspector = ({ comic }: ComicInspectorProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReaderOpen, setIsReaderOpen] = useState(false);
-  const { readingList, addToReadingList } = useAppContext();
+  const { readingList, addToReadingList, removeComic } = useAppContext();
+  const { setSelectedItem } = useSelection();
+  const { isElectron } = useElectron();
 
   const isInReadingList = readingList.some(item => item.comicId === comic.id);
+
+  const handleRemoveFromLibrary = () => {
+    removeComic(comic.id, false);
+    setSelectedItem(null);
+  };
+
+  const handleDeletePermanently = () => {
+    removeComic(comic.id, true);
+    setSelectedItem(null);
+  };
 
   return (
     <>
@@ -82,9 +107,40 @@ const ComicInspector = ({ comic }: ComicInspectorProps) => {
             <PlusCircle className="mr-2 h-4 w-4" /> 
             {isInReadingList ? 'In Reading List' : 'Add to Reading List'}
           </Button>
-          <Button className="w-full" variant="outline" onClick={() => setIsModalOpen(true)}>
-            <Tag className="mr-2 h-4 w-4" /> Edit Metadata
-          </Button>
+          <div className="flex gap-2">
+            <Button className="w-full" variant="outline" onClick={() => setIsModalOpen(true)}>
+              <Tag className="mr-2 h-4 w-4" /> Edit Metadata
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="w-full">
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete "{comic.series} #{comic.issue}"?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. Choose whether to remove the comic from your library or permanently delete the file from your computer.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="gap-2">
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleRemoveFromLibrary}>
+                    Remove from Library
+                  </AlertDialogAction>
+                  {isElectron && comic.filePath && (
+                    <AlertDialogAction
+                      onClick={handleDeletePermanently}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Delete File Permanently
+                    </AlertDialogAction>
+                  )}
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       </div>
       

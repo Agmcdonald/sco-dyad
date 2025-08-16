@@ -40,7 +40,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveComic: (comic) => ipcRenderer.invoke('save-comic', comic),
   getComics: () => ipcRenderer.invoke('get-comics'),
   updateComic: (comic) => ipcRenderer.invoke('update-comic', comic),
-  deleteComic: (comicId) => ipcRenderer.invoke('delete-comic', comicId),
+  deleteComic: (comicId, filePath) => ipcRenderer.invoke('delete-comic', comicId, filePath),
   
   // Settings
   getSettings: () => ipcRenderer.invoke('get-settings'),
