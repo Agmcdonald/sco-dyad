@@ -230,9 +230,11 @@ const KnowledgeBaseManager = () => {
                 onChange={(e) => setSelectedPublisher(e.target.value)}
               >
                 <option value="">All Publishers</option>
-                {stats.publisherStats.map(pub => (
-                  <option key={pub.name} value={pub.name}>{pub.name}</option>
-                ))}
+                {stats.publisherStats
+                  .sort((a, b) => a.name.localeCompare(b.name)) // Sort alphabetically
+                  .map(pub => (
+                    <option key={pub.name} value={pub.name}>{pub.name}</option>
+                  ))}
               </select>
             </div>
 
