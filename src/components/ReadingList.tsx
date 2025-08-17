@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +16,8 @@ const ReadingList = () => {
     toggleReadingItemCompleted, 
     removeFromReadingList, 
     recentlyRead,
-    updateComicRating
+    updateComicRating,
+    comics // Add comics to get current ratings
   } = useAppContext();
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -42,6 +43,28 @@ const ReadingList = () => {
     const matchesCompleted = showCompleted || !item.completed;
     return matchesSearch && matchesCompleted;
   });
+
+  // Enhanced reading list with current comic ratings
+  const enhancedReadingList = useMemo(() => {
+    return filteredList.map(item => {
+      const comic = comics.find(c => c.id === item.comicId);
+      return {
+        ...item,
+        currentRating: comic?.rating // Get current rating from comic
+      };
+    });
+  }, [filteredList, comics]);
+
+  // Enhanced recently read with current comic ratings
+  const enhancedRecentlyRead = useMemo(() => {
+    return recentlyRead.map(item => {
+      const comic = comics.find(c => c.id === item.comicId);
+      return {
+        ...item,
+        currentRating: comic?.rating // Get current rating from comic
+      };
+    });
+  }, [recentlyRead, comics]);
 
   const handleRatingChange = async (itemId: string, rating: number, isRecentlyRead = false) => {
     console.log(`[READING-LIST] Rating change for item ${itemId}: ${rating}`);
@@ -124,14 +147,14 @@ const ReadingList = () => {
 
                 {/* Reading List Items */}
                 <div className="space-y-3">
-                  {filteredList.length === 0 ? (
+                  {enhancedReadingList.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p>No comics in your reading list</p>
                       <p className="text-sm">Add comics from your library to get started</p>
                     </div>
                   ) : (
-                    filteredList.map((item) => (
+                    enhancedReadingList.map((item) => (
                       <div key={item.id} className={`flex items-center gap-4 p-4 border rounded-lg ${item.completed ? 'opacity-60' : ''}`}>
                         <Checkbox
                           checked={item.completed}
@@ -142,9 +165,9 @@ const ReadingList = () => {
                           <div className="flex items-center gap-2 mb-1">
                             <h4 className={`font-medium ${item.completed ? 'line-through' : ''}`}>
                               {item.title}
-                              {item.rating !== undefined && (
-                                <span className="ml-3 text-lg" title={RATING_EMOJIS[item.rating as keyof typeof RATING_EMOJIS]?.label}>
-                                  {RATING_EMOJIS[item.rating as keyof typeof RATING_EMOJIS]?.emoji}
+                              {item.currentRating !== undefined && (
+                                <span className="ml-3 text-lg" title={RATING_EMOJIS[item.currentRating as keyof typeof RATING_EMOJIS]?.label}>
+                                  {RATING_EMOJIS[item.currentRating as keyof typeof RATING_EMOJIS]?.emoji}
                                 </span>
                               )}
                             </h4>
@@ -156,7 +179,7 @@ const ReadingList = () => {
                             <div className="mt-3">
                               <div className="text-xs text-muted-foreground mb-2">Rate this comic:</div>
                               <RatingSelector 
-                                currentRating={item.rating} 
+                                currentRating={item.currentRating} 
                                 onRatingChange={(rating) => handleRatingChange(item.id, rating, false)}
                                 size="sm"
                               />
@@ -190,14 +213,14 @@ const ReadingList = () => {
 
               <TabsContent value="recently-read" className="space-y-4">
                 <div className="space-y-3">
-                  {recentlyRead.length === 0 ? (
+                  {enhancedRecentlyRead.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p>No recently read comics</p>
                       <p className="text-sm">Comics you read will appear here</p>
                     </div>
                   ) : (
-                    recentlyRead.map((item) => (
+                    enhancedRecentlyRead.map((item) => (
                       <div key={item.id} className="flex items-center gap-4 p-4 border rounded-lg">
                         <div className="w-12 h-16 bg-muted rounded flex-shrink-0 overflow-hidden">
                           <img 
@@ -211,9 +234,9 @@ const ReadingList = () => {
                           <div className="flex items-center gap-2 mb-1">
                             <h4 className="font-medium">
                               {item.title}
-                              {item.rating !== undefined && (
-                                <span className="ml-3 text-lg" title={RATING_EMOJIS[item.rating as keyof typeof RATING_EMOJIS]?.label}>
-                                  {RATING_EMOJIS[item.rating as keyof typeof RATING_EMOJIS]?.emoji}
+                              {item.currentRating !== undefined && (
+                                <span className="ml-3 text-lg" title={RATING_EMOJIS[item.currentRating as keyof typeof RATING_EMOJIS]?.label}>
+                                  {RATING_EMOJIS[item.currentRating as keyof typeof RATING_EMOJIS]?.emoji}
                                 </span>
                               )}
                             </h4>
@@ -224,7 +247,7 @@ const ReadingList = () => {
                           <div>
                             <div className="text-xs text-muted-foreground mb-2">Rate this comic:</div>
                             <RatingSelector 
-                              currentRating={item.rating} 
+                              currentRating={item.currentRating} 
                               onRatingChange={(rating) => handleRatingChange(item.id, rating, true)}
                               size="sm"
                             />
