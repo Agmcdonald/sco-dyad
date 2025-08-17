@@ -48,11 +48,11 @@ const ReadingList = () => {
     return matchesSearch && matchesCompleted;
   });
 
-  const handleRatingChange = (itemId: string, rating: number, isRecentlyRead = false) => {
+  const handleRatingChange = async (itemId: string, rating: number, isRecentlyRead = false) => {
     const list = isRecentlyRead ? recentlyRead : readingList;
     const item = list.find((i: any) => i.id === itemId);
     if (item) {
-      updateComicRating(item.comicId, rating);
+      await updateComicRating(item.comicId, rating);
     }
   };
 
@@ -62,31 +62,37 @@ const ReadingList = () => {
   const RatingSelector = ({ currentRating, onRatingChange, itemId, isRecentlyRead = false }: any) => (
     <TooltipProvider>
       <div className="flex gap-1">
-        {Object.entries(RATING_EMOJIS).map(([rating, { emoji, label }]) => (
-          <Tooltip key={rating}>
-            <TooltipTrigger asChild>
-              <Button
-                variant={currentRating === parseInt(rating) ? "default" : "ghost"}
-                size="sm"
-                className={`h-8 w-8 p-0 text-lg transition-all ${
-                  currentRating === parseInt(rating) 
-                    ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 scale-110" 
-                    : "hover:bg-muted hover:scale-105"
-                }`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onRatingChange(itemId, parseInt(rating), isRecentlyRead);
-                }}
-              >
-                {emoji}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{label}</p>
-            </TooltipContent>
-          </Tooltip>
-        ))}
+        {Object.entries(RATING_EMOJIS).map(([rating, { emoji, label }]) => {
+          const ratingNum = parseInt(rating);
+          const isSelected = currentRating === ratingNum;
+          
+          return (
+            <Tooltip key={rating}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-8 w-8 p-0 text-lg transition-all hover:scale-105 ${
+                    isSelected 
+                      ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 scale-110 shadow-lg" 
+                      : "hover:bg-muted"
+                  }`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log(`Clicked rating: ${ratingNum}`);
+                    onRatingChange(itemId, ratingNum, isRecentlyRead);
+                  }}
+                >
+                  {emoji}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{label}</p>
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
       </div>
     </TooltipProvider>
   );

@@ -248,40 +248,42 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
   };
 
   const RatingSelector = ({ currentRating, onRatingChange }: any) => (
-    <div className="flex gap-1">
-      {Object.entries(RATING_EMOJIS).map(([ratingValue, { emoji, label }]) => {
-        const ratingNum = parseInt(ratingValue);
-        const isSelected = currentRating === ratingNum;
-        
-        return (
-          <Tooltip key={ratingValue}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "h-8 w-8 p-0 text-lg transition-all hover:scale-105",
-                  isSelected 
-                    ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 scale-110 shadow-lg" 
-                    : "hover:bg-muted"
-                )}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log(`Clicked rating: ${ratingNum}`);
-                  onRatingChange(ratingNum);
-                }}
-              >
-                {emoji}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{label}</p>
-            </TooltipContent>
-          </Tooltip>
-        );
-      })}
-    </div>
+    <TooltipProvider>
+      <div className="flex gap-1">
+        {Object.entries(RATING_EMOJIS).map(([ratingValue, { emoji, label }]) => {
+          const ratingNum = parseInt(ratingValue);
+          const isSelected = currentRating === ratingNum;
+          
+          return (
+            <Tooltip key={ratingValue}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-8 w-8 p-0 text-lg transition-all hover:scale-105",
+                    isSelected 
+                      ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 scale-110 shadow-lg" 
+                      : "hover:bg-muted"
+                  )}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log(`Clicked rating: ${ratingNum}`);
+                    onRatingChange(ratingNum);
+                  }}
+                >
+                  {emoji}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{label}</p>
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </div>
+    </TooltipProvider>
   );
 
   return (
