@@ -42,20 +42,20 @@ const RatingSelector = ({
             <TooltipTrigger asChild>
               <Button
                 type="button"
-                variant={isSelected ? "default" : "ghost"}
                 size="sm"
                 className={cn(
                   sizeClasses[size],
-                  "p-0 transition-all duration-200 hover:scale-110",
-                  isSelected && [
-                    "bg-primary text-primary-foreground",
-                    "ring-2 ring-primary ring-offset-2",
-                    "scale-110 shadow-lg"
-                  ],
-                  !isSelected && "hover:bg-muted hover:text-foreground"
+                  "p-0 transition-all duration-200 hover:scale-110 border-2",
+                  isSelected ? [
+                    "bg-primary text-primary-foreground border-primary",
+                    "ring-2 ring-primary ring-offset-1",
+                    "scale-110 shadow-md"
+                  ] : [
+                    "bg-background hover:bg-muted text-foreground",
+                    "border-border hover:border-muted-foreground"
+                  ]
                 )}
                 onClick={() => handleRatingClick(ratingNum)}
-                onMouseEnter={() => console.log(`[RATING-SELECTOR] Hover: ${label}`)}
               >
                 {emoji}
               </Button>

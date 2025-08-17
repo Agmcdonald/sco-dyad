@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { QueuedFile, Comic, NewComic, UndoPayload, ComicKnowledge } from '@/types';
 import { useElectronDatabaseService } from '@/services/electronDatabaseService';
 import { useElectron } from '@/hooks/useElectron';
@@ -66,15 +66,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     removeFromReadingList, 
     toggleReadingItemCompleted, 
     setReadingItemPriority, 
-    setReadingItemRating,
-    syncReadingListWithComics
+    setReadingItemRating
   } = useReadingList();
   const { 
     recentlyRead, 
     setRecentlyRead, 
     addToRecentlyRead, 
-    updateRecentRating,
-    syncRecentlyReadWithComics
+    updateRecentRating
   } = useRecentlyRead();
   const { knowledgeBase, addSeries } = useKnowledgeBase();
   
@@ -83,12 +81,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
 
-  // Sync ratings across all components when comics change
-  useEffect(() => {
-    console.log('[APP-CONTEXT] Comics updated, syncing ratings across components');
-    syncReadingListWithComics(comics);
-    syncRecentlyReadWithComics(comics);
-  }, [comics, syncReadingListWithComics, syncRecentlyReadWithComics]);
+  // REMOVED: The problematic useEffect that was causing the infinite loop
 
   const learnNewSeries = useCallback(async (comicData: NewComic) => {
     const seriesExists = knowledgeBase.some(kb => kb.series.toLowerCase() === comicData.series.toLowerCase());
@@ -224,14 +217,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const updatedComic = { ...comicToUpdate, rating };
     console.log('[APP-CONTEXT] Updating comic with new rating:', updatedComic);
     
+    // Update the comic first
     await updateComic(updatedComic);
 
-    // Update reading list items
+    // Then manually update reading list and recently read items to avoid circular dependencies
     setReadingList(prev => prev.map(item => 
       item.comicId === comicId ? { ...item, rating } : item
     ));
     
-    // Update recently read items
     setRecentlyRead(prev => prev.map(item => 
       item.comicId === comicId ? { ...item, rating } : item
     ));
