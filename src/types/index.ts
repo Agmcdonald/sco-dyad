@@ -11,6 +11,7 @@ export interface NewComic {
   volume: string;
   summary?: string;
   creators?: Creator[];
+  rating?: number;
 }
 
 export interface Comic extends NewComic {

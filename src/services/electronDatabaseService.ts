@@ -6,6 +6,7 @@ export interface DatabaseComic extends Omit<Comic, 'dateAdded'> {
   fileSize: number;
   dateAdded: string;
   lastModified: string;
+  rating?: number;
 }
 
 export class ElectronDatabaseService {

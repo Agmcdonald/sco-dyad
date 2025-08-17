@@ -43,6 +43,7 @@ interface AppContextType {
   recentlyRead: any[];
   addToRecentlyRead: (comic: Comic, rating?: number) => void;
   updateRecentRating: (comicId: string, rating: number) => void;
+  updateComicRating: (comicId: string, rating: number) => Promise<void>;
   refreshComics: () => Promise<void>;
 }
 
@@ -58,8 +59,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { actions, logAction, setActions } = useActionLog();
   const { files, setFiles, addFile, addFiles, removeFile, updateFile, addFilesFromPaths } = useFileQueue();
   const { comics, setComics, refreshComics } = useComicLibrary(logAction);
-  const { readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted, setReadingItemPriority, setReadingItemRating } = useReadingList();
-  const { recentlyRead, addToRecentlyRead, updateRecentRating } = useRecentlyRead();
+  const { readingList, setReadingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted, setReadingItemPriority, setReadingItemRating } = useReadingList();
+  const { recentlyRead, setRecentlyRead, addToRecentlyRead, updateRecentRating } = useRecentlyRead();
   const { knowledgeBase, addSeries } = useKnowledgeBase();
   
   const [isProcessing, setIsProcessing] = useState(false);
@@ -187,6 +188,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     logAction('info', `Updated metadata for '${updatedComic.series} #${updatedComic.issue}'`);
   }, [databaseService, logAction, refreshComics, setComics]);
 
+  const updateComicRating = async (comicId: string, rating: number) => {
+    const comicToUpdate = comics.find(c => c.id === comicId);
+    if (!comicToUpdate) return;
+
+    const updatedComic = { ...comicToUpdate, rating };
+    
+    await updateComic(updatedComic);
+
+    setReadingList(prev => prev.map(item => 
+      item.comicId === comicId ? { ...item, rating } : item
+    ));
+    setRecentlyRead(prev => prev.map(item => 
+      item.comicId === comicId ? { ...item, rating } : item
+    ));
+    
+    showSuccess(`Rated "${updatedComic.series} #${updatedComic.issue}"`);
+  };
+
   const removeComic = useCallback(async (id: string, deleteFile: boolean = false) => {
     const comicToRemove = comics.find(c => c.id === id);
     if (!comicToRemove) return;
@@ -305,7 +324,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AppContext.Provider value={{ 
       files, addFile, addFiles, removeFile, updateFile, skipFile,
-      comics, addComic, updateComic, removeComic,
+      comics, addComic, updateComic, removeComic, updateComicRating,
       isProcessing, startProcessing: () => setIsProcessing(true), pauseProcessing: () => setIsProcessing(false),
       actions, logAction, lastUndoableAction, undoLastAction,
       addMockFiles, triggerSelectFiles, triggerScanFolder, addFilesFromDrop,

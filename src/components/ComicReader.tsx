@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -26,36 +26,26 @@ import { cn } from "@/lib/utils";
 import { useElectron } from "@/hooks/useElectron";
 import { useAppContext } from "@/context/AppContext";
 import { showError, showSuccess } from "@/utils/toast";
+import { RATING_EMOJIS } from "@/lib/ratings";
 
 interface ComicReaderProps {
   comic: Comic;
   onClose: () => void;
 }
 
-const RATING_EMOJIS = {
-  0: { emoji: '🤮', label: 'Trash / Who Approved This' },
-  1: { emoji: '🤬', label: 'What a Waste of Time' },
-  2: { emoji: '😒', label: 'Nothing Special' },
-  3: { emoji: '😐', label: 'Its Fine' },
-  4: { emoji: '🙂', label: 'I Like It' },
-  5: { emoji: '😁', label: 'Great Issue' },
-  6: { emoji: '🤯', label: 'Holy Cow! My Mind is Blown!' },
-};
-
-const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
+const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
   const { 
     isElectron, 
     electronAPI 
   } = useElectron();
   const { 
+    comics,
     addToReadingList, 
     readingList, 
-    recentlyRead,
     toggleReadingItemCompleted, 
     logAction, 
     addToRecentlyRead,
-    setReadingItemRating,
-    updateRecentRating
+    updateComicRating
   } = useAppContext();
   const [pages, setPages] = useState<string[]>([]);
   const [pageImageUrls, setPageImageUrls] = useState<Record<number, string>>({});
@@ -68,14 +58,18 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
   const [showThumbnails, setShowThumbnails] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [cbrTempDir, setCbrTempDir] = useState<string | null>(null);
-  const canReadComic = isElectron && !!comic.filePath;
-  const isCbr = comic.filePath?.toLowerCase().endsWith('.cbr');
   const fetchedPages = useRef(new Set());
   const hasAddedToRecent = useRef(false);
 
+  const comic = useMemo(() => {
+    return comics.find(c => c.id === initialComic.id) || initialComic;
+  }, [comics, initialComic]);
+
+  const canReadComic = isElectron && !!comic.filePath;
+  const isCbr = comic.filePath?.toLowerCase().endsWith('.cbr');
+
   const readingListItem = readingList.find(item => item.comicId === comic.id);
-  const recentlyReadItem = recentlyRead.find(item => item.comicId === comic.id);
-  const rating = readingListItem?.rating ?? recentlyReadItem?.rating;
+  const rating = comic.rating;
   const isInReadingList = !!readingListItem;
   const isMarkedAsRead = readingListItem?.completed || false;
 
@@ -193,14 +187,10 @@ const ComicReader = ({ comic, onClose }: ComicReaderProps) => {
   };
 
   const handleRateComic = (newRating: number) => {
-    if (readingListItem) {
-      setReadingItemRating(readingListItem.id, newRating);
-      if (!readingListItem.completed) {
-        toggleReadingItemCompleted(readingListItem.id);
-      }
+    updateComicRating(comic.id, newRating);
+    if (readingListItem && !readingListItem.completed) {
+      toggleReadingItemCompleted(readingListItem.id);
     }
-    updateRecentRating(comic.id, newRating);
-    showSuccess(`Rated "${comic.series} #${comic.issue}"`);
   };
 
   useEffect(() => {

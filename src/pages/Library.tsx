@@ -17,21 +17,12 @@ import PublisherView from "@/components/PublisherView";
 import { useAppContext } from "@/context/AppContext";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { Comic } from "@/types";
+import { RATING_EMOJIS } from "@/lib/ratings";
 
 type ViewMode = "grid" | "series" | "publisher";
 
-const RATING_EMOJIS = {
-  0: { emoji: '🤮', label: 'Trash / Who Approved This' },
-  1: { emoji: '🤬', label: 'What a Waste of Time' },
-  2: { emoji: '😒', label: 'Nothing Special' },
-  3: { emoji: '😐', label: 'Its Fine' },
-  4: { emoji: '🙂', label: 'I Like It' },
-  5: { emoji: '😁', label: 'Great Issue' },
-  6: { emoji: '🤯', label: 'Holy Cow! My Mind is Blown!' },
-};
-
 const Library = () => {
-  const { comics, readingList, recentlyRead } = useAppContext();
+  const { comics } = useAppContext();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOption, setSortOption] = useState("series-asc");
@@ -49,18 +40,8 @@ const Library = () => {
     }
   }, [location.state]);
 
-  // Get comics with ratings
-  const comicsWithRatings = useMemo(() => {
-    return comics.map(comic => {
-      const readingListItem = readingList.find(item => item.comicId === comic.id);
-      const recentlyReadItem = recentlyRead.find(item => item.comicId === comic.id);
-      const rating = readingListItem?.rating ?? recentlyReadItem?.rating;
-      return { ...comic, rating };
-    });
-  }, [comics, readingList, recentlyRead]);
-
   const filteredComics = useMemo(() => {
-    let filtered = comicsWithRatings.filter((comic) =>
+    let filtered = comics.filter((comic) =>
       comic.series.toLowerCase().includes(searchTerm.toLowerCase()) ||
       comic.publisher.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -76,7 +57,7 @@ const Library = () => {
     }
 
     return filtered;
-  }, [comicsWithRatings, searchTerm, ratingFilter]);
+  }, [comics, searchTerm, ratingFilter]);
 
   const sortedAndGroupedComics = useMemo(() => {
     const comicsToSort = [...filteredComics];
@@ -169,7 +150,7 @@ const Library = () => {
             <SelectContent>
               <SelectItem value="all">All Ratings</SelectItem>
               <SelectItem value="unrated">Unrated</SelectItem>
-              {Object.entries(RATING_EMOJIS).map(([rating, { emoji, label }]) => (
+              {Object.entries(RATING_EMOJIS).map(([rating, { emoji }]) => (
                 <SelectItem key={rating} value={rating}>
                   {emoji} {rating}
                 </SelectItem>
@@ -238,7 +219,7 @@ const Library = () => {
           <LibraryGrid 
             comics={sortedAndGroupedComics} 
             coverSize={coverSize}
-            onSeriesDoubleClick={handleSeriesDoubleClick}
+            onSeriesDoubleClick={sortOption.startsWith('series-') ? handleSeriesDoubleClick : undefined}
           />
         ) : viewMode === "series" ? (
           <SeriesView comics={sortedAndGroupedComics} />
