@@ -45,6 +45,7 @@ interface AppContextType {
   updateRecentRating: (comicId: string, rating: number) => void;
   updateComicRating: (comicId: string, rating: number) => Promise<void>;
   refreshComics: () => Promise<void>;
+  importComics: (comicsToImport: Comic[]) => Promise<{ added: number; skipped: number } | null>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -80,8 +81,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const databaseService = useElectronDatabaseService();
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
-
-  // REMOVED: The problematic useEffect that was causing the infinite loop
 
   const learnNewSeries = useCallback(async (comicData: NewComic) => {
     const seriesExists = knowledgeBase.some(kb => kb.series.toLowerCase() === comicData.series.toLowerCase());
@@ -348,6 +347,31 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     showSuccess(`Added ${mockFiles.length} files (web demo mode)`);
   }, [addFiles]);
 
+  const importComics = useCallback(async (comicsToImport: Comic[]) => {
+    if (isElectron && electronAPI) {
+      try {
+        const result = await electronAPI.importComics(comicsToImport);
+        await refreshComics();
+        return result;
+      } catch (error) {
+        console.error("Error importing comics via Electron:", error);
+        showError("Failed to import comics.");
+        return null;
+      }
+    } else {
+      // Web mode logic
+      const currentComicIds = new Set(comics.map(c => c.id));
+      const newComicsToAdd = comicsToImport.filter(
+        newComic => !currentComicIds.has(newComic.id)
+      );
+      setComics(prev => [...prev, ...newComicsToAdd]);
+      return {
+        added: newComicsToAdd.length,
+        skipped: comicsToImport.length - newComicsToAdd.length,
+      };
+    }
+  }, [isElectron, electronAPI, comics, setComics, refreshComics]);
+
   return (
     <AppContext.Provider value={{ 
       files, addFile, addFiles, removeFile, updateFile, skipFile,
@@ -357,7 +381,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       addMockFiles, triggerSelectFiles, triggerScanFolder, addFilesFromDrop,
       readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted, setReadingItemPriority, setReadingItemRating,
       recentlyRead, addToRecentlyRead, updateRecentRating,
-      refreshComics
+      refreshComics,
+      importComics
     }}>
       {children}
     </AppContext.Provider>

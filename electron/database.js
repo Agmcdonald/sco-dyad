@@ -87,6 +87,32 @@ class ComicDatabase {
     }
   }
 
+  // Import comics from a backup, skipping duplicates
+  importComics(comicsToImport) {
+    try {
+      const currentComics = this.store.get('comics', []);
+      const currentComicIds = new Set(currentComics.map(c => c.id));
+      
+      const newComicsToAdd = comicsToImport.filter(
+        newComic => !currentComicIds.has(newComic.id)
+      );
+
+      if (newComicsToAdd.length > 0) {
+        const updatedComics = [...currentComics, ...newComicsToAdd];
+        this.store.set('comics', updatedComics);
+      }
+      
+      return {
+        totalImported: comicsToImport.length,
+        added: newComicsToAdd.length,
+        skipped: comicsToImport.length - newComicsToAdd.length,
+      };
+    } catch (error) {
+      console.error('Error importing comics:', error);
+      throw error;
+    }
+  }
+
   // Save/get settings
   saveSetting(key, value) {
     try {
