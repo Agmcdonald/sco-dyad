@@ -1,11 +1,5 @@
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Card, CardFooter } from "@/components/ui/card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useSelection } from "@/context/SelectionContext";
 import { Comic } from "@/types";
 import { cn } from "@/lib/utils";
@@ -14,9 +8,10 @@ import { useState } from "react";
 interface ComicCardProps {
   comic: Comic;
   onDoubleClick?: (seriesName: string) => void;
+  onToggleInspector?: () => void;
 }
 
-const ComicCard = ({ comic, onDoubleClick }: ComicCardProps) => {
+const ComicCard = ({ comic, onDoubleClick, onToggleInspector }: ComicCardProps) => {
   const { selectedItem, setSelectedItem } = useSelection();
   const [imageError, setImageError] = useState(false);
 
@@ -32,9 +27,10 @@ const ComicCard = ({ comic, onDoubleClick }: ComicCardProps) => {
     if (onDoubleClick) {
       // In series view, drill down to show issues
       onDoubleClick(comic.series);
-    } else {
-      // In regular grid view, just ensure it's selected (sidebar should already be open)
+    } else if (onToggleInspector) {
+      // In regular grid view, toggle the inspector
       setSelectedItem({ ...comic, type: 'comic' });
+      onToggleInspector();
     }
   };
 
