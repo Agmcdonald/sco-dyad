@@ -27,6 +27,7 @@ import { useElectron } from "@/hooks/useElectron";
 import { useAppContext } from "@/context/AppContext";
 import { showError, showSuccess } from "@/utils/toast";
 import { RATING_EMOJIS } from "@/lib/ratings";
+import RatingSelector from "./RatingSelector";
 
 interface ComicReaderProps {
   comic: Comic;
@@ -187,10 +188,15 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
   };
 
   const handleRateComic = async (newRating: number) => {
-    console.log(`Rating comic ${comic.series} #${comic.issue} with rating: ${newRating}`);
-    await updateComicRating(comic.id, newRating);
-    if (readingListItem && !readingListItem.completed) {
-      toggleReadingItemCompleted(readingListItem.id);
+    console.log(`[COMIC-READER] Rating comic ${comic.series} #${comic.issue} with rating: ${newRating}`);
+    try {
+      await updateComicRating(comic.id, newRating);
+      if (readingListItem && !readingListItem.completed) {
+        toggleReadingItemCompleted(readingListItem.id);
+      }
+      console.log(`[COMIC-READER] Rating updated successfully`);
+    } catch (error) {
+      console.error(`[COMIC-READER] Failed to update rating:`, error);
     }
   };
 
@@ -246,45 +252,6 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
       </div>
     );
   };
-
-  const RatingSelector = ({ currentRating, onRatingChange }: any) => (
-    <TooltipProvider>
-      <div className="flex gap-1">
-        {Object.entries(RATING_EMOJIS).map(([ratingValue, { emoji, label }]) => {
-          const ratingNum = parseInt(ratingValue);
-          const isSelected = currentRating === ratingNum;
-          
-          return (
-            <Tooltip key={ratingValue}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "h-8 w-8 p-0 text-lg transition-all hover:scale-105",
-                    isSelected 
-                      ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 scale-110 shadow-lg" 
-                      : "hover:bg-muted"
-                  )}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log(`Clicked rating: ${ratingNum}`);
-                    onRatingChange(ratingNum);
-                  }}
-                >
-                  {emoji}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{label}</p>
-              </TooltipContent>
-            </Tooltip>
-          );
-        })}
-      </div>
-    </TooltipProvider>
-  );
 
   return (
     <TooltipProvider>
@@ -422,7 +389,11 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
 
           <div className="h-6 border-l mx-2" />
           
-          <RatingSelector currentRating={rating} onRatingChange={handleRateComic} />
+          <RatingSelector 
+            currentRating={rating} 
+            onRatingChange={handleRateComic}
+            size="sm"
+          />
 
           <div className="h-6 border-l mx-2" />
 

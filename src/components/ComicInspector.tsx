@@ -16,16 +16,11 @@ import {
 import { Tag, BookOpen, PlusCircle, Users, Trash2 } from "lucide-react";
 import EditComicModal from "./EditComicModal";
 import ComicReader from "./ComicReader";
+import RatingSelector from "./RatingSelector";
 import { useAppContext } from "@/context/AppContext";
 import { useSelection } from "@/context/SelectionContext";
 import { useElectron } from "@/hooks/useElectron";
 import { RATING_EMOJIS } from "@/lib/ratings";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface ComicInspectorProps {
   comic: Comic;
@@ -56,8 +51,13 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
   };
 
   const handleRatingChange = async (newRating: number) => {
-    console.log(`Rating comic ${comic.series} #${comic.issue} with rating: ${newRating}`);
-    await updateComicRating(comic.id, newRating);
+    console.log(`[COMIC-INSPECTOR] Rating comic ${comic.series} #${comic.issue} with rating: ${newRating}`);
+    try {
+      await updateComicRating(comic.id, newRating);
+      console.log(`[COMIC-INSPECTOR] Rating updated successfully`);
+    } catch (error) {
+      console.error(`[COMIC-INSPECTOR] Failed to update rating:`, error);
+    }
   };
 
   return (
@@ -121,16 +121,17 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
           {/* Rating Section */}
           <Separator />
           <div>
-            <h4 className="font-semibold text-sm mb-2">Your Rating</h4>
-            <div className="flex items-center gap-2">
+            <h4 className="font-semibold text-sm mb-3">Your Rating</h4>
+            <div className="space-y-3">
               <RatingSelector 
                 currentRating={rating} 
                 onRatingChange={handleRatingChange}
+                size="md"
               />
               {rating !== undefined && (
-                <span className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   {RATING_EMOJIS[rating as keyof typeof RATING_EMOJIS]?.label}
-                </span>
+                </p>
               )}
             </div>
           </div>
@@ -199,43 +200,5 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
     </>
   );
 };
-
-const RatingSelector = ({ currentRating, onRatingChange }: { currentRating: number | undefined; onRatingChange: (rating: number) => void }) => (
-  <TooltipProvider>
-    <div className="flex gap-1">
-      {Object.entries(RATING_EMOJIS).map(([rating, { emoji, label }]) => {
-        const ratingNum = parseInt(rating);
-        const isSelected = currentRating === ratingNum;
-        
-        return (
-          <Tooltip key={rating}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`h-8 w-8 p-0 text-lg transition-all hover:scale-110 ${
-                  isSelected 
-                    ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 scale-110 shadow-lg" 
-                    : "hover:bg-muted"
-                }`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log(`Clicked rating: ${ratingNum}`);
-                  onRatingChange(ratingNum);
-                }}
-              >
-                {emoji}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{label}</p>
-            </TooltipContent>
-          </Tooltip>
-        );
-      })}
-    </div>
-  </TooltipProvider>
-);
 
 export default ComicInspector;
