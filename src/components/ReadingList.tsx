@@ -4,6 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { BookOpen, Plus, X, Clock } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import AddToReadingListModal from "./AddToReadingListModal";
@@ -54,24 +60,35 @@ const ReadingList = () => {
   const totalCount = readingList.length;
 
   const RatingSelector = ({ currentRating, onRatingChange, itemId, isRecentlyRead = false }: any) => (
-    <div className="flex gap-1">
-      {Object.entries(RATING_EMOJIS).map(([rating, { emoji, label }]) => (
-        <Button
-          key={rating}
-          variant={currentRating === parseInt(rating) ? "default" : "ghost"}
-          size="sm"
-          className={`h-8 w-8 p-0 text-lg ${
-            currentRating === parseInt(rating) 
-              ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2" 
-              : "hover:bg-muted"
-          }`}
-          title={label}
-          onClick={() => onRatingChange(itemId, parseInt(rating), isRecentlyRead)}
-        >
-          {emoji}
-        </Button>
-      ))}
-    </div>
+    <TooltipProvider>
+      <div className="flex gap-1">
+        {Object.entries(RATING_EMOJIS).map(([rating, { emoji, label }]) => (
+          <Tooltip key={rating}>
+            <TooltipTrigger asChild>
+              <Button
+                variant={currentRating === parseInt(rating) ? "default" : "ghost"}
+                size="sm"
+                className={`h-8 w-8 p-0 text-lg transition-all ${
+                  currentRating === parseInt(rating) 
+                    ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 scale-110" 
+                    : "hover:bg-muted hover:scale-105"
+                }`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onRatingChange(itemId, parseInt(rating), isRecentlyRead);
+                }}
+              >
+                {emoji}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{label}</p>
+            </TooltipContent>
+          </Tooltip>
+        ))}
+      </div>
+    </TooltipProvider>
   );
 
   return (

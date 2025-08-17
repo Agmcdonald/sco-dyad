@@ -249,20 +249,29 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
   const RatingSelector = ({ currentRating, onRatingChange }: any) => (
     <div className="flex gap-1">
       {Object.entries(RATING_EMOJIS).map(([rating, { emoji, label }]) => (
-        <Button
-          key={rating}
-          variant={currentRating === parseInt(rating) ? "default" : "ghost"}
-          size="sm"
-          className={`h-8 w-8 p-0 text-lg ${
-            currentRating === parseInt(rating) 
-              ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2" 
-              : "hover:bg-muted"
-          }`}
-          title={label}
-          onClick={() => onRatingChange(parseInt(rating))}
-        >
-          {emoji}
-        </Button>
+        <Tooltip key={rating}>
+          <TooltipTrigger asChild>
+            <Button
+              variant={currentRating === parseInt(rating) ? "default" : "ghost"}
+              size="sm"
+              className={`h-8 w-8 p-0 text-lg transition-all ${
+                currentRating === parseInt(rating) 
+                  ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 scale-110" 
+                  : "hover:bg-muted hover:scale-105"
+              }`}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onRatingChange(parseInt(rating));
+              }}
+            >
+              {emoji}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{label}</p>
+          </TooltipContent>
+        </Tooltip>
       ))}
     </div>
   );

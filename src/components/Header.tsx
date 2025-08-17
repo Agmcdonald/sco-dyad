@@ -1,6 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Plus,
   FolderPlus,
   Play,
@@ -11,6 +17,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
+import { useSelection } from "@/context/SelectionContext";
 
 interface HeaderProps {
   isInspectorOpen: boolean;
@@ -20,6 +27,7 @@ interface HeaderProps {
 const Header = ({ isInspectorOpen, toggleInspector }: HeaderProps) => {
   const navigate = useNavigate();
   const { isProcessing, startProcessing, pauseProcessing, files, triggerSelectFiles, triggerScanFolder } = useAppContext();
+  const { selectedItem } = useSelection();
   const hasPendingFiles = files.some(f => f.status === 'Pending');
 
   const handleStartPause = () => {
@@ -41,51 +49,95 @@ const Header = ({ isInspectorOpen, toggleInspector }: HeaderProps) => {
     navigate('/app/organize');
   };
 
+  const handlePreviewMode = () => {
+    // Toggle between cover view and list view in library
+    // This could be implemented as a global view state
+    console.log('Preview mode toggle - could switch between cover/list views');
+  };
+
+  const handleOpenInNewWindow = () => {
+    // Open selected comic in a new reader window (future feature)
+    if (selectedItem?.type === 'comic') {
+      console.log('Open in new window:', selectedItem.series);
+      // Could open comic reader in a separate window
+    }
+  };
+
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-background px-6 sticky top-0 z-10">
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={handleAddFiles}>
-          <Plus className="h-4 w-4 mr-2" /> Add Files...
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleScanFolder}>
-          <FolderPlus className="h-4 w-4 mr-2" /> Scan Folder...
-        </Button>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleStartPause}
-          disabled={!hasPendingFiles && !isProcessing}
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              <span>Processing...</span>
-            </>
-          ) : (
-            <>
-              <Play className="h-4 w-4 mr-2" />
-              <span>Start</span>
-            </>
-          )}
-        </Button>
-      </div>
-      <div className="flex-1">{/* Center content like filters will go here */}</div>
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="icon" disabled>
-          <Eye className="h-4 w-4" />
-        </Button>
-        <Button variant="outline" size="icon" disabled>
-          <ArrowUpRightFromSquare className="h-4 w-4" />
-        </Button>
-        <Button variant="outline" size="icon" onClick={toggleInspector}>
-          {isInspectorOpen ? (
-            <SidebarClose className="h-4 w-4" />
-          ) : (
-            <SidebarOpen className="h-4 w-4" />
-          )}
-        </Button>
-      </div>
-    </header>
+    <TooltipProvider>
+      <header className="flex h-14 items-center gap-4 border-b bg-background px-6 sticky top-0 z-10">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleAddFiles}>
+            <Plus className="h-4 w-4 mr-2" /> Add Files...
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleScanFolder}>
+            <FolderPlus className="h-4 w-4 mr-2" /> Scan Folder...
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleStartPause}
+            disabled={!hasPendingFiles && !isProcessing}
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <span>Processing...</span>
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4 mr-2" />
+                <span>Start</span>
+              </>
+            )}
+          </Button>
+        </div>
+        <div className="flex-1">{/* Center content like filters will go here */}</div>
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" onClick={handlePreviewMode}>
+                <Eye className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Toggle Preview Mode</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={handleOpenInNewWindow}
+                disabled={!selectedItem || selectedItem.type !== 'comic'}
+              >
+                <ArrowUpRightFromSquare className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Open in New Window</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" onClick={toggleInspector}>
+                {isInspectorOpen ? (
+                  <SidebarClose className="h-4 w-4" />
+                ) : (
+                  <SidebarOpen className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{isInspectorOpen ? 'Close' : 'Open'} Inspector</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </header>
+    </TooltipProvider>
   );
 };
 
