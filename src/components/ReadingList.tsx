@@ -4,15 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { BookOpen, Plus, X, Clock } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import AddToReadingListModal from "./AddToReadingListModal";
+import RatingSelector from "./RatingSelector";
 import { RATING_EMOJIS } from "@/lib/ratings";
 
 const ReadingList = () => {
@@ -49,53 +44,17 @@ const ReadingList = () => {
   });
 
   const handleRatingChange = async (itemId: string, rating: number, isRecentlyRead = false) => {
+    console.log(`[READING-LIST] Rating change for item ${itemId}: ${rating}`);
     const list = isRecentlyRead ? recentlyRead : readingList;
     const item = list.find((i: any) => i.id === itemId);
     if (item) {
+      console.log(`[READING-LIST] Found item, updating comic ${item.comicId} with rating ${rating}`);
       await updateComicRating(item.comicId, rating);
     }
   };
 
   const completedCount = readingList.filter(item => item.completed).length;
   const totalCount = readingList.length;
-
-  const RatingSelector = ({ currentRating, onRatingChange, itemId, isRecentlyRead = false }: any) => (
-    <TooltipProvider>
-      <div className="flex gap-1">
-        {Object.entries(RATING_EMOJIS).map(([rating, { emoji, label }]) => {
-          const ratingNum = parseInt(rating);
-          const isSelected = currentRating === ratingNum;
-          
-          return (
-            <Tooltip key={rating}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={`h-8 w-8 p-0 text-lg transition-all hover:scale-105 ${
-                    isSelected 
-                      ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 scale-110 shadow-lg" 
-                      : "hover:bg-muted"
-                  }`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log(`Clicked rating: ${ratingNum}`);
-                    onRatingChange(itemId, ratingNum, isRecentlyRead);
-                  }}
-                >
-                  {emoji}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{label}</p>
-              </TooltipContent>
-            </Tooltip>
-          );
-        })}
-      </div>
-    </TooltipProvider>
-  );
 
   return (
     <>
@@ -194,12 +153,12 @@ const ReadingList = () => {
                             {item.publisher} • {item.year}
                           </div>
                           {item.completed && (
-                            <div className="mt-2">
-                              <div className="text-xs text-muted-foreground mb-1">Rate this comic:</div>
+                            <div className="mt-3">
+                              <div className="text-xs text-muted-foreground mb-2">Rate this comic:</div>
                               <RatingSelector 
                                 currentRating={item.rating} 
-                                onRatingChange={handleRatingChange}
-                                itemId={item.id}
+                                onRatingChange={(rating) => handleRatingChange(item.id, rating, false)}
+                                size="sm"
                               />
                             </div>
                           )}
@@ -259,16 +218,15 @@ const ReadingList = () => {
                               )}
                             </h4>
                           </div>
-                          <div className="text-sm text-muted-foreground mb-2">
+                          <div className="text-sm text-muted-foreground mb-3">
                             {item.publisher} • {item.year} • Read {item.dateRead.toLocaleDateString()}
                           </div>
                           <div>
-                            <div className="text-xs text-muted-foreground mb-1">Rate this comic:</div>
+                            <div className="text-xs text-muted-foreground mb-2">Rate this comic:</div>
                             <RatingSelector 
                               currentRating={item.rating} 
-                              onRatingChange={handleRatingChange}
-                              itemId={item.id}
-                              isRecentlyRead={true}
+                              onRatingChange={(rating) => handleRatingChange(item.id, rating, true)}
+                              size="sm"
                             />
                           </div>
                         </div>
