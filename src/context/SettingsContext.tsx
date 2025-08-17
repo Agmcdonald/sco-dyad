@@ -11,6 +11,7 @@ const defaultSettings: AppSettings = {
   folderNameFormat: '{publisher}/{series} ({volume})',
   fileNameFormat: '{series} #{issue} ({year})',
   libraryPath: '',
+  gcdDbPath: '',
 };
 
 interface SettingsContextType {

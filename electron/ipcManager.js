@@ -1,6 +1,9 @@
 const { ipcMain, dialog, app } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
+const Database = require('better-sqlite3');
+
+let gcdDb = null;
 
 function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBasePath, publicCoversDir }) {
   // App info
@@ -142,6 +145,46 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('save-knowledge-base', async (event, data) => {
     await fs.writeFile(knowledgeBasePath, JSON.stringify(data, null, 2), 'utf-8');
     return true;
+  });
+
+  // GCD Database operations
+  ipcMain.handle('gcd-db:connect', (event, dbPath) => {
+    try {
+      if (gcdDb) {
+        gcdDb.close();
+      }
+      gcdDb = new Database(dbPath, { readonly: true, fileMustExist: true });
+      console.log('Successfully connected to GCD database at:', dbPath);
+      return true;
+    } catch (error) {
+      console.error('Failed to connect to GCD database:', error);
+      gcdDb = null;
+      return false;
+    }
+  });
+
+  ipcMain.handle('gcd-db:disconnect', () => {
+    if (gcdDb) {
+      gcdDb.close();
+      gcdDb = null;
+    }
+  });
+
+  ipcMain.handle('gcd-db:search-series', (event, seriesName) => {
+    if (!gcdDb) return [];
+    try {
+      const stmt = gcdDb.prepare(`
+        SELECT s.id, s.name, p.name as publisher, s.year_began
+        FROM gcd_series s
+        JOIN gcd_publisher p ON s.publisher_id = p.id
+        WHERE s.name LIKE ?
+        LIMIT 20
+      `);
+      return stmt.all(`%${seriesName}%`);
+    } catch (error) {
+      console.error('GCD series search failed:', error);
+      return [];
+    }
   });
 
   // Backup and Restore Dialogs
