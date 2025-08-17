@@ -54,6 +54,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getKnowledgeBase: () => ipcRenderer.invoke('get-knowledge-base'),
   saveKnowledgeBase: (data) => ipcRenderer.invoke('save-knowledge-base', data),
   
+  // GCD Database
+  gcdDbConnect: (dbPath) => ipcRenderer.invoke('gcd-db:connect', dbPath),
+  gcdDbDisconnect: () => ipcRenderer.invoke('gcd-db:disconnect'),
+  gcdDbSearchSeries: (seriesName) => ipcRenderer.invoke('gcd-db:search-series', seriesName),
+
   // Backup and Restore
   saveBackup: (data) => ipcRenderer.invoke('dialog:save-backup', data),
   loadBackup: () => ipcRenderer.invoke('dialog:load-backup'),

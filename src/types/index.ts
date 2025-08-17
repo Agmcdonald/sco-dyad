@@ -94,6 +94,7 @@ export interface AppSettings {
   folderNameFormat: string;
   fileNameFormat: string;
   libraryPath: string;
+  gcdDbPath?: string;
 }
 
 export interface ComicKnowledge {
