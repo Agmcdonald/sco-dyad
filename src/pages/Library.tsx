@@ -21,7 +21,11 @@ import { RATING_EMOJIS } from "@/lib/ratings";
 
 type ViewMode = "grid" | "series" | "publisher";
 
-const Library = () => {
+interface LibraryProps {
+  onToggleInspector?: () => void;
+}
+
+const Library = ({ onToggleInspector }: LibraryProps) => {
   const { comics } = useAppContext();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
@@ -220,6 +224,7 @@ const Library = () => {
             comics={sortedAndGroupedComics} 
             coverSize={coverSize}
             onSeriesDoubleClick={sortOption.startsWith('series-') ? handleSeriesDoubleClick : undefined}
+            onToggleInspector={onToggleInspector}
           />
         ) : viewMode === "series" ? (
           <SeriesView comics={sortedAndGroupedComics} />

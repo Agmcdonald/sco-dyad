@@ -5,9 +5,10 @@ interface LibraryGridProps {
   comics: Comic[];
   coverSize: number;
   onSeriesDoubleClick?: (seriesName: string) => void;
+  onToggleInspector?: () => void;
 }
 
-const LibraryGrid = ({ comics, coverSize, onSeriesDoubleClick }: LibraryGridProps) => {
+const LibraryGrid = ({ comics, coverSize, onSeriesDoubleClick, onToggleInspector }: LibraryGridProps) => {
   if (comics.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center rounded-lg border-2 border-dashed border-muted-foreground/50 p-12">
@@ -36,6 +37,7 @@ const LibraryGrid = ({ comics, coverSize, onSeriesDoubleClick }: LibraryGridProp
           key={comic.id} 
           comic={comic} 
           onDoubleClick={onSeriesDoubleClick}
+          onToggleInspector={onToggleInspector}
         />
       ))}
     </div>

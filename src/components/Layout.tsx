@@ -12,6 +12,8 @@ import {
 const Layout = () => {
   const [isInspectorOpen, setIsInspectorOpen] = useState(true);
 
+  const toggleInspector = () => setIsInspectorOpen(!isInspectorOpen);
+
   return (
     <div className="h-screen w-full">
       <ResizablePanelGroup direction="horizontal" className="h-full w-full">
@@ -23,10 +25,10 @@ const Layout = () => {
           <div className="flex flex-col h-full">
             <Header
               isInspectorOpen={isInspectorOpen}
-              toggleInspector={() => setIsInspectorOpen(!isInspectorOpen)}
+              toggleInspector={toggleInspector}
             />
             <main className="flex-1 p-6 overflow-auto bg-muted/20">
-              <Outlet />
+              <Outlet context={{ toggleInspector }} />
             </main>
           </div>
         </ResizablePanel>
