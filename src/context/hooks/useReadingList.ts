@@ -21,7 +21,8 @@ export const useReadingList = () => {
       year: comic.year,
       priority: 'medium',
       completed: false,
-      dateAdded: new Date()
+      dateAdded: new Date(),
+      rating: comic.rating // Initialize with comic's current rating
     };
     setReadingList(prev => [newItem, ...prev]);
     showSuccess(`Added "${newItem.title}" to reading list.`);
@@ -58,6 +59,16 @@ export const useReadingList = () => {
     ));
   };
 
+  const syncReadingListWithComics = (comics: Comic[]) => {
+    setReadingList(prev => prev.map(item => {
+      const comic = comics.find(c => c.id === item.comicId);
+      if (comic && comic.rating !== item.rating) {
+        return { ...item, rating: comic.rating };
+      }
+      return item;
+    }));
+  };
+
   return { 
     readingList, 
     setReadingList, 
@@ -65,6 +76,7 @@ export const useReadingList = () => {
     removeFromReadingList, 
     toggleReadingItemCompleted, 
     setReadingItemPriority,
-    setReadingItemRating
+    setReadingItemRating,
+    syncReadingListWithComics
   };
 };

@@ -15,7 +15,7 @@ export const useRecentlyRead = () => {
       year: comic.year,
       coverUrl: comic.coverUrl,
       dateRead: new Date(),
-      rating
+      rating: rating || comic.rating // Use provided rating or comic's current rating
     };
 
     setRecentlyRead(prev => {
@@ -32,5 +32,15 @@ export const useRecentlyRead = () => {
     ));
   };
 
-  return { recentlyRead, setRecentlyRead, addToRecentlyRead, updateRecentRating };
+  const syncRecentlyReadWithComics = (comics: Comic[]) => {
+    setRecentlyRead(prev => prev.map(item => {
+      const comic = comics.find(c => c.id === item.comicId);
+      if (comic && comic.rating !== item.rating) {
+        return { ...item, rating: comic.rating };
+      }
+      return item;
+    }));
+  };
+
+  return { recentlyRead, setRecentlyRead, addToRecentlyRead, updateRecentRating, syncRecentlyReadWithComics };
 };

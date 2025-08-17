@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { QueuedFile, Comic, NewComic, UndoPayload, ComicKnowledge } from '@/types';
 import { useElectronDatabaseService } from '@/services/electronDatabaseService';
 import { useElectron } from '@/hooks/useElectron';
@@ -59,14 +59,36 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { actions, logAction, setActions } = useActionLog();
   const { files, setFiles, addFile, addFiles, removeFile, updateFile, addFilesFromPaths } = useFileQueue();
   const { comics, setComics, refreshComics } = useComicLibrary(logAction);
-  const { readingList, setReadingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted, setReadingItemPriority, setReadingItemRating } = useReadingList();
-  const { recentlyRead, setRecentlyRead, addToRecentlyRead, updateRecentRating } = useRecentlyRead();
+  const { 
+    readingList, 
+    setReadingList, 
+    addToReadingList, 
+    removeFromReadingList, 
+    toggleReadingItemCompleted, 
+    setReadingItemPriority, 
+    setReadingItemRating,
+    syncReadingListWithComics
+  } = useReadingList();
+  const { 
+    recentlyRead, 
+    setRecentlyRead, 
+    addToRecentlyRead, 
+    updateRecentRating,
+    syncRecentlyReadWithComics
+  } = useRecentlyRead();
   const { knowledgeBase, addSeries } = useKnowledgeBase();
   
   const [isProcessing, setIsProcessing] = useState(false);
   const databaseService = useElectronDatabaseService();
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
+
+  // Sync ratings across all components when comics change
+  useEffect(() => {
+    console.log('[APP-CONTEXT] Comics updated, syncing ratings across components');
+    syncReadingListWithComics(comics);
+    syncRecentlyReadWithComics(comics);
+  }, [comics, syncReadingListWithComics, syncRecentlyReadWithComics]);
 
   const learnNewSeries = useCallback(async (comicData: NewComic) => {
     const seriesExists = knowledgeBase.some(kb => kb.series.toLowerCase() === comicData.series.toLowerCase());
@@ -170,6 +192,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [isElectron, electronAPI, databaseService, settings, logAction, refreshComics, setComics, learnNewSeries]);
 
   const updateComic = useCallback(async (updatedComic: Comic) => {
+    console.log('[APP-CONTEXT] Updating comic:', updatedComic.series, 'with rating:', updatedComic.rating);
+    
     if (databaseService) {
       try {
         await databaseService.updateComic({
@@ -188,23 +212,33 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     logAction('info', `Updated metadata for '${updatedComic.series} #${updatedComic.issue}'`);
   }, [databaseService, logAction, refreshComics, setComics]);
 
-  const updateComicRating = async (comicId: string, rating: number) => {
+  const updateComicRating = useCallback(async (comicId: string, rating: number) => {
+    console.log('[APP-CONTEXT] updateComicRating called for comic:', comicId, 'rating:', rating);
+    
     const comicToUpdate = comics.find(c => c.id === comicId);
-    if (!comicToUpdate) return;
+    if (!comicToUpdate) {
+      console.error('[APP-CONTEXT] Comic not found:', comicId);
+      return;
+    }
 
     const updatedComic = { ...comicToUpdate, rating };
+    console.log('[APP-CONTEXT] Updating comic with new rating:', updatedComic);
     
     await updateComic(updatedComic);
 
+    // Update reading list items
     setReadingList(prev => prev.map(item => 
       item.comicId === comicId ? { ...item, rating } : item
     ));
+    
+    // Update recently read items
     setRecentlyRead(prev => prev.map(item => 
       item.comicId === comicId ? { ...item, rating } : item
     ));
     
     showSuccess(`Rated "${updatedComic.series} #${updatedComic.issue}"`);
-  };
+    console.log('[APP-CONTEXT] Rating update complete');
+  }, [comics, updateComic, setReadingList, setRecentlyRead]);
 
   const removeComic = useCallback(async (id: string, deleteFile: boolean = false) => {
     const comicToRemove = comics.find(c => c.id === id);
