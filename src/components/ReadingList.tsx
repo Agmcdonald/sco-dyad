@@ -1,32 +1,21 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, Plus, X, Star, Clock } from "lucide-react";
+import { BookOpen, Plus, X, Clock } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import AddToReadingListModal from "./AddToReadingListModal";
-
-const RATING_EMOJIS = {
-  0: { emoji: '🤮', label: 'Trash / Who Approved This' },
-  1: { emoji: '🤬', label: 'What a Waste of Time' },
-  2: { emoji: '😒', label: 'Nothing Special' },
-  3: { emoji: '😐', label: 'Its Fine' },
-  4: { emoji: '🙂', label: 'I Like It' },
-  5: { emoji: '😁', label: 'Great Issue' },
-  6: { emoji: '🤯', label: 'Holy Cow! My Mind is Blown!' },
-};
+import { RATING_EMOJIS } from "@/lib/ratings";
 
 const ReadingList = () => {
   const { 
     readingList, 
     toggleReadingItemCompleted, 
     removeFromReadingList, 
-    setReadingItemRating,
     recentlyRead,
-    updateRecentRating
+    updateComicRating
   } = useAppContext();
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -54,14 +43,10 @@ const ReadingList = () => {
   });
 
   const handleRatingChange = (itemId: string, rating: number, isRecentlyRead = false) => {
-    if (isRecentlyRead) {
-      // Find the comic ID from recently read
-      const recentItem = recentlyRead.find(item => item.id === itemId);
-      if (recentItem) {
-        updateRecentRating(recentItem.comicId, rating);
-      }
-    } else {
-      setReadingItemRating(itemId, rating);
+    const list = isRecentlyRead ? recentlyRead : readingList;
+    const item = list.find((i: any) => i.id === itemId);
+    if (item) {
+      updateComicRating(item.comicId, rating);
     }
   };
 

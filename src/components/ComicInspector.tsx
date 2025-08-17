@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Comic } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -19,34 +19,25 @@ import ComicReader from "./ComicReader";
 import { useAppContext } from "@/context/AppContext";
 import { useSelection } from "@/context/SelectionContext";
 import { useElectron } from "@/hooks/useElectron";
-
-const RATING_EMOJIS = {
-  0: { emoji: '🤮', label: 'Trash / Who Approved This' },
-  1: { emoji: '🤬', label: 'What a Waste of Time' },
-  2: { emoji: '😒', label: 'Nothing Special' },
-  3: { emoji: '😐', label: 'Its Fine' },
-  4: { emoji: '🙂', label: 'I Like It' },
-  5: { emoji: '😁', label: 'Great Issue' },
-  6: { emoji: '🤯', label: 'Holy Cow! My Mind is Blown!' },
-};
+import { RATING_EMOJIS } from "@/lib/ratings";
 
 interface ComicInspectorProps {
   comic: Comic;
 }
 
-const ComicInspector = ({ comic }: ComicInspectorProps) => {
+const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReaderOpen, setIsReaderOpen] = useState(false);
-  const { readingList, addToReadingList, removeComic, recentlyRead } = useAppContext();
+  const { comics, readingList, addToReadingList, removeComic } = useAppContext();
   const { setSelectedItem } = useSelection();
   const { isElectron } = useElectron();
 
-  const isInReadingList = readingList.some(item => item.comicId === comic.id);
+  const comic = useMemo(() => {
+    return comics.find(c => c.id === initialComic.id) || initialComic;
+  }, [comics, initialComic]);
 
-  // Get rating from reading list or recently read
-  const readingListItem = readingList.find(item => item.comicId === comic.id);
-  const recentlyReadItem = recentlyRead.find(item => item.comicId === comic.id);
-  const rating = readingListItem?.rating ?? recentlyReadItem?.rating;
+  const isInReadingList = readingList.some(item => item.comicId === comic.id);
+  const rating = comic.rating;
 
   const handleRemoveFromLibrary = () => {
     removeComic(comic.id, false);
