@@ -9,6 +9,8 @@ export interface NewComic {
   year: number;
   publisher: string;
   volume: string;
+  title?: string; // Name of the specific issue
+  coverDate?: string; // Specific cover date, e.g., "2023-10-25"
   summary?: string;
   creators?: Creator[];
   rating?: number;
@@ -83,6 +85,8 @@ export interface RecentAction {
 
 export interface AppSettings {
   comicVineApiKey: string;
+  marvelPublicKey: string;
+  marvelPrivateKey: string;
   keepOriginalFiles: boolean;
   autoScanOnStartup: boolean;
   folderNameFormat: string;

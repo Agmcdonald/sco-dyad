@@ -4,6 +4,8 @@ import { AppSettings } from '@/types';
 
 const defaultSettings: AppSettings = {
   comicVineApiKey: '',
+  marvelPublicKey: '',
+  marvelPrivateKey: '',
   keepOriginalFiles: true,
   autoScanOnStartup: true,
   folderNameFormat: '{publisher}/{series} ({volume})',

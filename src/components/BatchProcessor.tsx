@@ -58,6 +58,8 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
       const results = await batchProcessFiles(
         filesToProcess,
         settings.comicVineApiKey,
+        settings.marvelPublicKey,
+        settings.marvelPrivateKey,
         (processed, total, current) => {
           setProgress((processed / total) * 100);
           setCurrentFile(current);

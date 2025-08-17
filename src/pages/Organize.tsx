@@ -78,7 +78,12 @@ const Organize = () => {
       setProcessingProgress((queueIndex.current / pendingFiles.length) * 100);
 
       try {
-        const result = await processComicFile(currentFile, settings.comicVineApiKey);
+        const result = await processComicFile(
+          currentFile, 
+          settings.comicVineApiKey,
+          settings.marvelPublicKey,
+          settings.marvelPrivateKey
+        );
 
         if (result.success && result.data) {
           updateFile({ ...currentFile, ...result.data, status: "Success", confidence: result.confidence });
@@ -106,7 +111,7 @@ const Organize = () => {
     }
 
     return () => clearInterval(interval);
-  }, [isProcessing, files, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile, settings.comicVineApiKey]);
+  }, [isProcessing, files, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile, settings]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     if (isElectron) return;

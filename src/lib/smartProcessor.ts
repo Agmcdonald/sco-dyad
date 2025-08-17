@@ -1,7 +1,7 @@
 import { parseFilename } from "./parser";
 import { searchKnowledgeBase, KnowledgeMatch } from "./knowledgeBase";
 import { QueuedFile, Confidence, Creator } from "@/types";
-import { fetchComicMetadata } from "./scraper";
+import { fetchComicMetadata, fetchMarvelMetadata } from "./scraper";
 
 export interface ProcessingResult {
   success: boolean;
@@ -14,6 +14,8 @@ export interface ProcessingResult {
     volume: string;
     summary: string;
     creators?: Creator[];
+    title?: string;
+    coverDate?: string;
   };
   suggestions?: KnowledgeMatch[];
   error?: string;
@@ -25,7 +27,12 @@ const isMockFile = (filePath: string): boolean => {
 };
 
 // Smart processor that combines parsing with knowledge base matching
-export const processComicFile = async (file: QueuedFile, apiKey: string): Promise<ProcessingResult> => {
+export const processComicFile = async (
+  file: QueuedFile, 
+  comicVineApiKey: string,
+  marvelPublicKey: string,
+  marvelPrivateKey: string
+): Promise<ProcessingResult> => {
   try {
     // Parse the filename (works for both real and mock files)
     const parsed = parseFilename(file.path);
@@ -40,9 +47,31 @@ export const processComicFile = async (file: QueuedFile, apiKey: string): Promis
       };
     }
 
-    // 1. Attempt API fetch first for richest data
-    if (apiKey) {
-      const apiResult = await fetchComicMetadata(parsed, apiKey);
+    // 1. Attempt Marvel API fetch first if it's a Marvel comic
+    if (parsed.publisher?.toLowerCase() === 'marvel comics' && marvelPublicKey && marvelPrivateKey) {
+      const marvelResult = await fetchMarvelMetadata(parsed, marvelPublicKey, marvelPrivateKey);
+      if (marvelResult.success && marvelResult.data) {
+        return {
+          success: true,
+          confidence: marvelResult.data.confidence,
+          data: {
+            series: marvelResult.data.series || parsed.series,
+            issue: parsed.issue,
+            year: parsed.year || new Date().getFullYear(),
+            publisher: marvelResult.data.publisher,
+            volume: marvelResult.data.volume,
+            summary: marvelResult.data.summary,
+            creators: marvelResult.data.creators,
+            title: marvelResult.data.title,
+            coverDate: marvelResult.data.coverDate,
+          }
+        };
+      }
+    }
+
+    // 2. Attempt Comic Vine API fetch for other publishers
+    if (comicVineApiKey) {
+      const apiResult = await fetchComicMetadata(parsed, comicVineApiKey);
       if (apiResult.success && apiResult.data) {
         return {
           success: true,
@@ -60,7 +89,7 @@ export const processComicFile = async (file: QueuedFile, apiKey: string): Promis
       }
     }
 
-    // 2. Fallback to Knowledge Base
+    // 3. Fallback to Knowledge Base
     const knowledgeMatches = searchKnowledgeBase(parsed);
     if (knowledgeMatches.length > 0) {
       const bestMatch = knowledgeMatches[0];
@@ -80,7 +109,7 @@ export const processComicFile = async (file: QueuedFile, apiKey: string): Promis
       };
     }
 
-    // 3. Fallback to parsed data only
+    // 4. Fallback to parsed data only
     if (parsed.year) {
       return {
         success: true,
@@ -97,7 +126,7 @@ export const processComicFile = async (file: QueuedFile, apiKey: string): Promis
       };
     }
 
-    // 4. Failure
+    // 5. Failure
     return {
       success: false,
       confidence: "Low",
@@ -117,7 +146,9 @@ export const processComicFile = async (file: QueuedFile, apiKey: string): Promis
 // Batch process multiple files
 export const batchProcessFiles = async (
   files: QueuedFile[],
-  apiKey: string,
+  comicVineApiKey: string,
+  marvelPublicKey: string,
+  marvelPrivateKey: string,
   onProgress?: (processed: number, total: number, currentFile: string) => void
 ): Promise<Map<string, ProcessingResult>> => {
   const results = new Map<string, ProcessingResult>();
@@ -126,7 +157,7 @@ export const batchProcessFiles = async (
     const file = files[i];
     onProgress?.(i, files.length, file.name);
     
-    const result = await processComicFile(file, apiKey);
+    const result = await processComicFile(file, comicVineApiKey, marvelPublicKey, marvelPrivateKey);
     results.set(file.id, result);
     
     // Small delay to prevent UI blocking
