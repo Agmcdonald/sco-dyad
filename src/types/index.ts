@@ -21,6 +21,8 @@ export interface Comic extends NewComic {
   coverUrl: string;
   dateAdded: Date;
   filePath?: string;
+  metadataLastChecked?: string;
+  ignoreInScans?: boolean;
 }
 
 export interface ReadingListItem {

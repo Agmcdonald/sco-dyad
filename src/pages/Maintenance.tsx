@@ -1,13 +1,15 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { 
   Database, 
   FileSearch, 
   RefreshCw, 
   Download,
   Upload,
-  Trash2
+  Trash2,
+  Sparkles,
+  Loader2
 } from "lucide-react";
 import DuplicateDetector from "@/components/DuplicateDetector";
 import { useAppContext } from "@/context/AppContext";
@@ -15,7 +17,7 @@ import { useElectron } from "@/hooks/useElectron";
 import { showSuccess, showError } from "@/utils/toast";
 
 const Maintenance = () => {
-  const { comics, files, actions, importComics } = useAppContext();
+  const { comics, files, actions, importComics, isScanningMetadata, metadataScanProgress, startMetadataScan } = useAppContext();
   const { isElectron, electronAPI } = useElectron();
 
   const handleExportLibrary = async () => {
@@ -175,6 +177,46 @@ const Maintenance = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Metadata Enrichment */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5" />
+            Metadata Enrichment
+          </CardTitle>
+          <CardDescription>
+            Scan your library to find and fill in missing details like summaries, creators, and cover dates using online databases.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isScanningMetadata ? (
+            <div className="space-y-3">
+              <Progress value={(metadataScanProgress.processed / metadataScanProgress.total) * 100} />
+              <div className="text-sm text-muted-foreground">
+                Scanning {metadataScanProgress.processed} of {metadataScanProgress.total} comics... 
+                ({metadataScanProgress.updated} updated)
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              This tool will scan comics with incomplete information and attempt to fetch richer data from online sources.
+            </p>
+          )}
+        </CardContent>
+        <CardFooter>
+          <Button onClick={startMetadataScan} disabled={isScanningMetadata}>
+            {isScanningMetadata ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Scanning...
+              </>
+            ) : (
+              "Start Scan for Missing Details"
+            )}
+          </Button>
+        </CardFooter>
+      </Card>
 
       {/* Duplicate Detection */}
       <DuplicateDetector />

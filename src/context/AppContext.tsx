@@ -11,6 +11,7 @@ import { useComicLibrary } from './hooks/useComicLibrary';
 import { useReadingList } from './hooks/useReadingList';
 import { useRecentlyRead } from './hooks/useRecentlyRead';
 import { useKnowledgeBase } from './KnowledgeBaseContext';
+import { fetchComicMetadata, fetchMarvelMetadata } from '@/lib/scraper';
 
 interface AppContextType {
   files: QueuedFile[];
@@ -46,6 +47,9 @@ interface AppContextType {
   updateComicRating: (comicId: string, rating: number) => Promise<void>;
   refreshComics: () => Promise<void>;
   importComics: (comicsToImport: Comic[]) => Promise<{ added: number; skipped: number } | null>;
+  isScanningMetadata: boolean;
+  metadataScanProgress: { processed: number; total: number; updated: number };
+  startMetadataScan: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -78,6 +82,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { knowledgeBase, addSeries } = useKnowledgeBase();
   
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isScanningMetadata, setIsScanningMetadata] = useState(false);
+  const [metadataScanProgress, setMetadataScanProgress] = useState({ processed: 0, total: 0, updated: 0 });
   const databaseService = useElectronDatabaseService();
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
@@ -372,6 +378,48 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isElectron, electronAPI, comics, setComics, refreshComics]);
 
+  const startMetadataScan = useCallback(async () => {
+    setIsScanningMetadata(true);
+    setMetadataScanProgress({ processed: 0, total: 0, updated: 0 });
+
+    const candidates = comics.filter(c => 
+      !c.ignoreInScans &&
+      (!c.summary || c.summary.startsWith('Parsed from') || c.summary.startsWith('Processed using'))
+    );
+
+    setMetadataScanProgress(prev => ({ ...prev, total: candidates.length }));
+    let updatedCount = 0;
+
+    for (let i = 0; i < candidates.length; i++) {
+      const comic = candidates[i];
+      const parsed = { series: comic.series, issue: comic.issue, year: comic.year, volume: comic.volume, publisher: comic.publisher };
+      
+      let result;
+      if (comic.publisher.toLowerCase() === 'marvel comics' && settings.marvelPublicKey) {
+        result = await fetchMarvelMetadata(parsed, settings.marvelPublicKey, settings.marvelPrivateKey);
+      } else if (settings.comicVineApiKey) {
+        result = await fetchComicMetadata(parsed, settings.comicVineApiKey);
+      }
+
+      if (result && result.success && result.data) {
+        const updatedComic = { 
+          ...comic, 
+          ...result.data,
+          metadataLastChecked: new Date().toISOString()
+        };
+        await updateComic(updatedComic);
+        updatedCount++;
+        logAction('success', `Enriched metadata for '${comic.series} #${comic.issue}'`);
+      }
+      
+      setMetadataScanProgress(prev => ({ ...prev, processed: i + 1, updated: updatedCount }));
+      await new Promise(res => setTimeout(res, 200)); // Rate limit
+    }
+
+    setIsScanningMetadata(false);
+    showSuccess(`Metadata scan complete. Updated ${updatedCount} of ${candidates.length} comics.`);
+  }, [comics, settings, updateComic, logAction]);
+
   return (
     <AppContext.Provider value={{ 
       files, addFile, addFiles, removeFile, updateFile, skipFile,
@@ -382,7 +430,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted, setReadingItemPriority, setReadingItemRating,
       recentlyRead, addToRecentlyRead, updateRecentRating,
       refreshComics,
-      importComics
+      importComics,
+      isScanningMetadata,
+      metadataScanProgress,
+      startMetadataScan
     }}>
       {children}
     </AppContext.Provider>
