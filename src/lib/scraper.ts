@@ -11,9 +11,40 @@ interface ScraperResult {
         creators: Creator[];
         confidence: 'High' | 'Medium' | 'Low';
         source: 'knowledge' | 'api';
+        title?: string;
+        coverDate?: string;
     };
     error?: string;
 }
+
+// Mock Marvel API Data
+const mockMarvelApiData: Record<string, any> = {
+    "The Amazing Spider-Man": {
+        publisher: "Marvel Comics",
+        volume: "1963",
+        summary: "The classic adventures of Spider-Man from the early days.",
+        creators: [
+            { name: "Stan Lee", role: "Writer" },
+            { name: "Steve Ditko", role: "Artist" },
+            { name: "John Romita Sr.", role: "Cover Artist" }
+        ],
+        issueData: {
+            "300": { title: "Venom", coverDate: "1988-05-01" }
+        }
+    },
+    "Invincible Iron Man": {
+        publisher: "Marvel Comics",
+        volume: "2008",
+        summary: "Tony Stark is Iron Man. His greatest invention becomes his greatest mistake.",
+        creators: [
+            { name: "Matt Fraction", role: "Writer" },
+            { name: "Salvador Larroca", role: "Artist" }
+        ],
+        issueData: {
+            "1": { title: "The Five Nightmares, Part 1", coverDate: "2008-07-01" }
+        }
+    }
+};
 
 // This is our mock database. A real scraper would query an API.
 const mockApiData: Record<string, any> = {
@@ -52,6 +83,40 @@ const mockApiData: Record<string, any> = {
     "Paper Girls": { publisher: "Image Comics", volume: "2015", summary: "Four young girls who deliver newspapers in 1988 get caught up in a conflict between warring factions of time-travelers.", creators: [{name: "Brian K. Vaughan", role: "Writer"}, {name: "Cliff Chiang", role: "Artist"}] },
     "The Wicked The Divine": { publisher: "Image Comics", volume: "2014", summary: "Every ninety years, twelve gods incarnate as humans. They are loved. They are hated. In two years, they are all dead.", creators: [{name: "Kieron Gillen", role: "Writer"}, {name: "Jamie McKelvie", role: "Artist"}] },
     "East of West": { publisher: "Image Comics", volume: "2013", summary: "The Four Horsemen of the Apocalypse roam an alternate timeline American West.", creators: [{name: "Jonathan Hickman", role: "Writer"}, {name: "Nick Dragotta", role: "Artist"}] },
+};
+
+export const fetchMarvelMetadata = async (
+    parsed: ParsedComicInfo,
+    publicKey: string,
+    privateKey: string
+): Promise<ScraperResult> => {
+    await new Promise(res => setTimeout(res, 500)); // Simulate network delay
+
+    if (!publicKey || !privateKey) {
+        return { success: false, error: "Marvel API keys are missing." };
+    }
+    if (!parsed.series || !parsed.issue) {
+        return { success: false, error: "Series or issue number is missing for Marvel API lookup." };
+    }
+
+    const seriesMatch = mockMarvelApiData[parsed.series];
+    if (seriesMatch) {
+        const issueMatch = seriesMatch.issueData?.[parsed.issue];
+        return {
+            success: true,
+            data: {
+                publisher: seriesMatch.publisher,
+                volume: parsed.volume || seriesMatch.volume,
+                summary: seriesMatch.summary,
+                creators: seriesMatch.creators,
+                title: issueMatch?.title,
+                coverDate: issueMatch?.coverDate,
+                confidence: 'High',
+                source: 'api'
+            }
+        };
+    }
+    return { success: false, error: `No match found for "${parsed.series}" in Marvel API.` };
 };
 
 export const fetchComicMetadata = async (
@@ -141,4 +206,15 @@ export const testApiConnection = async (apiKey: string): Promise<{ success: bool
     }
 
     return { success: true, message: "Connection successful!" };
+};
+
+export const testMarvelApiConnection = async (publicKey: string, privateKey: string): Promise<{ success: boolean; message: string }> => {
+    await new Promise(res => setTimeout(res, 750));
+    if (!publicKey || !privateKey) {
+        return { success: false, message: "Public or Private Key is missing." };
+    }
+    if (publicKey.length < 10 || privateKey.length < 10) {
+        return { success: false, message: "Invalid API Keys provided." };
+    }
+    return { success: true, message: "Marvel API connection successful!" };
 };

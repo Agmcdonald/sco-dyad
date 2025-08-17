@@ -26,7 +26,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 import { useElectron } from "@/hooks/useElectron";
 import { showError, showSuccess } from "@/utils/toast";
-import { testApiConnection } from "@/lib/scraper";
+import { testApiConnection, testMarvelApiConnection } from "@/lib/scraper";
 import { Loader2, Database, FolderOpen } from "lucide-react";
 import KnowledgeBaseManager from "@/components/KnowledgeBaseManager";
 
@@ -37,6 +37,7 @@ const Settings = () => {
   const { isElectron, electronAPI } = useElectron();
   const location = useLocation();
   const [isTesting, setIsTesting] = useState(false);
+  const [isTestingMarvel, setIsTestingMarvel] = useState(false);
   const [libraryPath, setLibraryPath] = useState("");
   const [activeTab, setActiveTab] = useState("general");
 
@@ -100,6 +101,17 @@ const Settings = () => {
       showError(result.message);
     }
     setIsTesting(false);
+  };
+
+  const handleTestMarvelConnection = async () => {
+    setIsTestingMarvel(true);
+    const result = await testMarvelApiConnection(settings.marvelPublicKey, settings.marvelPrivateKey);
+    if (result.success) {
+      showSuccess(result.message);
+    } else {
+      showError(result.message);
+    }
+    setIsTestingMarvel(false);
   };
 
   // Calculate knowledge base stats
@@ -289,6 +301,49 @@ const Settings = () => {
               <Button onClick={handleSave}>Save</Button>
               <Button variant="secondary" onClick={handleTestConnection} disabled={isTesting}>
                 {isTesting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Testing...
+                  </>
+                ) : (
+                  "Test Connection"
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Marvel API</CardTitle>
+              <CardDescription>
+                Enter your public and private keys from the{" "}
+                <a href="https://developer.marvel.com/" target="_blank" rel="noopener noreferrer" className="underline">
+                  Marvel Developer Portal
+                </a>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="marvel-public-key">Public Key</Label>
+                <Input 
+                  id="marvel-public-key" 
+                  value={settings.marvelPublicKey}
+                  onChange={(e) => setSettings({ ...settings, marvelPublicKey: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="marvel-private-key">Private Key</Label>
+                <Input 
+                  id="marvel-private-key" 
+                  type="password" 
+                  value={settings.marvelPrivateKey}
+                  onChange={(e) => setSettings({ ...settings, marvelPrivateKey: e.target.value })}
+                />
+              </div>
+            </CardContent>
+            <CardFooter className="border-t px-6 py-4 flex justify-between items-center">
+              <Button onClick={handleSave}>Save</Button>
+              <Button variant="secondary" onClick={handleTestMarvelConnection} disabled={isTestingMarvel}>
+                {isTestingMarvel ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Testing...

@@ -13,7 +13,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Tag, BookOpen, PlusCircle, Users, Trash2 } from "lucide-react";
+import { Tag, BookOpen, PlusCircle, Users, Trash2, Calendar, FileText } from "lucide-react";
 import EditComicModal from "./EditComicModal";
 import ComicReader from "./ComicReader";
 import RatingSelector from "./RatingSelector";
@@ -72,7 +72,7 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
               </span>
             )}
           </h3>
-          <p className="text-sm text-muted-foreground">{comic.year}</p>
+          <p className="text-sm text-muted-foreground">{comic.title || `(${comic.year})`}</p>
         </div>
         <div className="flex-1 p-4 space-y-4 overflow-y-auto">
           <div className="aspect-w-2 aspect-h-3 rounded-lg bg-muted overflow-hidden">
@@ -82,12 +82,16 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
             <h4 className="font-semibold text-sm mb-2">Details</h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Publisher</span>
+                <span className="text-muted-foreground flex items-center"><FileText className="h-3 w-3 mr-1.5" /> Publisher</span>
                 <span>{comic.publisher}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Volume</span>
+                <span className="text-muted-foreground flex items-center"><BookOpen className="h-3 w-3 mr-1.5" /> Volume</span>
                 <span>{comic.volume}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground flex items-center"><Calendar className="h-3 w-3 mr-1.5" /> Cover Date</span>
+                <span>{comic.coverDate || comic.year}</span>
               </div>
             </div>
           </div>
