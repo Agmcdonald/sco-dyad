@@ -44,6 +44,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getComics: () => ipcRenderer.invoke('get-comics'),
   updateComic: (comic) => ipcRenderer.invoke('update-comic', comic),
   deleteComic: (comicId, filePath) => ipcRenderer.invoke('delete-comic', comicId, filePath),
+  importComics: (comics) => ipcRenderer.invoke('db:import-comics', comics),
   
   // Settings
   getSettings: () => ipcRenderer.invoke('get-settings'),
@@ -53,6 +54,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getKnowledgeBase: () => ipcRenderer.invoke('get-knowledge-base'),
   saveKnowledgeBase: (data) => ipcRenderer.invoke('save-knowledge-base', data),
   
+  // Backup and Restore
+  saveBackup: (data) => ipcRenderer.invoke('dialog:save-backup', data),
+  loadBackup: () => ipcRenderer.invoke('dialog:load-backup'),
+
   // Dialog
   showMessageBox: (options) => ipcRenderer.invoke('show-message-box', options),
   

@@ -86,6 +86,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('init-database', () => true);
   ipcMain.handle('get-comics', () => database.getComics());
   ipcMain.handle('update-comic', (event, comic) => database.updateComic(comic));
+  ipcMain.handle('db:import-comics', (event, comics) => database.importComics(comics));
   
   ipcMain.handle('delete-comic', async (event, comicId, filePath) => {
     if (filePath) {
@@ -141,6 +142,48 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('save-knowledge-base', async (event, data) => {
     await fs.writeFile(knowledgeBasePath, JSON.stringify(data, null, 2), 'utf-8');
     return true;
+  });
+
+  // Backup and Restore Dialogs
+  ipcMain.handle('dialog:save-backup', async (event, data) => {
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export Library Backup',
+      defaultPath: `comic-library-backup-${new Date().toISOString().split('T')[0]}.json`,
+      filters: [{ name: 'JSON Files', extensions: ['json'] }]
+    });
+
+    if (canceled || !filePath) {
+      return { success: false, path: null };
+    }
+
+    try {
+      await fs.writeFile(filePath, data, 'utf-8');
+      return { success: true, path: filePath };
+    } catch (error) {
+      console.error('Failed to save backup:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('dialog:load-backup', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+      title: 'Import Library Backup',
+      properties: ['openFile'],
+      filters: [{ name: 'JSON Files', extensions: ['json'] }]
+    });
+
+    if (canceled || filePaths.length === 0) {
+      return { success: false, data: null };
+    }
+
+    try {
+      const filePath = filePaths[0];
+      const data = await fs.readFile(filePath, 'utf-8');
+      return { success: true, data };
+    } catch (error) {
+      console.error('Failed to load backup:', error);
+      return { success: false, error: error.message };
+    }
   });
 }
 
