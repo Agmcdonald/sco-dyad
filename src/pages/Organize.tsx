@@ -16,6 +16,7 @@ import { useAppContext } from "@/context/AppContext";
 import { QueuedFile } from "@/types";
 import { processComicFile } from "@/lib/smartProcessor";
 import { useElectron } from "@/hooks/useElectron";
+import { useGcdDatabaseService } from "@/services/gcdDatabaseService";
 import { showError } from "@/utils/toast";
 import { useSettings } from "@/context/SettingsContext";
 
@@ -43,6 +44,7 @@ const Organize = () => {
   const queueIndex = useRef(0);
   const { isElectron } = useElectron();
   const { settings } = useSettings();
+  const gcdDbService = useGcdDatabaseService();
 
   useEffect(() => {
     setFilteredFiles(files);
@@ -78,12 +80,18 @@ const Organize = () => {
       setProcessingProgress((queueIndex.current / pendingFiles.length) * 100);
 
       try {
+        console.log(`[ORGANIZE] Processing file: ${currentFile.name}`);
+        console.log(`[ORGANIZE] GCD service available:`, !!gcdDbService);
+        
         const result = await processComicFile(
           currentFile, 
           settings.comicVineApiKey,
           settings.marvelPublicKey,
-          settings.marvelPrivateKey
+          settings.marvelPrivateKey,
+          gcdDbService
         );
+
+        console.log(`[ORGANIZE] Processing result:`, result);
 
         if (result.success && result.data) {
           updateFile({ ...currentFile, ...result.data, status: "Success", confidence: result.confidence });
@@ -99,6 +107,7 @@ const Organize = () => {
           if (result.error) logAction('warning', `'${currentFile.name}': ${result.error}`);
         }
       } catch (error) {
+        console.error(`[ORGANIZE] Processing error:`, error);
         updateFile({ ...currentFile, status: "Error", confidence: "Low" });
         logAction('error', `'${currentFile.name}': Processing failed`);
       }
@@ -111,7 +120,7 @@ const Organize = () => {
     }
 
     return () => clearInterval(interval);
-  }, [isProcessing, files, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile, settings]);
+  }, [isProcessing, files, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile, settings, gcdDbService]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     if (isElectron) return;
