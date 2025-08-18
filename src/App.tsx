@@ -19,6 +19,7 @@ import { SelectionProvider } from "./context/SelectionContext";
 import { AppProvider } from "./context/AppContext";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { SettingsProvider } from "./context/SettingsContext";
+import { KnowledgeBaseProvider } from "./context/KnowledgeBaseContext";
 
 const queryClient = new QueryClient();
 
@@ -72,11 +73,13 @@ const App = () => {
         <TooltipProvider>
           <SettingsProvider>
             <AppProvider>
-              <SelectionProvider>
-                <Toaster />
-                <Sonner />
-                <RouterProvider router={router} />
-              </SelectionProvider>
+              <KnowledgeBaseProvider>
+                <SelectionProvider>
+                  <Toaster />
+                  <Sonner />
+                  <RouterProvider router={router} />
+                </SelectionProvider>
+              </KnowledgeBaseProvider>
             </AppProvider>
           </SettingsProvider>
         </TooltipProvider>

@@ -140,6 +140,27 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     return true;
   });
 
+  // Knowledge Base handlers
+  ipcMain.handle('get-knowledge-base', async () => {
+    try {
+      const data = await fs.promises.readFile(knowledgeBasePath, 'utf-8');
+      return JSON.parse(data);
+    } catch (error) {
+      console.error('Failed to read knowledge base:', error);
+      return [];
+    }
+  });
+
+  ipcMain.handle('save-knowledge-base', async (event, data) => {
+    try {
+      await fs.promises.writeFile(knowledgeBasePath, JSON.stringify(data, null, 2), 'utf-8');
+      return true;
+    } catch (error) {
+      console.error('Failed to save knowledge base:', error);
+      return false;
+    }
+  });
+
   // GCD Importer
   ipcMain.handle('importer:start', async (event, { issuesPath, sequencesPath }) => {
     const dbPath = path.join(app.getPath('userData'), 'gcd_local.sqlite');
