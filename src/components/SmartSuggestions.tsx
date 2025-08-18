@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Lightbulb, TrendingUp, AlertCircle } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
-import { searchKnowledgeBase } from "@/lib/knowledgeBase";
 import { parseFilename } from "@/lib/parser";
 
 const SmartSuggestions = () => {
@@ -48,26 +47,22 @@ const SmartSuggestions = () => {
       });
     }
 
-    // Analyze knowledge base coverage
+    // Analyze unknown series (series not in current library)
+    const knownSeries = new Set(comics.map(c => c.series.toLowerCase()));
     const unknownSeries = files
       .filter(f => f.series)
       .map(f => f.series!)
-      .filter(series => {
-        const parsed = { series, issue: null, year: null, volume: null };
-        const matches = searchKnowledgeBase(parsed);
-        return matches.length === 0;
-      });
+      .filter(series => !knownSeries.has(series.toLowerCase()));
 
     if (unknownSeries.length > 0) {
       suggs.push({
         type: 'info',
-        title: 'Expand Knowledge Base',
-        description: `${unknownSeries.length} series not in knowledge base`,
-        action: 'Add Series',
+        title: 'New Series Detected',
+        description: `${unknownSeries.length} series not yet in your library`,
+        action: 'Review New Series',
         priority: 'low',
         count: unknownSeries.length,
-        path: '/app/settings',
-        targetTab: 'advanced' // This will set the correct tab
+        path: '/app/learning'
       });
     }
 
