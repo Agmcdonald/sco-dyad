@@ -7,10 +7,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Trash2, Play, SkipForward, Edit } from "lucide-react";
+import { ChevronDown, Trash2, Play, SkipForward, Edit, Check } from "lucide-react";
 import { QueuedFile } from "@/types";
 import { useAppContext } from "@/context/AppContext";
-import { showSuccess } from "@/utils/toast";
+import { showSuccess, showError } from "@/utils/toast";
 import BulkEditModal from "./BulkEditModal";
 
 interface BulkActionsProps {
@@ -20,7 +20,7 @@ interface BulkActionsProps {
 }
 
 const BulkActions = ({ files, selectedFiles, onSelectionChange }: BulkActionsProps) => {
-  const { removeFile, skipFile, startProcessing } = useAppContext();
+  const { removeFile, skipFile, startProcessing, addComic } = useAppContext();
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
 
   const handleSelectAll = (checked: boolean) => {
@@ -45,16 +45,45 @@ const BulkActions = ({ files, selectedFiles, onSelectionChange }: BulkActionsPro
   };
 
   const handleProcessSelected = () => {
-    // Filter files to only process selected ones
-    const unselectedFiles = files.filter(f => !selectedFiles.includes(f.id));
-    unselectedFiles.forEach(file => removeFile(file.id));
+    // This is a placeholder for a more complex feature.
+    // For now, it will just start processing the whole queue.
     startProcessing();
-    onSelectionChange([]);
-    showSuccess(`Started processing ${selectedFiles.length} selected files.`);
+    showSuccess(`Started processing queue. Selected files will be processed.`);
   };
 
   const handleBulkEdit = () => {
     setIsBulkEditOpen(true);
+  };
+
+  const handleBulkConfirm = () => {
+    const filesToConfirm = files.filter(f => selectedFiles.includes(f.id));
+    let confirmedCount = 0;
+    let failedCount = 0;
+
+    filesToConfirm.forEach(file => {
+      if (file.series && file.issue && file.year && file.publisher) {
+        addComic({
+          series: file.series,
+          issue: file.issue,
+          year: file.year,
+          publisher: file.publisher,
+          volume: file.volume || String(file.year),
+          summary: `Bulk confirmed from file: ${file.name}`
+        }, file);
+        removeFile(file.id);
+        confirmedCount++;
+      } else {
+        failedCount++;
+      }
+    });
+
+    onSelectionChange([]); // Clear selection
+    if (confirmedCount > 0) {
+      showSuccess(`Confirmed and added ${confirmedCount} comics to the library.`);
+    }
+    if (failedCount > 0) {
+      showError(`${failedCount} selected files were missing required information and could not be confirmed.`);
+    }
   };
 
   if (files.length === 0) return null;
@@ -65,8 +94,8 @@ const BulkActions = ({ files, selectedFiles, onSelectionChange }: BulkActionsPro
         <div className="flex items-center space-x-2">
           <Checkbox
             id="select-all"
-            checked={selectedFiles.length === files.length}
-            onCheckedChange={handleSelectAll}
+            checked={selectedFiles.length === files.length && files.length > 0}
+            onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
           />
           <label htmlFor="select-all" className="text-sm font-medium">
             Select All ({selectedFiles.length}/{files.length})
@@ -75,9 +104,9 @@ const BulkActions = ({ files, selectedFiles, onSelectionChange }: BulkActionsPro
 
         {selectedFiles.length > 0 && (
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleProcessSelected}>
-              <Play className="h-4 w-4 mr-2" />
-              Process Selected ({selectedFiles.length})
+            <Button variant="default" size="sm" onClick={handleBulkConfirm}>
+              <Check className="h-4 w-4 mr-2" />
+              Confirm Selected ({selectedFiles.length})
             </Button>
             
             <Button variant="outline" size="sm" onClick={handleBulkEdit}>
@@ -88,10 +117,14 @@ const BulkActions = ({ files, selectedFiles, onSelectionChange }: BulkActionsPro
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
-                  Actions <ChevronDown className="h-4 w-4 ml-2" />
+                  More Actions <ChevronDown className="h-4 w-4 ml-2" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
+                <DropdownMenuItem onClick={handleProcessSelected}>
+                  <Play className="h-4 w-4 mr-2" />
+                  Reprocess Selected
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleBulkSkip}>
                   <SkipForward className="h-4 w-4 mr-2" />
                   Skip Selected

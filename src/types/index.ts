@@ -66,6 +66,7 @@ export interface QueuedFile {
   issue: string | null;
   year: number | null;
   publisher: string | null;
+  volume?: string | null;
   confidence: Confidence | null;
   status: FileStatus;
   pageCount?: number;

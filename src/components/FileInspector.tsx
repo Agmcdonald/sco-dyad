@@ -37,7 +37,7 @@ const FileInspector = ({ file }: FileInspectorProps) => {
       issue: file.issue,
       year: file.year,
       publisher: file.publisher,
-      volume: String(file.year), // Mock volume
+      volume: file.volume || String(file.year), // Use detected volume or fallback to year
       summary: `Manually added from file: ${file.name}`
     }, file);
 
