@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useElectron } from '@/hooks/useElectron';
 import { AppSettings, Creator } from '@/types';
 
@@ -106,9 +107,10 @@ export class GcdDatabaseService {
 export const useGcdDatabaseService = () => {
   const { electronAPI } = useElectron();
   
-  if (!electronAPI) {
-    return null;
-  }
-
-  return new GcdDatabaseService(electronAPI);
+  return useMemo(() => {
+    if (!electronAPI) {
+      return null;
+    }
+    return new GcdDatabaseService(electronAPI);
+  }, [electronAPI]);
 };

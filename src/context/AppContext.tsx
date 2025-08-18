@@ -411,7 +411,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       let hasNewData = false;
 
       if (result && result.success && result.data) {
-        // Only update fields if they are empty or the new data is better
+        // Only update fields if they are empty
         if (result.data.summary && !comic.summary) {
           updatedComic.summary = result.data.summary;
           hasNewData = true;
@@ -424,7 +424,38 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           updatedComic.publisher = result.data.publisher;
           hasNewData = true;
         }
-        // Add more non-destructive updates here
+        if (result.data.title && !comic.title) {
+            updatedComic.title = result.data.title;
+            hasNewData = true;
+        }
+        if (result.data.coverDate && !comic.coverDate) {
+            updatedComic.coverDate = result.data.coverDate;
+            hasNewData = true;
+        }
+        if (result.data.genre && !comic.genre) {
+            updatedComic.genre = result.data.genre;
+            hasNewData = true;
+        }
+        if (result.data.characters && !comic.characters) {
+            updatedComic.characters = result.data.characters;
+            hasNewData = true;
+        }
+        if (result.data.price && !comic.price) {
+            updatedComic.price = result.data.price;
+            hasNewData = true;
+        }
+        if (result.data.barcode && !comic.barcode) {
+            updatedComic.barcode = result.data.barcode;
+            hasNewData = true;
+        }
+        if (result.data.languageCode && !comic.languageCode) {
+            updatedComic.languageCode = result.data.languageCode;
+            hasNewData = true;
+        }
+        if (result.data.countryCode && !comic.countryCode) {
+            updatedComic.countryCode = result.data.countryCode;
+            hasNewData = true;
+        }
       }
       
       if (hasNewData) {
