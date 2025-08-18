@@ -50,10 +50,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
 
-  // Knowledge Base
-  getKnowledgeBase: () => ipcRenderer.invoke('get-knowledge-base'),
-  saveKnowledgeBase: (data) => ipcRenderer.invoke('save-knowledge-base', data),
-  
+  // GCD Importer
+  importerStart: (paths) => ipcRenderer.invoke('importer:start', paths),
+  onImporterProgress: (callback) => {
+    ipcRenderer.on('importer:progress', (event, data) => callback(data));
+  },
+
   // GCD Database
   gcdDbConnect: (dbPath) => ipcRenderer.invoke('gcd-db:connect', dbPath),
   gcdDbDisconnect: () => ipcRenderer.invoke('gcd-db:disconnect'),

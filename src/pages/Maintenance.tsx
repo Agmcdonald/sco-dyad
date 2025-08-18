@@ -12,12 +12,13 @@ import {
   Loader2
 } from "lucide-react";
 import DuplicateDetector from "@/components/DuplicateDetector";
+import GcdImporter from "@/components/GcdImporter";
 import { useAppContext } from "@/context/AppContext";
 import { useElectron } from "@/hooks/useElectron";
 import { showSuccess, showError } from "@/utils/toast";
 
 const Maintenance = () => {
-  const { comics, files, actions, importComics, isScanningMetadata, metadataScanProgress, startMetadataScan } = useAppContext();
+  const { comics, files, actions, importComics, isScanningMetadata, metadataScanProgress, startMetadataScan } from useAppContext();
   const { isElectron, electronAPI } = useElectron();
 
   const handleExportLibrary = async () => {
@@ -110,6 +111,8 @@ const Maintenance = () => {
           Library maintenance tools and utilities.
         </p>
       </div>
+
+      <GcdImporter />
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Library Statistics */}

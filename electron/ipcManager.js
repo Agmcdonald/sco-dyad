@@ -1,9 +1,21 @@
 const { ipcMain, dialog, app } = require('electron');
 const path = require('path');
-const fs = require('fs').promises;
+const fs = require('fs');
+const readline = require('readline');
 const Database = require('better-sqlite3');
 
 let gcdDb = null;
+
+// Helper to parse a TSV line
+const parseTsvLine = (line) => {
+  return line.split('\t').map(field => {
+    // Unescape quotes
+    if (field.startsWith('"') && field.endsWith('"')) {
+      return field.slice(1, -1).replace(/""/g, '"');
+    }
+    return field;
+  });
+};
 
 function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBasePath, publicCoversDir }) {
   // App info
@@ -19,7 +31,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       title: 'Select Comic Files',
       properties: ['openFile', 'multiSelections'],
       filters: [
-        { name: 'Comic Files', extensions: ['cbr', 'cbz', 'pdf'] },
+        { name: 'Comic Files', extensions: ['cbr', 'cbz', 'pdf', 'tsv', 'sqlite'] },
         { name: 'All Files', extensions: ['*'] }
       ]
     });
@@ -41,15 +53,15 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('extract-cover', async (event, filePath) => {
     try {
       const tempCoversDir = path.join(app.getPath('userData'), 'temp-covers');
-      await fs.mkdir(tempCoversDir, { recursive: true });
+      await fs.promises.mkdir(tempCoversDir, { recursive: true });
       const tempCoverPath = await fileHandler.extractCover(filePath, tempCoversDir);
       
       const comicId = `comic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const publicCoverFilename = `${comicId}-cover.jpg`;
       const publicCoverPath = path.join(publicCoversDir, publicCoverFilename);
       
-      await fs.copyFile(tempCoverPath, publicCoverPath);
-      await fs.unlink(tempCoverPath);
+      await fs.promises.copyFile(tempCoverPath, publicCoverPath);
+      await fs.promises.unlink(tempCoverPath);
       
       return `/covers/${publicCoverFilename}`;
     } catch (error) {
@@ -61,14 +73,9 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('organize-file', async (event, sourcePath, relativeTargetPath) => {
     try {
       const settings = database.getAllSettings();
-      // Use the user's library path if set, otherwise use default
       const libraryRoot = settings.libraryPath || path.join(app.getPath('documents'), 'Comic Organizer Library');
       const keepOriginal = settings.keepOriginalFiles !== false;
       const fullTargetPath = path.join(libraryRoot, relativeTargetPath);
-      
-      console.log('[ORGANIZE-FILE] Source:', sourcePath);
-      console.log('[ORGANIZE-FILE] Target:', fullTargetPath);
-      console.log('[ORGANIZE-FILE] Library root:', libraryRoot);
       
       const success = await fileHandler.organizeFile(sourcePath, fullTargetPath, keepOriginal);
       return success ? { success: true, newPath: fullTargetPath } : { success: false, error: 'File operation failed.' };
@@ -94,11 +101,9 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('delete-comic', async (event, comicId, filePath) => {
     if (filePath) {
       try {
-        await fs.unlink(filePath);
+        await fs.promises.unlink(filePath);
       } catch (error) {
         console.error(`Failed to delete file: ${filePath}`, error);
-        // We can decide whether to stop or continue. Let's continue and just remove from DB.
-        // throw new Error(`Failed to delete file: ${error.message}`);
       }
     }
     return database.deleteComic(comicId);
@@ -122,7 +127,6 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   // Settings operations
   ipcMain.handle('get-settings', () => {
     const settings = database.getAllSettings();
-    // Set default library path if not set
     if (!settings.libraryPath) {
       settings.libraryPath = path.join(app.getPath('documents'), 'Comic Organizer Library');
     }
@@ -136,33 +140,134 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     return true;
   });
 
-  // Knowledge Base operations (Now deprecated, but kept for safety during transition)
-  ipcMain.handle('get-knowledge-base', async () => {
+  // GCD Importer
+  ipcMain.handle('importer:start', async (event, { issuesPath, sequencesPath }) => {
+    const dbPath = path.join(app.getPath('userData'), 'gcd_local.sqlite');
+    
     try {
-      const data = await fs.readFile(knowledgeBasePath, 'utf-8');
-      return JSON.parse(data);
-    } catch {
-      return []; // Return empty if file doesn't exist
-    }
-  });
+      // Delete old DB if it exists
+      if (fs.existsSync(dbPath)) {
+        fs.unlinkSync(dbPath);
+      }
+      
+      const localDb = new Database(dbPath);
+      
+      // Create schema
+      localDb.exec(`
+        CREATE TABLE issues (
+          id INTEGER PRIMARY KEY,
+          series_name TEXT,
+          issue_number TEXT,
+          publication_date TEXT,
+          publisher_name TEXT
+        );
+        CREATE TABLE issue_details (
+          issue_id INTEGER,
+          key TEXT,
+          value TEXT,
+          PRIMARY KEY (issue_id, key),
+          FOREIGN KEY(issue_id) REFERENCES issues(id)
+        );
+        CREATE TABLE story_details (
+          issue_id INTEGER,
+          sequence_number INTEGER,
+          key TEXT,
+          value TEXT,
+          PRIMARY KEY (issue_id, sequence_number, key)
+        );
+        CREATE INDEX idx_issues_series_name ON issues(series_name);
+        CREATE INDEX idx_issue_details_issue_id ON issue_details(issue_id);
+        CREATE INDEX idx_story_details_issue_id ON story_details(issue_id);
+      `);
 
-  ipcMain.handle('save-knowledge-base', async (event, data) => {
-    try {
-      await fs.writeFile(knowledgeBasePath, JSON.stringify(data, null, 2), 'utf-8');
-      return true;
-    } catch {
-      return false;
+      const processFile = (filePath, tableName, isIssuesFile) => new Promise((resolve, reject) => {
+        const fileStream = fs.createReadStream(filePath);
+        const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
+        
+        let insertStmt;
+        if (isIssuesFile) {
+          insertStmt = localDb.prepare(`INSERT OR IGNORE INTO ${tableName} (issue_id, key, value) VALUES (?, ?, ?)`);
+        } else {
+          insertStmt = localDb.prepare(`INSERT OR IGNORE INTO ${tableName} (issue_id, sequence_number, key, value) VALUES (?, ?, ?, ?)`);
+        }
+        
+        const transaction = localDb.transaction((rows) => {
+          for (const row of rows) {
+            insertStmt.run(row);
+          }
+        });
+
+        let buffer = [];
+        let lineCount = 0;
+        
+        rl.on('line', (line) => {
+          lineCount++;
+          const parts = parseTsvLine(line);
+          if (isIssuesFile) {
+            if (parts.length === 3) buffer.push([parseInt(parts[0]), parts[1], parts[2]]);
+          } else {
+            if (parts.length === 4) buffer.push([parseInt(parts[0]), parseInt(parts[1]), parts[2], parts[3]]);
+          }
+
+          if (buffer.length >= 10000) {
+            transaction(buffer);
+            buffer = [];
+            event.sender.send('importer:progress', { percent: 50, message: `Processing ${tableName}: ${lineCount.toLocaleString()} lines...` });
+          }
+        });
+
+        rl.on('close', () => {
+          if (buffer.length > 0) transaction(buffer);
+          resolve(lineCount);
+        });
+        rl.on('error', reject);
+      });
+
+      // Process issues.tsv
+      event.sender.send('importer:progress', { percent: 10, message: 'Processing issues file...' });
+      const issueLines = await processFile(issuesPath, 'issue_details', true);
+      
+      // Populate main issues table from details
+      localDb.exec(`
+        INSERT INTO issues (id, series_name, issue_number, publication_date, publisher_name)
+        SELECT 
+          issue_id,
+          MAX(CASE WHEN key = 'series name' THEN value END),
+          MAX(CASE WHEN key = 'issue number' THEN value END),
+          MAX(CASE WHEN key = 'publication date' THEN value END),
+          MAX(CASE WHEN key = 'publisher name' THEN value END)
+        FROM issue_details
+        GROUP BY issue_id
+      `);
+
+      // Process sequences.tsv
+      event.sender.send('importer:progress', { percent: 60, message: 'Processing story file...' });
+      const sequenceLines = await processFile(sequencesPath, 'story_details', false);
+
+      localDb.close();
+      
+      // Connect to the new DB for future queries
+      if (gcdDb) gcdDb.close();
+      gcdDb = new Database(dbPath, { readonly: true, fileMustExist: true });
+
+      return { success: true, message: `Database built successfully with ${issueLines.toLocaleString()} issue records and ${sequenceLines.toLocaleString()} story records.` };
+    } catch (error) {
+      console.error('Importer error:', error);
+      return { success: false, message: error.message };
     }
   });
 
   // GCD Database operations
   ipcMain.handle('gcd-db:connect', (event, dbPath) => {
+    const localDbPath = dbPath || path.join(app.getPath('userData'), 'gcd_local.sqlite');
     try {
-      if (gcdDb) {
-        gcdDb.close();
+      if (gcdDb) gcdDb.close();
+      if (!fs.existsSync(localDbPath)) {
+        console.log('Local GCD database not found.');
+        return false;
       }
-      gcdDb = new Database(dbPath, { readonly: true, fileMustExist: true });
-      console.log('Successfully connected to GCD database at:', dbPath);
+      gcdDb = new Database(localDbPath, { readonly: true, fileMustExist: true });
+      console.log('Successfully connected to local GCD database.');
       return true;
     } catch (error) {
       console.error('Failed to connect to GCD database:', error);
@@ -171,21 +276,13 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
-  ipcMain.handle('gcd-db:disconnect', () => {
-    if (gcdDb) {
-      gcdDb.close();
-      gcdDb = null;
-    }
-  });
-
   ipcMain.handle('gcd-db:search-series', (event, seriesName) => {
     if (!gcdDb) return [];
     try {
       const stmt = gcdDb.prepare(`
-        SELECT s.id, s.name, p.name as publisher, s.year_began
-        FROM gcd_series s
-        JOIN gcd_publisher p ON s.publisher_id = p.id
-        WHERE s.name LIKE ?
+        SELECT id, series_name as name, publisher_name as publisher, SUBSTR(publication_date, 1, 4) as year_began
+        FROM issues
+        WHERE series_name LIKE ?
         LIMIT 20
       `);
       return stmt.all(`%${seriesName}%`);
@@ -198,57 +295,29 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('gcd-db:get-issue-details', (event, seriesId, issueNumber) => {
     if (!gcdDb) return null;
     try {
-      const normalizedIssue = String(parseInt(issueNumber, 10));
-      const stmt = gcdDb.prepare(`
-        SELECT
-          i.id,
-          i.title,
-          i.publication_date,
-          s.synopsis,
-          s.genre,
-          s.characters
-        FROM gcd_issue i
-        LEFT JOIN gcd_story s ON s.issue_id = i.id AND s.sequence_number = 1
-        WHERE i.series_id = ? AND i.number = ?
-      `);
-      return stmt.get(seriesId, normalizedIssue);
+      const issueStmt = gcdDb.prepare(`SELECT * FROM issues WHERE id = ?`);
+      const issue = issueStmt.get(seriesId);
+      if (!issue) return null;
+
+      const detailsStmt = gcdDb.prepare(`SELECT key, value FROM issue_details WHERE issue_id = ?`);
+      const details = detailsStmt.all(seriesId).reduce((acc, row) => {
+        acc[row.key.replace(/\s/g, '_')] = row.value;
+        return acc;
+      }, {});
+
+      const storiesStmt = gcdDb.prepare(`SELECT * FROM story_details WHERE issue_id = ? ORDER BY sequence_number`);
+      const storyRows = storiesStmt.all(seriesId);
+      
+      const stories = {};
+      storyRows.forEach(row => {
+        if (!stories[row.sequence_number]) stories[row.sequence_number] = { sequence_number: row.sequence_number };
+        stories[row.sequence_number][row.key.replace(/\s/g, '_')] = row.value;
+      });
+
+      return { ...issue, ...details, stories: Object.values(stories) };
     } catch (error) {
       console.error('GCD issue details search failed:', error);
       return null;
-    }
-  });
-
-  ipcMain.handle('gcd-db:get-issue-creators', (event, issueId) => {
-    if (!gcdDb) return [];
-    try {
-      // This query gets creators for the first story in the issue.
-      const stmt = gcdDb.prepare(`
-        SELECT
-          sc.credited_as as name,
-          ct.name as role
-        FROM gcd_story_credit AS sc
-        JOIN gcd_credit_type AS ct ON sc.credit_type_id = ct.id
-        JOIN gcd_story AS s ON sc.story_id = s.id
-        WHERE s.issue_id = ?
-        ORDER BY s.sequence_number, ct.sort_code
-      `);
-      return stmt.all(issueId);
-    } catch (error) {
-      console.error('GCD issue creators search failed:', error);
-      return [];
-    }
-  });
-
-  ipcMain.handle('gcd-db:search-publishers', (event, query) => {
-    if (!gcdDb) return [];
-    try {
-      const stmt = gcdDb.prepare(`
-        SELECT name FROM gcd_publisher WHERE name LIKE ? ORDER BY name LIMIT 20
-      `);
-      return stmt.all(`%${query}%`).map(p => p.name);
-    } catch (error) {
-      console.error('GCD publisher search failed:', error);
-      return [];
     }
   });
 
@@ -260,15 +329,12 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       filters: [{ name: 'JSON Files', extensions: ['json'] }]
     });
 
-    if (canceled || !filePath) {
-      return { success: false, path: null };
-    }
+    if (canceled || !filePath) return { success: false, path: null };
 
     try {
-      await fs.writeFile(filePath, data, 'utf-8');
+      await fs.promises.writeFile(filePath, data, 'utf-8');
       return { success: true, path: filePath };
     } catch (error) {
-      console.error('Failed to save backup:', error);
       return { success: false, error: error.message };
     }
   });
@@ -280,16 +346,12 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       filters: [{ name: 'JSON Files', extensions: ['json'] }]
     });
 
-    if (canceled || filePaths.length === 0) {
-      return { success: false, data: null };
-    }
+    if (canceled || filePaths.length === 0) return { success: false, data: null };
 
     try {
-      const filePath = filePaths[0];
-      const data = await fs.readFile(filePath, 'utf-8');
+      const data = await fs.promises.readFile(filePaths[0], 'utf-8');
       return { success: true, data };
     } catch (error) {
-      console.error('Failed to load backup:', error);
       return { success: false, error: error.message };
     }
   });
