@@ -19,7 +19,6 @@ import { SelectionProvider } from "./context/SelectionContext";
 import { AppProvider } from "./context/AppContext";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { SettingsProvider } from "./context/SettingsContext";
-import { KnowledgeBaseProvider } from "./context/KnowledgeBaseContext";
 
 const queryClient = new QueryClient();
 
@@ -67,25 +66,18 @@ const router = createBrowserRouter([
 ]);
 
 const App = () => {
-  useEffect(() => {
-    // This is now handled by the KnowledgeBaseProvider
-    // initializeKnowledgeBase(comicsKnowledgeData);
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <TooltipProvider>
           <SettingsProvider>
-            <KnowledgeBaseProvider>
-              <AppProvider>
-                <SelectionProvider>
-                  <Toaster />
-                  <Sonner />
-                  <RouterProvider router={router} />
-                </SelectionProvider>
-              </AppProvider>
-            </KnowledgeBaseProvider>
+            <AppProvider>
+              <SelectionProvider>
+                <Toaster />
+                <Sonner />
+                <RouterProvider router={router} />
+              </SelectionProvider>
+            </AppProvider>
           </SettingsProvider>
         </TooltipProvider>
       </ThemeProvider>
