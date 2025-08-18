@@ -16,6 +16,8 @@ export interface ProcessingResult {
     creators?: Creator[];
     title?: string;
     coverDate?: string;
+    genre?: string;
+    characters?: string;
   };
   error?: string;
 }
@@ -61,9 +63,11 @@ export const processComicFile = async (
             year: parsed.year || bestMatch.year_began,
             publisher: bestMatch.publisher,
             volume: String(bestMatch.year_began),
-            summary: issueDetails?.notes || `Matched from local GCD: ${bestMatch.name}`,
+            summary: issueDetails?.synopsis || `Matched from local GCD: ${bestMatch.name}`,
             title: issueDetails?.title,
             coverDate: issueDetails?.publication_date,
+            genre: issueDetails?.genre,
+            characters: issueDetails?.characters,
             creators: creators
           }
         };

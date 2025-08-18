@@ -200,9 +200,16 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     try {
       const normalizedIssue = String(parseInt(issueNumber, 10));
       const stmt = gcdDb.prepare(`
-        SELECT id, title, publication_date, notes
-        FROM gcd_issue
-        WHERE series_id = ? AND number = ?
+        SELECT
+          i.id,
+          i.title,
+          i.publication_date,
+          s.synopsis,
+          s.genre,
+          s.characters
+        FROM gcd_issue i
+        LEFT JOIN gcd_story s ON s.issue_id = i.id AND s.sequence_number = 1
+        WHERE i.series_id = ? AND i.number = ?
       `);
       return stmt.get(seriesId, normalizedIssue);
     } catch (error) {
@@ -214,14 +221,16 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('gcd-db:get-issue-creators', (event, issueId) => {
     if (!gcdDb) return [];
     try {
+      // This query gets creators for the first story in the issue.
       const stmt = gcdDb.prepare(`
         SELECT
-          ic.credited_as as name,
+          sc.credited_as as name,
           ct.name as role
-        FROM gcd_issue_credit AS ic
-        JOIN gcd_credit_type AS ct ON ic.credit_type_id = ct.id
-        WHERE ic.issue_id = ?
-        ORDER BY ct.sort_code
+        FROM gcd_story_credit AS sc
+        JOIN gcd_credit_type AS ct ON sc.credit_type_id = ct.id
+        JOIN gcd_story AS s ON sc.story_id = s.id
+        WHERE s.issue_id = ?
+        ORDER BY s.sequence_number, ct.sort_code
       `);
       return stmt.all(issueId);
     } catch (error) {
