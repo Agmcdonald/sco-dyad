@@ -186,15 +186,15 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
           issue_id INTEGER,
           key TEXT,
           value TEXT,
-          PRIMARY KEY (issue_id, key),
-          FOREIGN KEY(issue_id) REFERENCES issues(id)
+          PRIMARY KEY (issue_id, key)
         );
         CREATE TABLE story_details (
           issue_id INTEGER,
           sequence_number INTEGER,
           key TEXT,
           value TEXT,
-          PRIMARY KEY (issue_id, sequence_number, key)
+          PRIMARY KEY (issue_id, sequence_number, key),
+          FOREIGN KEY(issue_id) REFERENCES issues(id)
         );
         CREATE INDEX idx_issues_series_name ON issues(series_name);
         CREATE INDEX idx_issue_details_issue_id ON issue_details(issue_id);
