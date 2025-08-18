@@ -6,287 +6,91 @@ export interface ParsedComicInfo {
   publisher?: string | null;
 }
 
-// Enhanced regex patterns for better parsing
-const issueRegex = /(?:#|issue|\s)(\d{1,4}(?:\.\d{1,2})?)/i;
-const yearRegex = /\((20\d{2}|19\d{2})\)/;
-const volumeRegex = /(?:v|vol|volume)\s*(\d{1,3})/i;
-const issueRangeRegex = /\d{3}-\d{3}/; // Detects ranges like "001-006"
-
 // Character to publisher mapping
 const characterPublisherMap: Record<string, string> = {
   // DC Comics characters
-  'superman': 'DC Comics',
-  'batman': 'DC Comics',
-  'wonder woman': 'DC Comics',
-  'flash': 'DC Comics',
-  'green lantern': 'DC Comics',
-  'aquaman': 'DC Comics',
-  'cyborg': 'DC Comics',
-  'green arrow': 'DC Comics',
-  'martian manhunter': 'DC Comics',
-  'shazam': 'DC Comics',
-  'nightwing': 'DC Comics',
-  'robin': 'DC Comics',
-  'batgirl': 'DC Comics',
-  'supergirl': 'DC Comics',
-  'harley quinn': 'DC Comics',
-  'joker': 'DC Comics',
-  'catwoman': 'DC Comics',
-  'poison ivy': 'DC Comics',
-  'lex luthor': 'DC Comics',
-  'deathstroke': 'DC Comics',
-  'teen titans': 'DC Comics',
-  'justice league': 'DC Comics',
-  'birds of prey': 'DC Comics',
-  'suicide squad': 'DC Comics',
-  
+  'superman': 'DC Comics', 'batman': 'DC Comics', 'wonder woman': 'DC Comics', 'flash': 'DC Comics', 'green lantern': 'DC Comics', 'aquaman': 'DC Comics', 'cyborg': 'DC Comics', 'green arrow': 'DC Comics', 'martian manhunter': 'DC Comics', 'shazam': 'DC Comics', 'nightwing': 'DC Comics', 'robin': 'DC Comics', 'batgirl': 'DC Comics', 'supergirl': 'DC Comics', 'harley quinn': 'DC Comics', 'joker': 'DC Comics', 'catwoman': 'DC Comics', 'poison ivy': 'DC Comics', 'lex luthor': 'DC Comics', 'deathstroke': 'DC Comics', 'teen titans': 'DC Comics', 'justice league': 'DC Comics', 'birds of prey': 'DC Comics', 'suicide squad': 'DC Comics',
   // Marvel Comics characters
-  'spider-man': 'Marvel Comics',
-  'spiderman': 'Marvel Comics',
-  'iron man': 'Marvel Comics',
-  'captain america': 'Marvel Comics',
-  'thor': 'Marvel Comics',
-  'hulk': 'Marvel Comics',
-  'black widow': 'Marvel Comics',
-  'hawkeye': 'Marvel Comics',
-  'ant-man': 'Marvel Comics',
-  'wasp': 'Marvel Comics',
-  'captain marvel': 'Marvel Comics',
-  'ms marvel': 'Marvel Comics',
-  'daredevil': 'Marvel Comics',
-  'punisher': 'Marvel Comics',
-  'deadpool': 'Marvel Comics',
-  'wolverine': 'Marvel Comics',
-  'x-men': 'Marvel Comics',
-  'fantastic four': 'Marvel Comics',
-  'avengers': 'Marvel Comics',
-  'guardians of the galaxy': 'Marvel Comics',
-  'doctor strange': 'Marvel Comics',
-  'scarlet witch': 'Marvel Comics',
-  'vision': 'Marvel Comics',
-  'falcon': 'Marvel Comics',
-  'winter soldier': 'Marvel Comics',
-  'black panther': 'Marvel Comics',
-  'storm': 'Marvel Comics',
-  'cyclops': 'Marvel Comics',
-  'jean grey': 'Marvel Comics',
-  'magneto': 'Marvel Comics',
-  'professor x': 'Marvel Comics',
-  'venom': 'Marvel Comics',
-  'carnage': 'Marvel Comics',
-  'green goblin': 'Marvel Comics',
-  'doctor octopus': 'Marvel Comics',
-  'thanos': 'Marvel Comics',
-  'loki': 'Marvel Comics',
-  'galactus': 'Marvel Comics',
+  'spider-man': 'Marvel Comics', 'spiderman': 'Marvel Comics', 'iron man': 'Marvel Comics', 'captain america': 'Marvel Comics', 'thor': 'Marvel Comics', 'hulk': 'Marvel Comics', 'black widow': 'Marvel Comics', 'hawkeye': 'Marvel Comics', 'ant-man': 'Marvel Comics', 'wasp': 'Marvel Comics', 'captain marvel': 'Marvel Comics', 'ms marvel': 'Marvel Comics', 'daredevil': 'Marvel Comics', 'punisher': 'Marvel Comics', 'deadpool': 'Marvel Comics', 'wolverine': 'Marvel Comics', 'x-men': 'Marvel Comics', 'fantastic four': 'Marvel Comics', 'avengers': 'Marvel Comics', 'guardians of the galaxy': 'Marvel Comics', 'doctor strange': 'Marvel Comics', 'scarlet witch': 'Marvel Comics', 'vision': 'Marvel Comics', 'falcon': 'Marvel Comics', 'winter soldier': 'Marvel Comics', 'black panther': 'Marvel Comics', 'storm': 'Marvel Comics', 'cyclops': 'Marvel Comics', 'jean grey': 'Marvel Comics', 'magneto': 'Marvel Comics', 'professor x': 'Marvel Comics', 'venom': 'Marvel Comics', 'carnage': 'Marvel Comics', 'green goblin': 'Marvel Comics', 'doctor octopus': 'Marvel Comics', 'thanos': 'Marvel Comics', 'loki': 'Marvel Comics', 'galactus': 'Marvel Comics',
 };
 
 // Patterns to remove common metadata that clutters series names
 const metadataPatterns = [
-    /\(digital\)/gi,
-    /\(web-rip\)/gi,
-    /\(webrip\)/gi,
-    /\(scan\)/gi,
-    /\(cbr\)/gi,
-    /\(cbz\)/gi,
-    /\(pdf\)/gi,
-    /\([^)]*-[^)]*\)/gi, // Catches (Kileko-Empire), (The Last Kryptonian-DCP)
-    /\([^)]*rip[^)]*\)/gi,
-    /\([^)]*scan[^)]*\)/gi,
-    /\(dcp\)/gi,
-    /\(empire\)/gi,
-    /\(son of ultron-empire\)/gi,
-    /\(the last kryptonian-dcp\)/gi,
-    /\(\d+\s*covers?\)/gi, // (2 covers)
-    /\(annual\)/gi,
-    /\(one-shot\)/gi,
-    /\(\d+\)(?!\s*$)/gi, // Remove (23) but not years at the end
+    /\(digital\)/gi, /\(web-rip\)/gi, /\(webrip\)/gi, /\(scan\)/gi, /\(cbr\)/gi, /\(cbz\)/gi, /\(pdf\)/gi, /\([^)]*-[^)]*\)/gi, /\([^)]*rip[^)]*\)/gi, /\([^)]*scan[^)]*\)/gi, /\(dcp\)/gi, /\(empire\)/gi, /\(son of ultron-empire\)/gi, /\(the last kryptonian-dcp\)/gi, /\(\d+\s*covers?\)/gi, /\(annual\)/gi, /\(one-shot\)/gi,
 ];
 
 const clean = (name: string): string => {
-  let cleaned = name
-    .replace(/_/g, ' ') // Replace underscores with spaces
-    .replace(/\.[^/.]+$/, "") // Remove file extension
-    .trim();
-  
-  // Remove metadata patterns first
-  metadataPatterns.forEach(pattern => {
-    cleaned = cleaned.replace(pattern, '');
-  });
-  
-  // Clean up separators but preserve hyphens in series names like "Spider-Man"
-  cleaned = cleaned
-    .replace(/\s+/g, ' ') // Collapse multiple spaces
-    .trim();
-  
-  return cleaned;
+  let cleaned = name.replace(/_/g, ' ').replace(/\.[^/.]+$/, "").trim();
+  metadataPatterns.forEach(pattern => { cleaned = cleaned.replace(pattern, ''); });
+  return cleaned.replace(/\s+/g, ' ').trim();
 };
 
-// Detect publisher based on character names in the series title
 const detectPublisherFromCharacters = (seriesName: string): string | null => {
   if (!seriesName) return null;
-  
   const lowerSeries = seriesName.toLowerCase();
-  
-  // Check for character matches
   for (const [character, publisher] of Object.entries(characterPublisherMap)) {
-    if (lowerSeries.includes(character)) {
-      return publisher;
-    }
+    if (lowerSeries.includes(character)) return publisher;
   }
-  
   return null;
 };
 
-// Check if a folder name contains an issue range (like "001-006")
-const containsIssueRange = (folderName: string): boolean => {
-  return issueRangeRegex.test(folderName);
-};
-
-// Extract clean series name from folder, removing issue ranges
-const extractSeriesFromFolder = (folderName: string): string => {
-  let cleanFolder = folderName;
-  
-  // Remove issue ranges like "001-006"
-  cleanFolder = cleanFolder.replace(/\s*\d{3}-\d{3}\s*/g, '').trim();
-  
-  // Remove year in parentheses to get just the series name
-  cleanFolder = cleanFolder.replace(/\s*\(\d{4}\)\s*/g, '').trim();
-  
-  return cleanFolder;
-};
-
 export const parseFilename = (path: string): ParsedComicInfo => {
-  console.log(`[PARSER] Parsing filename: ${path}`);
-  
-  const pathParts = path.split(/[\\/]/);
-  const filename = pathParts[pathParts.length - 1];
-  const folderName = pathParts.length > 1 ? pathParts[pathParts.length - 2] : '';
+  const filename = path.split(/[\\/]/).pop() || '';
+  let cleaned = clean(filename);
 
-  console.log(`[PARSER] Filename: ${filename}`);
-  console.log(`[PARSER] Folder: ${folderName}`);
-
-  // --- Parse Filename ---
-  let cleanedFilename = filename.replace(/\.[^/.]+$/, ""); // Remove extension
-  console.log(`[PARSER] Cleaned filename: ${cleanedFilename}`);
-
-  // Extract year first (most reliable) - preserve it before cleaning
-  const yearMatch = cleanedFilename.match(yearRegex);
-  const year = yearMatch ? parseInt(yearMatch[1], 10) : null;
-  console.log(`[PARSER] Year match: ${yearMatch?.[0]} -> ${year}`);
+  // 1. Extract Year
+  let year: number | null = null;
+  const yearMatch = cleaned.match(/\((\d{4})\)/);
   if (yearMatch) {
-    cleanedFilename = cleanedFilename.replace(yearRegex, '').trim();
-    console.log(`[PARSER] After year removal: ${cleanedFilename}`);
+    year = parseInt(yearMatch[1], 10);
+    cleaned = cleaned.replace(yearMatch[0], '').trim();
   }
 
-  // Apply metadata cleaning patterns AFTER year extraction
-  metadataPatterns.forEach(pattern => {
-    cleanedFilename = cleanedFilename.replace(pattern, '');
-  });
-  cleanedFilename = cleanedFilename.trim();
-  console.log(`[PARSER] After metadata removal: ${cleanedFilename}`);
-  
-  // Extract issue number - improved pattern to catch "001", "1", etc.
+  // 2. Extract Volume
+  let volume: string | null = null;
+  const volumeMatch = cleaned.match(/(?:\(v|vol|volume)\s*(\d{1,3})\)/i);
+  if (volumeMatch) {
+    volume = volumeMatch[1];
+    cleaned = cleaned.replace(volumeMatch[0], '').trim();
+  }
+
+  // 3. Extract Issue (from most specific to least specific)
+  let issue: string | null = null;
   const issuePatterns = [
-    /\b(\d{3})\b/,  // Three digit numbers like "001"
-    /\b#(\d{1,4}(?:\.\d{1,2})?)\b/,  // Hash followed by number
-    /\bissue\s*(\d{1,4}(?:\.\d{1,2})?)\b/i,  // "issue 1"
-    /\b(\d{1,4}(?:\.\d{1,2})?)\b/  // Any standalone number (fallback)
+    { regex: /\s#(\d{1,4}(?:\.\d{1,2})?)/, group: 1 }, // #123
+    { regex: /\sissue\s#?(\d{1,4}(?:\.\d{1,2})?)/i, group: 1 }, // issue 123
+    { regex: /\s(\d{3,4})/, group: 1 }, // 001 (3 or 4 digits)
+    { regex: /\s(\d{1,2}(?:\.\d{1,2})?)$/, group: 1 }, // 1 or 1.5 at the end
   ];
-  
-  let issue = null;
-  let issueMatch = null;
-  
+
   for (const pattern of issuePatterns) {
-    issueMatch = cleanedFilename.match(pattern);
+    const issueMatch = cleaned.match(pattern.regex);
     if (issueMatch) {
-      issue = issueMatch[1];
-      console.log(`[PARSER] Issue match with pattern ${pattern}: ${issueMatch[0]} -> ${issue}`);
-      cleanedFilename = cleanedFilename.replace(issueMatch[0], '').trim();
-      console.log(`[PARSER] After issue removal: ${cleanedFilename}`);
+      issue = issueMatch[pattern.group];
+      cleaned = cleaned.replace(issueMatch[0], '').trim();
       break;
     }
   }
-  
-  // Extract volume
-  const volumeMatch = cleanedFilename.match(volumeRegex);
-  const volume = volumeMatch ? volumeMatch[1] : null;
-  console.log(`[PARSER] Volume match: ${volumeMatch?.[0]} -> ${volume}`);
-  if (volumeMatch) {
-    cleanedFilename = cleanedFilename.replace(volumeRegex, '').trim();
-    console.log(`[PARSER] After volume removal: ${cleanedFilename}`);
-  }
 
-  // Clean the remaining text to get series name from filename
-  let seriesFromFile = cleanedFilename;
-  // Remove any remaining parenthetical content that's not a year
-  seriesFromFile = seriesFromFile.replace(/\([^)]*\)/g, '').replace(/\[[^\]]*\]/g, '').trim();
-  console.log(`[PARSER] Series from file after cleaning: ${seriesFromFile}`);
+  // 4. The remainder is the series
+  let series = cleaned.replace(/\[[^\]]*\]/g, '').replace(/\([^)]*\)/g, '').trim();
 
-  // --- Parse Folder Name ---
-  let seriesFromFolder = '';
-  if (folderName && !/incoming|scans|comics|downloads/i.test(folderName)) {
-    if (containsIssueRange(folderName)) {
-      console.log(`[PARSER] Folder contains issue range, extracting series name only`);
-      seriesFromFolder = extractSeriesFromFolder(folderName);
-    } else {
-      seriesFromFolder = clean(folderName);
-    }
-    console.log(`[PARSER] Series from folder: ${seriesFromFolder}`);
-  }
+  // 5. Detect Publisher
+  const publisher = detectPublisherFromCharacters(series);
 
-  // --- Combine Results ---
-  // Prioritize file parsing, use folder only as fallback for series name
-  let finalSeries = seriesFromFile;
-  
-  // Only use folder name if we couldn't get a series from the file
-  if (!seriesFromFile && seriesFromFolder) {
-    finalSeries = seriesFromFolder;
-    console.log(`[PARSER] Using folder name as fallback: ${finalSeries}`);
-  } else if (seriesFromFile) {
-    console.log(`[PARSER] Using series from filename: ${finalSeries}`);
-  }
-
-  // Format issue number with leading zeros for display
-  if (issue) {
-    // Pad with leading zeros if it's a simple number
-    if (/^\d+$/.test(issue)) {
-      issue = issue.padStart(3, '0');
-      console.log(`[PARSER] Formatted issue: ${issue}`);
-    }
-  }
-
-  // Detect publisher based on character names
-  const detectedPublisher = detectPublisherFromCharacters(finalSeries);
-  console.log(`[PARSER] Detected publisher: ${detectedPublisher}`);
-
-  const result = { 
-    series: finalSeries || null, 
-    issue: issue || null, 
-    year, 
-    volume,
-    publisher: detectedPublisher
+  return {
+    series: series || null,
+    issue: issue ? issue.padStart(3, '0') : null,
+    year,
+    volume: volume || (year ? String(year) : null),
+    publisher
   };
-  
-  console.log(`[PARSER] Final result:`, result);
-  return result;
 };
 
-// Helper function to generate a clean, suggested filename
 export const generateSuggestedFilename = (parsed: ParsedComicInfo): string => {
-  if (!parsed.series || !parsed.issue) {
-    return '';
-  }
-
+  if (!parsed.series || !parsed.issue) return '';
   let suggested = parsed.series;
-  
-  // Add issue with # prefix
   suggested += ` #${parsed.issue}`;
-  
-  // Add year in parentheses
-  if (parsed.year) {
-    suggested += ` (${parsed.year})`;
-  }
-
+  if (parsed.year) suggested += ` (${parsed.year})`;
   return suggested;
 };

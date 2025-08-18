@@ -64,6 +64,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   gcdDbGetIssueCreators: (issueId) => ipcRenderer.invoke('gcd-db:get-issue-creators', issueId),
   gcdDbSearchPublishers: (query) => ipcRenderer.invoke('gcd-db:search-publishers', query),
 
+  // Knowledge Base
+  getKnowledgeBase: () => ipcRenderer.invoke('get-knowledge-base'),
+  saveKnowledgeBase: (data) => ipcRenderer.invoke('save-knowledge-base', data),
+
   // Backup and Restore
   saveBackup: (data) => ipcRenderer.invoke('dialog:save-backup', data),
   loadBackup: () => ipcRenderer.invoke('dialog:load-backup'),
