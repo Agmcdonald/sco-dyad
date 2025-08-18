@@ -31,9 +31,12 @@ export const processComicFile = async (
   gcdDbService?: GcdDatabaseService | null
 ): Promise<ProcessingResult> => {
   try {
+    console.log(`[SMART-PROCESSOR] Processing file: ${file.name}`);
     const parsed = parseFilename(file.path);
+    console.log(`[SMART-PROCESSOR] Parsed data:`, parsed);
     
     if (!parsed.series || !parsed.issue) {
+      console.log(`[SMART-PROCESSOR] Failed to parse series or issue from: ${file.name}`);
       return {
         success: false,
         confidence: "Low",
@@ -41,43 +44,58 @@ export const processComicFile = async (
       };
     }
 
-    // 1. Attempt GCD DB search first
+    // 1. Attempt GCD DB search first (if available and connected)
     if (gcdDbService && parsed.series) {
-      const gcdResults = await gcdDbService.searchSeries(parsed.series);
-      if (gcdResults && gcdResults.length > 0) {
-        const bestMatch = gcdResults[0];
+      console.log(`[SMART-PROCESSOR] Attempting GCD database search for: ${parsed.series}`);
+      try {
+        const gcdResults = await gcdDbService.searchSeries(parsed.series);
+        console.log(`[SMART-PROCESSOR] GCD search results:`, gcdResults);
         
-        const issueDetails = await gcdDbService.getIssueDetails(bestMatch.id, parsed.issue);
-        
-        let creators: Creator[] = [];
-        if (issueDetails) {
-          creators = await gcdDbService.getIssueCreators(issueDetails.id);
-        }
-        
-        return {
-          success: true,
-          confidence: issueDetails ? "High" : "Medium",
-          data: {
-            series: bestMatch.name,
-            issue: parsed.issue,
-            year: parsed.year || bestMatch.year_began,
-            publisher: bestMatch.publisher,
-            volume: String(bestMatch.year_began),
-            summary: issueDetails?.synopsis || `Matched from local GCD: ${bestMatch.name}`,
-            title: issueDetails?.title,
-            coverDate: issueDetails?.publication_date,
-            genre: issueDetails?.genre,
-            characters: issueDetails?.characters,
-            creators: creators
+        if (gcdResults && gcdResults.length > 0) {
+          const bestMatch = gcdResults[0];
+          console.log(`[SMART-PROCESSOR] Best GCD match:`, bestMatch);
+          
+          const issueDetails = await gcdDbService.getIssueDetails(bestMatch.id, parsed.issue);
+          console.log(`[SMART-PROCESSOR] Issue details:`, issueDetails);
+          
+          let creators: Creator[] = [];
+          if (issueDetails) {
+            creators = await gcdDbService.getIssueCreators(issueDetails.id);
+            console.log(`[SMART-PROCESSOR] Creators:`, creators);
           }
-        };
+          
+          return {
+            success: true,
+            confidence: issueDetails ? "High" : "Medium",
+            data: {
+              series: bestMatch.name,
+              issue: parsed.issue,
+              year: parsed.year || bestMatch.year_began,
+              publisher: bestMatch.publisher,
+              volume: String(bestMatch.year_began),
+              summary: issueDetails?.synopsis || `Matched from local GCD: ${bestMatch.name}`,
+              title: issueDetails?.title,
+              coverDate: issueDetails?.publication_date,
+              genre: issueDetails?.genre,
+              characters: issueDetails?.characters,
+              creators: creators
+            }
+          };
+        }
+      } catch (error) {
+        console.error(`[SMART-PROCESSOR] GCD database error:`, error);
+        // Continue to other methods if GCD fails
       }
+    } else {
+      console.log(`[SMART-PROCESSOR] GCD database not available or not connected`);
     }
 
     // 2. Attempt Marvel API fetch if it's a Marvel comic
     if (parsed.publisher?.toLowerCase() === 'marvel comics' && marvelPublicKey && marvelPrivateKey) {
+      console.log(`[SMART-PROCESSOR] Attempting Marvel API search`);
       const marvelResult = await fetchMarvelMetadata(parsed, marvelPublicKey, marvelPrivateKey);
       if (marvelResult.success && marvelResult.data) {
+        console.log(`[SMART-PROCESSOR] Marvel API success`);
         return {
           success: true,
           confidence: marvelResult.data.confidence,
@@ -98,8 +116,10 @@ export const processComicFile = async (
 
     // 3. Attempt Comic Vine API fetch for other publishers
     if (comicVineApiKey) {
+      console.log(`[SMART-PROCESSOR] Attempting Comic Vine API search`);
       const apiResult = await fetchComicMetadata(parsed, comicVineApiKey);
       if (apiResult.success && apiResult.data) {
+        console.log(`[SMART-PROCESSOR] Comic Vine API success`);
         return {
           success: true,
           confidence: apiResult.data.confidence,
@@ -118,6 +138,7 @@ export const processComicFile = async (
 
     // 4. Fallback to parsed data only
     if (parsed.year) {
+      console.log(`[SMART-PROCESSOR] Using parsed data as fallback`);
       return {
         success: true,
         confidence: parsed.publisher ? "Medium" : "Low",
@@ -134,6 +155,7 @@ export const processComicFile = async (
     }
 
     // 5. Failure
+    console.log(`[SMART-PROCESSOR] Processing failed - insufficient information`);
     return {
       success: false,
       confidence: "Low",
@@ -141,6 +163,7 @@ export const processComicFile = async (
     };
 
   } catch (error) {
+    console.error(`[SMART-PROCESSOR] Processing error:`, error);
     return {
       success: false,
       confidence: "Low",

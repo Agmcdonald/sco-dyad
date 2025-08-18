@@ -13,6 +13,7 @@ import { Play, Pause, RotateCcw } from "lucide-react";
 import { QueuedFile } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
+import { useGcdDatabaseService } from "@/services/gcdDatabaseService";
 import { batchProcessFiles, getProcessingStats } from "@/lib/smartProcessor";
 import { showSuccess, showError } from "@/utils/toast";
 
@@ -24,6 +25,7 @@ interface BatchProcessorProps {
 const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
   const { updateFile, addComic, removeFile, logAction } = useAppContext();
   const { settings } = useSettings();
+  const gcdDbService = useGcdDatabaseService();
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState("");
@@ -55,11 +57,15 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
     setCurrentFile("");
 
     try {
+      console.log(`[BATCH-PROCESSOR] Starting batch processing of ${filesToProcess.length} files`);
+      console.log(`[BATCH-PROCESSOR] GCD service available:`, !!gcdDbService);
+      
       const results = await batchProcessFiles(
         filesToProcess,
         settings.comicVineApiKey,
         settings.marvelPublicKey,
         settings.marvelPrivateKey,
+        gcdDbService,
         (processed, total, current) => {
           setProgress((processed / total) * 100);
           setCurrentFile(current);
@@ -102,6 +108,7 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
       showSuccess(`Processed ${stats.successful} out of ${stats.total} files`);
 
     } catch (error) {
+      console.error(`[BATCH-PROCESSOR] Error:`, error);
       showError("Batch processing failed");
       logAction('error', 'Batch processing encountered an error');
     } finally {

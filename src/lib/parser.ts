@@ -138,51 +138,80 @@ const detectPublisherFromCharacters = (seriesName: string): string | null => {
 };
 
 export const parseFilename = (path: string): ParsedComicInfo => {
+  console.log(`[PARSER] Parsing filename: ${path}`);
+  
   const pathParts = path.split(/[\\/]/);
   const filename = pathParts[pathParts.length - 1];
   const folderName = pathParts.length > 1 ? pathParts[pathParts.length - 2] : '';
 
+  console.log(`[PARSER] Filename: ${filename}`);
+  console.log(`[PARSER] Folder: ${folderName}`);
+
   // --- Parse Filename ---
   let cleanedFilename = filename.replace(/\.[^/.]+$/, ""); // Remove extension
+  console.log(`[PARSER] Cleaned filename: ${cleanedFilename}`);
 
   // Apply metadata cleaning patterns first
   metadataPatterns.forEach(pattern => {
     cleanedFilename = cleanedFilename.replace(pattern, '');
   });
   cleanedFilename = cleanedFilename.trim();
+  console.log(`[PARSER] After metadata removal: ${cleanedFilename}`);
   
   // Extract year first (most reliable)
   const yearMatch = cleanedFilename.match(yearRegex);
   const year = yearMatch ? parseInt(yearMatch[1], 10) : null;
+  console.log(`[PARSER] Year match: ${yearMatch?.[0]} -> ${year}`);
   if (yearMatch) {
     cleanedFilename = cleanedFilename.replace(yearRegex, '').trim();
+    console.log(`[PARSER] After year removal: ${cleanedFilename}`);
   }
 
-  // Extract issue number - look for patterns like "001", "#1", "issue 1"
-  const issueMatch = cleanedFilename.match(/\b(\d{1,4}(?:\.\d{1,2})?)\b/);
-  let issue = issueMatch ? issueMatch[1] : null;
-  if (issueMatch) {
-    cleanedFilename = cleanedFilename.replace(issueMatch[0], '').trim();
+  // Extract issue number - improved pattern to catch "001", "1", etc.
+  const issuePatterns = [
+    /\b(\d{3})\b/,  // Three digit numbers like "001"
+    /\b#(\d{1,4}(?:\.\d{1,2})?)\b/,  // Hash followed by number
+    /\bissue\s*(\d{1,4}(?:\.\d{1,2})?)\b/i,  // "issue 1"
+    /\b(\d{1,4}(?:\.\d{1,2})?)\b/  // Any standalone number (fallback)
+  ];
+  
+  let issue = null;
+  let issueMatch = null;
+  
+  for (const pattern of issuePatterns) {
+    issueMatch = cleanedFilename.match(pattern);
+    if (issueMatch) {
+      issue = issueMatch[1];
+      console.log(`[PARSER] Issue match with pattern ${pattern}: ${issueMatch[0]} -> ${issue}`);
+      cleanedFilename = cleanedFilename.replace(issueMatch[0], '').trim();
+      console.log(`[PARSER] After issue removal: ${cleanedFilename}`);
+      break;
+    }
   }
   
   // Extract volume
   const volumeMatch = cleanedFilename.match(volumeRegex);
   const volume = volumeMatch ? volumeMatch[1] : null;
+  console.log(`[PARSER] Volume match: ${volumeMatch?.[0]} -> ${volume}`);
   if (volumeMatch) {
     cleanedFilename = cleanedFilename.replace(volumeRegex, '').trim();
+    console.log(`[PARSER] After volume removal: ${cleanedFilename}`);
   }
 
   // Clean the remaining text to get series name
   let series = clean(cleanedFilename);
   series = series.replace(/\([^)]*\)/g, '').replace(/\[[^\]]*\]/g, '').trim();
+  console.log(`[PARSER] Series after cleaning: ${series}`);
 
   // --- Parse Folder Name ---
   const seriesFromFolder = clean(folderName);
+  console.log(`[PARSER] Series from folder: ${seriesFromFolder}`);
 
   // --- Combine Results ---
   // Prefer the folder name for the series if it's not a generic name
   if (seriesFromFolder && !/incoming|scans|comics|downloads/i.test(seriesFromFolder)) {
     series = seriesFromFolder;
+    console.log(`[PARSER] Using folder name for series: ${series}`);
   }
 
   // Format issue number with leading zeros for display
@@ -190,19 +219,24 @@ export const parseFilename = (path: string): ParsedComicInfo => {
     // Pad with leading zeros if it's a simple number
     if (/^\d+$/.test(issue)) {
       issue = issue.padStart(3, '0');
+      console.log(`[PARSER] Formatted issue: ${issue}`);
     }
   }
 
   // Detect publisher based on character names
   const detectedPublisher = detectPublisherFromCharacters(series);
+  console.log(`[PARSER] Detected publisher: ${detectedPublisher}`);
 
-  return { 
+  const result = { 
     series: series || null, 
     issue: issue || null, 
     year, 
     volume,
     publisher: detectedPublisher
   };
+  
+  console.log(`[PARSER] Final result:`, result);
+  return result;
 };
 
 // Helper function to generate a clean, suggested filename
