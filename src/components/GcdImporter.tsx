@@ -6,17 +6,20 @@ import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
 import { Database, FileText, FolderOpen, Loader2, CheckCircle } from "lucide-react";
 import { useElectron } from "@/hooks/useElectron";
+import { useSettings } from "@/context/SettingsContext";
 import { showSuccess, showError } from "@/utils/toast";
 
 type ImportStatus = 'idle' | 'importing' | 'success' | 'error';
 
 const GcdImporter = () => {
   const { isElectron, electronAPI } = useElectron();
-  const [issuesPath, setIssuesPath] = useState("");
-  const [sequencesPath, setSequencesPath] = useState("");
+  const { settings, setSettings } = useSettings();
   const [status, setStatus] = useState<ImportStatus>('idle');
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
+
+  const issuesPath = settings.gcdIssuesPath || "";
+  const sequencesPath = settings.gcdSequencesPath || "";
 
   useEffect(() => {
     if (!electronAPI) return;
@@ -33,12 +36,12 @@ const GcdImporter = () => {
     };
   }, [electronAPI]);
 
-  const handleSelectFile = async (setter: (path: string) => void, title: string) => {
+  const handleSelectFile = async (key: 'gcdIssuesPath' | 'gcdSequencesPath', title: string) => {
     if (!electronAPI) return;
     try {
       const result = await electronAPI.selectFilesDialog();
       if (result && result.length > 0) {
-        setter(result[0]);
+        setSettings({ ...settings, [key]: result[0] });
       }
     } catch (error) {
       showError(`Failed to select ${title} file.`);
@@ -102,8 +105,8 @@ const GcdImporter = () => {
         <div>
           <Label htmlFor="issues-path">Issues Data File (issues.tsv)</Label>
           <div className="flex items-center gap-2">
-            <Input id="issues-path" value={issuesPath} readOnly />
-            <Button variant="outline" onClick={() => handleSelectFile(setIssuesPath, 'Issues')}>
+            <Input id="issues-path" value={issuesPath} readOnly placeholder="Select issues.tsv file..."/>
+            <Button variant="outline" onClick={() => handleSelectFile('gcdIssuesPath', 'Issues')}>
               <FolderOpen className="h-4 w-4" />
             </Button>
           </div>
@@ -111,8 +114,8 @@ const GcdImporter = () => {
         <div>
           <Label htmlFor="sequences-path">Story Data File (sequences.tsv)</Label>
           <div className="flex items-center gap-2">
-            <Input id="sequences-path" value={sequencesPath} readOnly />
-            <Button variant="outline" onClick={() => handleSelectFile(setSequencesPath, 'Sequences')}>
+            <Input id="sequences-path" value={sequencesPath} readOnly placeholder="Select story_sequence.tsv file..."/>
+            <Button variant="outline" onClick={() => handleSelectFile('gcdSequencesPath', 'Sequences')}>
               <FolderOpen className="h-4 w-4" />
             </Button>
           </div>
