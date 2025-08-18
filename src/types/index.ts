@@ -16,6 +16,10 @@ export interface NewComic {
   rating?: number;
   genre?: string;
   characters?: string;
+  price?: string; // Issue price
+  barcode?: string; // Issue barcode
+  languageCode?: string; // Language code
+  countryCode?: string; // Series country code
 }
 
 export interface Comic extends NewComic {
