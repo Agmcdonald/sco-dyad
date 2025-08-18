@@ -3,7 +3,7 @@ export interface ParsedComicInfo {
   issue: string | null;
   year: number | null;
   volume: string | null;
-  publisher?: string | null; // Add publisher detection
+  publisher?: string | null;
 }
 
 // Enhanced regex patterns for better parsing
@@ -51,7 +51,7 @@ const characterPublisherMap: Record<string, string> = {
   'hawkeye': 'Marvel Comics',
   'ant-man': 'Marvel Comics',
   'wasp': 'Marvel Comics',
-  'captain marvel': 'Marvel Comics', // Carol Danvers
+  'captain marvel': 'Marvel Comics',
   'ms marvel': 'Marvel Comics',
   'daredevil': 'Marvel Comics',
   'punisher': 'Marvel Comics',
@@ -97,10 +97,10 @@ const metadataPatterns = [
     /\(empire\)/gi,
     /\(son of ultron-empire\)/gi,
     /\(the last kryptonian-dcp\)/gi,
-    /\(\d+\)$/gi,
-    /\(\d+\s*covers?\)/gi, // New: (2 covers)
-    /\(annual\)/gi, // New
-    /\(one-shot\)/gi, // New
+    /\(\d+\s*covers?\)/gi, // (2 covers)
+    /\(annual\)/gi,
+    /\(one-shot\)/gi,
+    /\(\d+\)(?!\s*$)/gi, // Remove (23) but not years at the end
 ];
 
 const clean = (name: string): string => {
@@ -170,14 +170,7 @@ export const parseFilename = (path: string): ParsedComicInfo => {
   let cleanedFilename = filename.replace(/\.[^/.]+$/, ""); // Remove extension
   console.log(`[PARSER] Cleaned filename: ${cleanedFilename}`);
 
-  // Apply metadata cleaning patterns first
-  metadataPatterns.forEach(pattern => {
-    cleanedFilename = cleanedFilename.replace(pattern, '');
-  });
-  cleanedFilename = cleanedFilename.trim();
-  console.log(`[PARSER] After metadata removal: ${cleanedFilename}`);
-  
-  // Extract year first (most reliable)
+  // Extract year first (most reliable) - preserve it before cleaning
   const yearMatch = cleanedFilename.match(yearRegex);
   const year = yearMatch ? parseInt(yearMatch[1], 10) : null;
   console.log(`[PARSER] Year match: ${yearMatch?.[0]} -> ${year}`);
@@ -186,6 +179,13 @@ export const parseFilename = (path: string): ParsedComicInfo => {
     console.log(`[PARSER] After year removal: ${cleanedFilename}`);
   }
 
+  // Apply metadata cleaning patterns AFTER year extraction
+  metadataPatterns.forEach(pattern => {
+    cleanedFilename = cleanedFilename.replace(pattern, '');
+  });
+  cleanedFilename = cleanedFilename.trim();
+  console.log(`[PARSER] After metadata removal: ${cleanedFilename}`);
+  
   // Extract issue number - improved pattern to catch "001", "1", etc.
   const issuePatterns = [
     /\b(\d{3})\b/,  // Three digit numbers like "001"
@@ -218,7 +218,8 @@ export const parseFilename = (path: string): ParsedComicInfo => {
   }
 
   // Clean the remaining text to get series name from filename
-  let seriesFromFile = clean(cleanedFilename);
+  let seriesFromFile = cleanedFilename;
+  // Remove any remaining parenthetical content that's not a year
   seriesFromFile = seriesFromFile.replace(/\([^)]*\)/g, '').replace(/\[[^\]]*\]/g, '').trim();
   console.log(`[PARSER] Series from file after cleaning: ${seriesFromFile}`);
 
@@ -235,19 +236,13 @@ export const parseFilename = (path: string): ParsedComicInfo => {
   }
 
   // --- Combine Results ---
-  // NEW LOGIC: Prioritize file parsing, use folder only as fallback for series name
+  // Prioritize file parsing, use folder only as fallback for series name
   let finalSeries = seriesFromFile;
   
-  // Only use folder name if:
-  // 1. We couldn't get a series from the file, OR
-  // 2. The folder series is significantly longer/more descriptive
+  // Only use folder name if we couldn't get a series from the file
   if (!seriesFromFile && seriesFromFolder) {
     finalSeries = seriesFromFolder;
     console.log(`[PARSER] Using folder name as fallback: ${finalSeries}`);
-  } else if (seriesFromFile && seriesFromFolder && seriesFromFolder.length > seriesFromFile.length + 5) {
-    // Only override if folder name is significantly more descriptive
-    finalSeries = seriesFromFolder;
-    console.log(`[PARSER] Using more descriptive folder name: ${finalSeries}`);
   } else if (seriesFromFile) {
     console.log(`[PARSER] Using series from filename: ${finalSeries}`);
   }
