@@ -7,10 +7,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Trash2, Play, SkipForward } from "lucide-react";
+import { ChevronDown, Trash2, Play, SkipForward, Edit } from "lucide-react";
 import { QueuedFile } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess } from "@/utils/toast";
+import BulkEditModal from "./BulkEditModal";
 
 interface BulkActionsProps {
   files: QueuedFile[];
@@ -20,6 +21,7 @@ interface BulkActionsProps {
 
 const BulkActions = ({ files, selectedFiles, onSelectionChange }: BulkActionsProps) => {
   const { removeFile, skipFile, startProcessing } = useAppContext();
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -51,48 +53,66 @@ const BulkActions = ({ files, selectedFiles, onSelectionChange }: BulkActionsPro
     showSuccess(`Started processing ${selectedFiles.length} selected files.`);
   };
 
+  const handleBulkEdit = () => {
+    setIsBulkEditOpen(true);
+  };
+
   if (files.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg border">
-      <div className="flex items-center space-x-2">
-        <Checkbox
-          id="select-all"
-          checked={selectedFiles.length === files.length}
-          onCheckedChange={handleSelectAll}
-        />
-        <label htmlFor="select-all" className="text-sm font-medium">
-          Select All ({selectedFiles.length}/{files.length})
-        </label>
+    <>
+      <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg border">
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="select-all"
+            checked={selectedFiles.length === files.length}
+            onCheckedChange={handleSelectAll}
+          />
+          <label htmlFor="select-all" className="text-sm font-medium">
+            Select All ({selectedFiles.length}/{files.length})
+          </label>
+        </div>
+
+        {selectedFiles.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleProcessSelected}>
+              <Play className="h-4 w-4 mr-2" />
+              Process Selected ({selectedFiles.length})
+            </Button>
+            
+            <Button variant="outline" size="sm" onClick={handleBulkEdit}>
+              <Edit className="h-4 w-4 mr-2" />
+              Bulk Edit
+            </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Actions <ChevronDown className="h-4 w-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={handleBulkSkip}>
+                  <SkipForward className="h-4 w-4 mr-2" />
+                  Skip Selected
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleBulkDelete} className="text-destructive">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Remove Selected
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
 
-      {selectedFiles.length > 0 && (
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleProcessSelected}>
-            <Play className="h-4 w-4 mr-2" />
-            Process Selected ({selectedFiles.length})
-          </Button>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                Actions <ChevronDown className="h-4 w-4 ml-2" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={handleBulkSkip}>
-                <SkipForward className="h-4 w-4 mr-2" />
-                Skip Selected
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleBulkDelete} className="text-destructive">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Remove Selected
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      )}
-    </div>
+      <BulkEditModal
+        isOpen={isBulkEditOpen}
+        onClose={() => setIsBulkEditOpen(false)}
+        selectedFiles={selectedFiles}
+        files={files}
+      />
+    </>
   );
 };
 
