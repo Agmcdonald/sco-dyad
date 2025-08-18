@@ -197,7 +197,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
     setComics(prev => prev.map(c => c.id === updatedComic.id ? updatedComic : c));
     logAction('info', `Updated metadata for '${updatedComic.series} #${updatedComic.issue}'`);
-  }, [databaseService, logAction, refreshComics, setComics]);
+    
+    // Learn from manual edits
+    addToKnowledgeBase({
+      series: updatedComic.series,
+      publisher: updatedComic.publisher,
+      startYear: updatedComic.year,
+      volumes: [{ volume: updatedComic.volume, year: updatedComic.year }]
+    });
+  }, [databaseService, logAction, refreshComics, setComics, addToKnowledgeBase]);
 
   const updateComicRating = useCallback(async (comicId: string, rating: number) => {
     console.log('[APP-CONTEXT] updateComicRating called for comic:', comicId, 'rating:', rating);
@@ -399,25 +407,32 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         gcdDbService
       );
 
-      if (result && result.success && result.data) {
-        const hasNewData = (result.data.summary && result.data.summary !== comic.summary) || 
-                           (result.data.creators && result.data.creators.length > 0 && (!comic.creators || comic.creators.length === 0));
+      const updatedComic = { ...comic, metadataLastChecked: new Date().toISOString() };
+      let hasNewData = false;
 
-        if (hasNewData) {
-          const updatedComic = { 
-            ...comic, 
-            ...result.data,
-            metadataLastChecked: new Date().toISOString()
-          };
-          await updateComic(updatedComic);
-          updatedCount++;
-          logAction('success', `Enriched metadata for '${comic.series} #${comic.issue}'`);
-        } else {
-          const updatedComic = { ...comic, metadataLastChecked: new Date().toISOString() };
-          await updateComic(updatedComic);
+      if (result && result.success && result.data) {
+        // Only update fields if they are empty or the new data is better
+        if (result.data.summary && !comic.summary) {
+          updatedComic.summary = result.data.summary;
+          hasNewData = true;
         }
+        if (result.data.creators && result.data.creators.length > 0 && (!comic.creators || comic.creators.length === 0)) {
+          updatedComic.creators = result.data.creators;
+          hasNewData = true;
+        }
+        if (result.data.publisher && result.data.publisher !== "Unknown Publisher" && comic.publisher === "Unknown Publisher") {
+          updatedComic.publisher = result.data.publisher;
+          hasNewData = true;
+        }
+        // Add more non-destructive updates here
+      }
+      
+      if (hasNewData) {
+        await updateComic(updatedComic);
+        updatedCount++;
+        logAction('success', `Enriched metadata for '${comic.series} #${comic.issue}'`);
       } else {
-        const updatedComic = { ...comic, metadataLastChecked: new Date().toISOString() };
+        // Still update the last checked date even if no new data was found
         await updateComic(updatedComic);
       }
       
