@@ -342,6 +342,27 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
+  ipcMain.handle('gcd-db:get-issue-creators', (event, issueId) => {
+    if (!gcdDb) return [];
+    try {
+      const stmt = gcdDb.prepare(`
+        SELECT key as role, value as name
+        FROM story_details
+        WHERE issue_id = ? AND key IN ('script', 'pencils', 'inks', 'colors', 'letters', 'editor', 'writer', 'artist', 'cover-artist')
+        GROUP BY key, value
+        ORDER BY sequence_number
+      `);
+      const creators = stmt.all(issueId).map(row => ({
+        ...row,
+        role: row.role.charAt(0).toUpperCase() + row.role.slice(1)
+      }));
+      return creators;
+    } catch (error) {
+      console.error('GCD creator search failed:', error);
+      return [];
+    }
+  });
+
   // Backup and Restore Dialogs
   ipcMain.handle('dialog:save-backup', async (event, data) => {
     const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {

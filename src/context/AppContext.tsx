@@ -10,7 +10,8 @@ import { useFileQueue } from './hooks/useFileQueue';
 import { useComicLibrary } from './hooks/useComicLibrary';
 import { useReadingList } from './hooks/useReadingList';
 import { useRecentlyRead } from './hooks/useRecentlyRead';
-import { fetchComicMetadata, fetchMarvelMetadata } from '@/lib/scraper';
+import { processComicFile } from '@/lib/smartProcessor';
+import { useGcdDatabaseService } from '@/services/gcdDatabaseService';
 
 interface AppContextType {
   files: QueuedFile[];
@@ -85,6 +86,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const databaseService = useElectronDatabaseService();
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
+  const gcdDbService = useGcdDatabaseService();
 
   const addComic = useCallback(async (comicData: NewComic, originalFile: QueuedFile) => {
     if (isMockFile(originalFile.path)) {
@@ -359,43 +361,63 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setIsScanningMetadata(true);
     setMetadataScanProgress({ processed: 0, total: 0, updated: 0 });
 
-    const candidates = comics.filter(c => 
-      !c.ignoreInScans &&
-      (!c.summary || c.summary.startsWith('Parsed from') || c.summary.startsWith('Processed using'))
-    );
+    const candidates = comics.filter(c => !c.ignoreInScans && !c.metadataLastChecked);
 
     setMetadataScanProgress(prev => ({ ...prev, total: candidates.length }));
     let updatedCount = 0;
 
     for (let i = 0; i < candidates.length; i++) {
       const comic = candidates[i];
-      const parsed = { series: comic.series, issue: comic.issue, year: comic.year, volume: comic.volume, publisher: comic.publisher };
       
-      let result;
-      if (comic.publisher.toLowerCase() === 'marvel comics' && settings.marvelPublicKey) {
-        result = await fetchMarvelMetadata(parsed, settings.marvelPublicKey, settings.marvelPrivateKey);
-      } else if (settings.comicVineApiKey) {
-        result = await fetchComicMetadata(parsed, settings.comicVineApiKey);
-      }
+      const tempFile: QueuedFile = {
+        id: comic.id,
+        name: comic.filePath || `${comic.series} #${comic.issue}`,
+        path: comic.filePath || `${comic.series} #${comic.issue}`,
+        series: comic.series,
+        issue: comic.issue,
+        year: comic.year,
+        publisher: comic.publisher,
+        status: 'Pending',
+        confidence: null
+      };
+
+      const result = await processComicFile(
+        tempFile,
+        settings.comicVineApiKey,
+        settings.marvelPublicKey,
+        settings.marvelPrivateKey,
+        gcdDbService
+      );
 
       if (result && result.success && result.data) {
-        const updatedComic = { 
-          ...comic, 
-          ...result.data,
-          metadataLastChecked: new Date().toISOString()
-        };
+        const hasNewData = (result.data.summary && result.data.summary !== comic.summary) || 
+                           (result.data.creators && result.data.creators.length > 0 && (!comic.creators || comic.creators.length === 0));
+
+        if (hasNewData) {
+          const updatedComic = { 
+            ...comic, 
+            ...result.data,
+            metadataLastChecked: new Date().toISOString()
+          };
+          await updateComic(updatedComic);
+          updatedCount++;
+          logAction('success', `Enriched metadata for '${comic.series} #${comic.issue}'`);
+        } else {
+          const updatedComic = { ...comic, metadataLastChecked: new Date().toISOString() };
+          await updateComic(updatedComic);
+        }
+      } else {
+        const updatedComic = { ...comic, metadataLastChecked: new Date().toISOString() };
         await updateComic(updatedComic);
-        updatedCount++;
-        logAction('success', `Enriched metadata for '${comic.series} #${comic.issue}'`);
       }
       
       setMetadataScanProgress(prev => ({ ...prev, processed: i + 1, updated: updatedCount }));
-      await new Promise(res => setTimeout(res, 200)); // Rate limit
+      await new Promise(res => setTimeout(res, 200));
     }
 
     setIsScanningMetadata(false);
     showSuccess(`Metadata scan complete. Updated ${updatedCount} of ${candidates.length} comics.`);
-  }, [comics, settings, updateComic, logAction]);
+  }, [comics, settings, updateComic, logAction, gcdDbService]);
 
   return (
     <AppContext.Provider value={{ 
