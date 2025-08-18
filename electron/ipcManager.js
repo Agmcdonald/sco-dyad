@@ -271,6 +271,11 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       if (gcdDb) gcdDb.close();
       gcdDb = new Database(dbPath, { readonly: true, fileMustExist: true });
 
+      // Save paths to settings
+      database.saveSetting('gcdDbPath', dbPath);
+      database.saveSetting('gcdIssuesPath', issuesPath);
+      database.saveSetting('gcdSequencesPath', sequencesPath);
+
       return { success: true, message: `Database built successfully with ${issueLines.toLocaleString()} issue records and ${sequenceLines.toLocaleString()} story records.` };
     } catch (error) {
       console.error('Importer error:', error);
