@@ -99,7 +99,7 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
         volume: "",
       });
     }
-  }, [isOpen, selectedFileObjects, form]);
+  }, [isOpen, selectedFiles, files, form]);
 
   const toggleField = (fieldName: keyof typeof enabledFields) => {
     setEnabledFields(prev => ({
@@ -150,23 +150,6 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
     onClose();
   };
 
-  const getPreviewChanges = () => {
-    const changes: string[] = [];
-    const values = form.getValues();
-    
-    if (enabledFields.publisher && values.publisher) {
-      changes.push(`Publisher: ${values.publisher}`);
-    }
-    if (enabledFields.year && values.year) {
-      changes.push(`Year: ${values.year}`);
-    }
-    if (enabledFields.volume && values.volume) {
-      changes.push(`Volume: ${values.volume}`);
-    }
-    
-    return changes;
-  };
-
   // Watch form values for preview
   const watchedValues = form.watch();
 
@@ -202,11 +185,7 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
                         <Combobox
                           options={publisherOptions}
                           value={field.value || ''}
-                          onValueChange={(value) => {
-                            console.log('Publisher selected:', value);
-                            field.onChange(value);
-                            form.setValue('publisher', value);
-                          }}
+                          onValueChange={field.onChange}
                           placeholder="Select or type publisher..."
                           emptyText="No publishers found."
                           disabled={!enabledFields.publisher}
