@@ -18,7 +18,7 @@ import { useElectron } from "@/hooks/useElectron";
 import { showSuccess, showError } from "@/utils/toast";
 
 const Maintenance = () => {
-  const { comics, files, actions, importComics, isScanningMetadata, metadataScanProgress, startMetadataScan } from useAppContext();
+  const { comics, files, actions, importComics, isScanningMetadata, metadataScanProgress, startMetadataScan } = useAppContext();
   const { isElectron, electronAPI } = useElectron();
 
   const handleExportLibrary = async () => {
