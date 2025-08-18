@@ -136,15 +136,23 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     return true;
   });
 
-  // Knowledge Base operations
+  // Knowledge Base operations (Now deprecated, but kept for safety during transition)
   ipcMain.handle('get-knowledge-base', async () => {
-    const data = await fs.readFile(knowledgeBasePath, 'utf-8');
-    return JSON.parse(data);
+    try {
+      const data = await fs.readFile(knowledgeBasePath, 'utf-8');
+      return JSON.parse(data);
+    } catch {
+      return []; // Return empty if file doesn't exist
+    }
   });
 
   ipcMain.handle('save-knowledge-base', async (event, data) => {
-    await fs.writeFile(knowledgeBasePath, JSON.stringify(data, null, 2), 'utf-8');
-    return true;
+    try {
+      await fs.writeFile(knowledgeBasePath, JSON.stringify(data, null, 2), 'utf-8');
+      return true;
+    } catch {
+      return false;
+    }
   });
 
   // GCD Database operations
@@ -183,6 +191,54 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       return stmt.all(`%${seriesName}%`);
     } catch (error) {
       console.error('GCD series search failed:', error);
+      return [];
+    }
+  });
+
+  ipcMain.handle('gcd-db:get-issue-details', (event, seriesId, issueNumber) => {
+    if (!gcdDb) return null;
+    try {
+      const normalizedIssue = String(parseInt(issueNumber, 10));
+      const stmt = gcdDb.prepare(`
+        SELECT id, title, publication_date, notes
+        FROM gcd_issue
+        WHERE series_id = ? AND number = ?
+      `);
+      return stmt.get(seriesId, normalizedIssue);
+    } catch (error) {
+      console.error('GCD issue details search failed:', error);
+      return null;
+    }
+  });
+
+  ipcMain.handle('gcd-db:get-issue-creators', (event, issueId) => {
+    if (!gcdDb) return [];
+    try {
+      const stmt = gcdDb.prepare(`
+        SELECT
+          ic.credited_as as name,
+          ct.name as role
+        FROM gcd_issue_credit AS ic
+        JOIN gcd_credit_type AS ct ON ic.credit_type_id = ct.id
+        WHERE ic.issue_id = ?
+        ORDER BY ct.sort_code
+      `);
+      return stmt.all(issueId);
+    } catch (error) {
+      console.error('GCD issue creators search failed:', error);
+      return [];
+    }
+  });
+
+  ipcMain.handle('gcd-db:search-publishers', (event, query) => {
+    if (!gcdDb) return [];
+    try {
+      const stmt = gcdDb.prepare(`
+        SELECT name FROM gcd_publisher WHERE name LIKE ? ORDER BY name LIMIT 20
+      `);
+      return stmt.all(`%${query}%`).map(p => p.name);
+    } catch (error) {
+      console.error('GCD publisher search failed:', error);
       return [];
     }
   });
