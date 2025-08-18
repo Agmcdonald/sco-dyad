@@ -41,7 +41,9 @@ const Organize = () => {
   const [processingProgress, setProcessingProgress] = useState(0);
   const [currentProcessingFile, setCurrentProcessingFile] = useState<string>("");
   const [isDragOver, setIsDragOver] = useState(false);
+  const [processedFileIds, setProcessedFileIds] = useState<Set<string>>(new Set());
   const queueIndex = useRef(0);
+  const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { isElectron } = useElectron();
   const { settings } = useSettings();
   const gcdDbService = useGcdDatabaseService();
@@ -50,31 +52,38 @@ const Organize = () => {
     setFilteredFiles(files);
   }, [files]);
 
+  // Reset processing state when files change
   useEffect(() => {
-    if (isProcessing && queueIndex.current >= files.length) {
+    const pendingFiles = files.filter(f => f.status === 'Pending');
+    if (pendingFiles.length === 0 && isProcessing) {
+      pauseProcessing();
+      setProcessingProgress(100);
+      setCurrentProcessingFile("");
       queueIndex.current = 0;
     }
-  }, [isProcessing, files.length]);
+  }, [files, isProcessing, pauseProcessing]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-
     const processNextFile = async () => {
-      const pendingFiles = files.filter(f => f.status === 'Pending');
+      const pendingFiles = files.filter(f => f.status === 'Pending' && !processedFileIds.has(f.id));
       
-      if (queueIndex.current >= pendingFiles.length) {
+      if (queueIndex.current >= pendingFiles.length || pendingFiles.length === 0) {
         pauseProcessing();
         setProcessingProgress(100);
         setCurrentProcessingFile("");
-        logAction('info', `Processing complete. Processed ${pendingFiles.length} files.`);
+        queueIndex.current = 0;
+        logAction('info', `Processing complete. Processed ${processedFileIds.size} files.`);
         return;
       }
       
       const currentFile = pendingFiles[queueIndex.current];
-      if (!currentFile) {
+      if (!currentFile || processedFileIds.has(currentFile.id)) {
         queueIndex.current++;
         return;
       }
+
+      // Mark file as being processed to prevent re-processing
+      setProcessedFileIds(prev => new Set(prev).add(currentFile.id));
 
       setCurrentProcessingFile(currentFile.name);
       setProcessingProgress((queueIndex.current / pendingFiles.length) * 100);
@@ -116,11 +125,28 @@ const Organize = () => {
     };
 
     if (isProcessing) {
-      interval = setInterval(processNextFile, 1000);
+      // Clear any existing timeout
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
+      }
+      
+      // Set a new timeout for processing
+      processingTimeoutRef.current = setTimeout(processNextFile, 1500);
     }
 
-    return () => clearInterval(interval);
-  }, [isProcessing, files, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile, settings, gcdDbService]);
+    return () => {
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
+      }
+    };
+  }, [isProcessing, files, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile, settings, gcdDbService, processedFileIds, queueIndex.current]);
+
+  // Reset processed files when starting new processing session
+  const handleStartProcessing = () => {
+    setProcessedFileIds(new Set());
+    queueIndex.current = 0;
+    startProcessing();
+  };
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     if (isElectron) return;
@@ -187,7 +213,7 @@ const Organize = () => {
         {files.length > 0 && (
           <div className="flex items-center gap-2">
             {!isProcessing ? (
-              <Button onClick={startProcessing} disabled={pendingCount === 0}>
+              <Button onClick={handleStartProcessing} disabled={pendingCount === 0}>
                 <Play className="h-4 w-4 mr-2" />
                 Start Processing ({pendingCount})
               </Button>
