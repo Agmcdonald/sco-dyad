@@ -41,112 +41,84 @@ const Organize = () => {
   const [processingProgress, setProcessingProgress] = useState(0);
   const [currentProcessingFile, setCurrentProcessingFile] = useState<string>("");
   const [isDragOver, setIsDragOver] = useState(false);
-  const [processedFileIds, setProcessedFileIds] = useState<Set<string>>(new Set());
+  
   const queueIndex = useRef(0);
   const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const { isElectron } = useElectron();
   const { settings } = useSettings();
   const gcdDbService = useGcdDatabaseService();
 
+  // Use a ref to hold state that the processing loop needs, to avoid dependency-related loops
+  const processingStateRef = useRef({ files, settings, gcdDbService, selectedItem });
   useEffect(() => {
-    setFilteredFiles(files);
-  }, [files]);
+    processingStateRef.current = { files, settings, gcdDbService, selectedItem };
+  }, [files, settings, gcdDbService, selectedItem]);
 
-  // Reset processing state when files change
-  useEffect(() => {
+  const processQueue = useCallback(async () => {
+    const { files, settings, gcdDbService, selectedItem } = processingStateRef.current;
     const pendingFiles = files.filter(f => f.status === 'Pending');
-    if (pendingFiles.length === 0 && isProcessing) {
+    
+    if (queueIndex.current >= pendingFiles.length) {
       pauseProcessing();
       setProcessingProgress(100);
       setCurrentProcessingFile("");
       queueIndex.current = 0;
+      logAction('info', `Processing complete.`);
+      return;
     }
-  }, [files, isProcessing, pauseProcessing]);
+
+    const currentFile = pendingFiles[queueIndex.current];
+    setCurrentProcessingFile(currentFile.name);
+    setProcessingProgress(((queueIndex.current + 1) / pendingFiles.length) * 100);
+
+    try {
+      const result = await processComicFile(
+        currentFile, 
+        settings.comicVineApiKey,
+        settings.marvelPublicKey,
+        settings.marvelPrivateKey,
+        gcdDbService
+      );
+
+      if (result.success && result.data) {
+        const updatedFileData = { ...currentFile, ...result.data, status: "Success" as const, confidence: result.confidence };
+        updateFile(updatedFileData);
+        if (result.confidence === 'High') {
+          addComic(result.data, updatedFileData);
+          removeFile(currentFile.id);
+          if (selectedItem?.id === currentFile.id) {
+            setSelectedItem(null);
+          }
+        }
+      } else {
+        updateFile({ ...currentFile, status: result.confidence === 'Low' ? "Error" as const : "Warning" as const, confidence: result.confidence });
+        if (result.error) logAction('warning', `'${currentFile.name}': ${result.error}`);
+      }
+    } catch (error) {
+      updateFile({ ...currentFile, status: "Error" as const, confidence: "Low" as const });
+      logAction('error', `'${currentFile.name}': Processing failed`);
+    }
+
+    queueIndex.current++;
+    if (isProcessing) {
+      processingTimeoutRef.current = setTimeout(processQueue, 1500);
+    }
+  }, [isProcessing, pauseProcessing, updateFile, addComic, removeFile, setSelectedItem, logAction]);
 
   useEffect(() => {
-    const processNextFile = async () => {
-      const pendingFiles = files.filter(f => f.status === 'Pending' && !processedFileIds.has(f.id));
-      
-      if (queueIndex.current >= pendingFiles.length || pendingFiles.length === 0) {
-        pauseProcessing();
-        setProcessingProgress(100);
-        setCurrentProcessingFile("");
-        queueIndex.current = 0;
-        logAction('info', `Processing complete. Processed ${processedFileIds.size} files.`);
-        return;
-      }
-      
-      const currentFile = pendingFiles[queueIndex.current];
-      if (!currentFile || processedFileIds.has(currentFile.id)) {
-        queueIndex.current++;
-        return;
-      }
-
-      // Mark file as being processed to prevent re-processing
-      setProcessedFileIds(prev => new Set(prev).add(currentFile.id));
-
-      setCurrentProcessingFile(currentFile.name);
-      setProcessingProgress((queueIndex.current / pendingFiles.length) * 100);
-
-      try {
-        console.log(`[ORGANIZE] Processing file: ${currentFile.name}`);
-        console.log(`[ORGANIZE] GCD service available:`, !!gcdDbService);
-        
-        const result = await processComicFile(
-          currentFile, 
-          settings.comicVineApiKey,
-          settings.marvelPublicKey,
-          settings.marvelPrivateKey,
-          gcdDbService
-        );
-
-        console.log(`[ORGANIZE] Processing result:`, result);
-
-        if (result.success && result.data) {
-          updateFile({ ...currentFile, ...result.data, status: "Success", confidence: result.confidence });
-          if (result.confidence === 'High') {
-            setTimeout(() => {
-              addComic(result.data!, currentFile);
-              removeFile(currentFile.id);
-              setSelectedItem(null);
-            }, 500);
-          }
-        } else {
-          updateFile({ ...currentFile, status: result.confidence === 'Low' ? "Error" : "Warning", confidence: result.confidence });
-          if (result.error) logAction('warning', `'${currentFile.name}': ${result.error}`);
-        }
-      } catch (error) {
-        console.error(`[ORGANIZE] Processing error:`, error);
-        updateFile({ ...currentFile, status: "Error", confidence: "Low" });
-        logAction('error', `'${currentFile.name}': Processing failed`);
-      }
-
-      queueIndex.current++;
-    };
-
     if (isProcessing) {
-      // Clear any existing timeout
-      if (processingTimeoutRef.current) {
-        clearTimeout(processingTimeoutRef.current);
-      }
-      
-      // Set a new timeout for processing
-      processingTimeoutRef.current = setTimeout(processNextFile, 1500);
+      queueIndex.current = 0;
+      processingTimeoutRef.current = setTimeout(processQueue, 100);
     }
-
     return () => {
-      if (processingTimeoutRef.current) {
-        clearTimeout(processingTimeoutRef.current);
-      }
+      if (processingTimeoutRef.current) clearTimeout(processingTimeoutRef.current);
     };
-  }, [isProcessing, files, addComic, removeFile, setSelectedItem, pauseProcessing, logAction, updateFile, settings, gcdDbService, processedFileIds, queueIndex.current]);
+  }, [isProcessing, processQueue]);
 
-  // Reset processed files when starting new processing session
-  const handleStartProcessing = () => {
-    setProcessedFileIds(new Set());
-    queueIndex.current = 0;
-    startProcessing();
-  };
+  useEffect(() => {
+    setFilteredFiles(files);
+  }, [files]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     if (isElectron) return;
@@ -213,7 +185,7 @@ const Organize = () => {
         {files.length > 0 && (
           <div className="flex items-center gap-2">
             {!isProcessing ? (
-              <Button onClick={handleStartProcessing} disabled={pendingCount === 0}>
+              <Button onClick={startProcessing} disabled={pendingCount === 0}>
                 <Play className="h-4 w-4 mr-2" />
                 Start Processing ({pendingCount})
               </Button>
