@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import * z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -58,12 +58,18 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
   const publisherOptions: ComboboxOption[] = (() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
     const publishersFromKnowledge = [...new Set(knowledgeBase.map(entry => entry.publisher))];
-    const allPublishers = [...new Set([...publishersFromComics, ...publishersFromKnowledge])];
     
-    return allPublishers.map(publisher => ({
-      label: publisher,
-      value: publisher
-    })).sort((a, b) => a.label.localeCompare(b.label));
+    // Add some common publishers if not already present
+    const commonPublishers = ['Marvel Comics', 'DC Comics', 'Image Comics', 'Dark Horse Comics', 'IDW Publishing'];
+    const allPublishers = [...new Set([...publishersFromComics, ...publishersFromKnowledge, ...commonPublishers])];
+    
+    return allPublishers
+      .filter(publisher => publisher && publisher.trim() !== '')
+      .map(publisher => ({
+        label: publisher,
+        value: publisher
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   })();
 
   // Initialize form values when modal opens
@@ -161,6 +167,9 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
     return changes;
   };
 
+  // Watch form values for preview
+  const watchedValues = form.watch();
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
@@ -193,7 +202,11 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
                         <Combobox
                           options={publisherOptions}
                           value={field.value || ''}
-                          onValueChange={field.onChange}
+                          onValueChange={(value) => {
+                            console.log('Publisher selected:', value);
+                            field.onChange(value);
+                            form.setValue('publisher', value);
+                          }}
                           placeholder="Select or type publisher..."
                           emptyText="No publishers found."
                           disabled={!enabledFields.publisher}
@@ -269,11 +282,16 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
             <div className="mt-4 p-3 bg-muted/50 rounded-lg">
               <Label className="text-sm font-medium">Preview of changes:</Label>
               <div className="text-sm text-muted-foreground mt-1">
-                {getPreviewChanges().length > 0 ? (
-                  getPreviewChanges().map((change, index) => (
-                    <div key={index}>• {change}</div>
-                  ))
-                ) : (
+                {enabledFields.publisher && watchedValues.publisher && (
+                  <div>• Publisher: {watchedValues.publisher}</div>
+                )}
+                {enabledFields.year && watchedValues.year && (
+                  <div>• Year: {watchedValues.year}</div>
+                )}
+                {enabledFields.volume && watchedValues.volume && (
+                  <div>• Volume: {watchedValues.volume}</div>
+                )}
+                {!Object.values(enabledFields).some(enabled => enabled) && (
                   <div>No fields selected for update</div>
                 )}
               </div>
