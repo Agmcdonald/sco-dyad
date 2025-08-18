@@ -12,7 +12,9 @@ export interface GcdIssueDetails {
   id: number;
   title: string;
   publication_date: string;
-  notes: string;
+  synopsis: string;
+  genre: string;
+  characters: string;
 }
 
 export class GcdDatabaseService {

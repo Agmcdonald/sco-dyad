@@ -14,6 +14,8 @@ export interface NewComic {
   summary?: string;
   creators?: Creator[];
   rating?: number;
+  genre?: string;
+  characters?: string;
 }
 
 export interface Comic extends NewComic {
