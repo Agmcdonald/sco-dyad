@@ -16,7 +16,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { QueuedFile } from "@/types";
 import { useAppContext } from "@/context/AppContext";
-import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 import { useSelection } from "@/context/SelectionContext";
 import { showSuccess } from "@/utils/toast";
 
@@ -35,7 +34,6 @@ interface EditFileModalProps {
 
 const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
   const { updateFile, comics } = useAppContext();
-  const { knowledgeBase } = useKnowledgeBase();
   const { setSelectedItem } = useSelection();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -48,31 +46,23 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
     },
   });
 
-  // Generate publisher options from existing comics and knowledge base
+  // Generate publisher options from existing comics
   const publisherOptions: ComboboxOption[] = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
-    const publishersFromKnowledge = [...new Set(knowledgeBase.map(entry => entry.publisher))];
-    
-    const allPublishers = [...new Set([...publishersFromComics, ...publishersFromKnowledge])];
-    
-    return allPublishers.map(publisher => ({
+    return publishersFromComics.map(publisher => ({
       label: publisher,
       value: publisher
     })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [comics, knowledgeBase]);
+  }, [comics]);
 
-  // Generate series options from existing comics and knowledge base
+  // Generate series options from existing comics
   const seriesOptions: ComboboxOption[] = useMemo(() => {
     const seriesFromComics = [...new Set(comics.map(c => c.series))];
-    const seriesFromKnowledge = [...new Set(knowledgeBase.map(entry => entry.series))];
-    
-    const allSeries = [...new Set([...seriesFromComics, ...seriesFromKnowledge])];
-    
-    return allSeries.map(series => ({
+    return seriesFromComics.map(series => ({
       label: series,
       value: series
     })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [comics, knowledgeBase]);
+  }, [comics]);
 
   useEffect(() => {
     form.reset({
