@@ -1,4 +1,9 @@
 {
+  "name": "comic-organizer",
+  "version": "1.0.0",
+  "description": "A comic book collection management application.",
+  "author": "Dyad",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
