@@ -34,19 +34,13 @@ interface BulkEditModalProps {
   files: QueuedFile[];
 }
 
-interface FieldUpdate {
-  field: keyof Pick<QueuedFile, 'publisher' | 'year' | 'volume'>;
-  enabled: boolean;
-  value: string | number;
-}
-
 const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalProps) => {
   const { updateFile, comics } = useAppContext();
   const { knowledgeBase } = useKnowledgeBase();
-  const [fieldUpdates, setFieldUpdates] = useState<Record<string, FieldUpdate>>({
-    publisher: { field: 'publisher', enabled: false, value: '' },
-    year: { field: 'year', enabled: false, value: new Date().getFullYear() },
-    volume: { field: 'volume', enabled: false, value: '' },
+  const [enabledFields, setEnabledFields] = useState({
+    publisher: false,
+    year: false,
+    volume: false,
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -72,9 +66,9 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
     })).sort((a, b) => a.label.localeCompare(b.label));
   })();
 
-  // Auto-detect common values from selected files
+  // Initialize form values when modal opens
   useEffect(() => {
-    if (selectedFileObjects.length > 0) {
+    if (isOpen && selectedFileObjects.length > 0) {
       // Find most common publisher
       const publishers = selectedFileObjects.map(f => f.publisher).filter(Boolean);
       const publisherCounts = publishers.reduce((acc, pub) => {
@@ -98,26 +92,13 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
         year: Number(mostCommonYear),
         volume: "",
       });
-
-      setFieldUpdates(prev => ({
-        ...prev,
-        publisher: { ...prev.publisher, value: mostCommonPublisher },
-        year: { ...prev.year, value: Number(mostCommonYear) },
-      }));
     }
-  }, [selectedFileObjects, form]);
+  }, [isOpen, selectedFileObjects, form]);
 
-  const toggleField = (fieldName: string, enabled: boolean) => {
-    setFieldUpdates(prev => ({
+  const toggleField = (fieldName: keyof typeof enabledFields) => {
+    setEnabledFields(prev => ({
       ...prev,
-      [fieldName]: { ...prev[fieldName], enabled }
-    }));
-  };
-
-  const updateFieldValue = (fieldName: string, value: string | number) => {
-    setFieldUpdates(prev => ({
-      ...prev,
-      [fieldName]: { ...prev[fieldName], value }
+      [fieldName]: !prev[fieldName]
     }));
   };
 
@@ -128,17 +109,17 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
       const updates: Partial<QueuedFile> = {};
       let hasUpdates = false;
 
-      if (fieldUpdates.publisher.enabled && values.publisher) {
+      if (enabledFields.publisher && values.publisher) {
         updates.publisher = values.publisher;
         hasUpdates = true;
       }
 
-      if (fieldUpdates.year.enabled && values.year) {
+      if (enabledFields.year && values.year) {
         updates.year = values.year;
         hasUpdates = true;
       }
 
-      if (fieldUpdates.volume.enabled && values.volume) {
+      if (enabledFields.volume && values.volume) {
         updates.volume = values.volume;
         hasUpdates = true;
       }
@@ -150,16 +131,34 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
     });
 
     showSuccess(`Updated ${updatedCount} files with bulk changes.`);
-    onClose();
+    handleClose();
   };
 
   const handleClose = () => {
-    setFieldUpdates({
-      publisher: { field: 'publisher', enabled: false, value: '' },
-      year: { field: 'year', enabled: false, value: new Date().getFullYear() },
-      volume: { field: 'volume', enabled: false, value: '' },
+    setEnabledFields({
+      publisher: false,
+      year: false,
+      volume: false,
     });
+    form.reset();
     onClose();
+  };
+
+  const getPreviewChanges = () => {
+    const changes: string[] = [];
+    const values = form.getValues();
+    
+    if (enabledFields.publisher && values.publisher) {
+      changes.push(`Publisher: ${values.publisher}`);
+    }
+    if (enabledFields.year && values.year) {
+      changes.push(`Year: ${values.year}`);
+    }
+    if (enabledFields.volume && values.volume) {
+      changes.push(`Volume: ${values.volume}`);
+    }
+    
+    return changes;
   };
 
   return (
@@ -179,8 +178,8 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
             <div className="flex items-start space-x-3">
               <Checkbox
                 id="update-publisher"
-                checked={fieldUpdates.publisher.enabled}
-                onCheckedChange={(checked) => toggleField('publisher', !!checked)}
+                checked={enabledFields.publisher}
+                onCheckedChange={() => toggleField('publisher')}
                 className="mt-2"
               />
               <div className="flex-1">
@@ -194,13 +193,10 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
                         <Combobox
                           options={publisherOptions}
                           value={field.value || ''}
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            updateFieldValue('publisher', value);
-                          }}
+                          onValueChange={field.onChange}
                           placeholder="Select or type publisher..."
                           emptyText="No publishers found."
-                          disabled={!fieldUpdates.publisher.enabled}
+                          disabled={!enabledFields.publisher}
                         />
                       </FormControl>
                       <FormMessage />
@@ -214,8 +210,8 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
             <div className="flex items-start space-x-3">
               <Checkbox
                 id="update-year"
-                checked={fieldUpdates.year.enabled}
-                onCheckedChange={(checked) => toggleField('year', !!checked)}
+                checked={enabledFields.year}
+                onCheckedChange={() => toggleField('year')}
                 className="mt-2"
               />
               <div className="flex-1">
@@ -229,12 +225,8 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
                         <Input
                           type="number"
                           placeholder="e.g., 2012"
-                          disabled={!fieldUpdates.year.enabled}
+                          disabled={!enabledFields.year}
                           {...field}
-                          onChange={(e) => {
-                            field.onChange(e);
-                            updateFieldValue('year', parseInt(e.target.value) || new Date().getFullYear());
-                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -248,8 +240,8 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
             <div className="flex items-start space-x-3">
               <Checkbox
                 id="update-volume"
-                checked={fieldUpdates.volume.enabled}
-                onCheckedChange={(checked) => toggleField('volume', !!checked)}
+                checked={enabledFields.volume}
+                onCheckedChange={() => toggleField('volume')}
                 className="mt-2"
               />
               <div className="flex-1">
@@ -262,12 +254,8 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
                       <FormControl>
                         <Input
                           placeholder="e.g., 2012"
-                          disabled={!fieldUpdates.volume.enabled}
+                          disabled={!enabledFields.volume}
                           {...field}
-                          onChange={(e) => {
-                            field.onChange(e);
-                            updateFieldValue('volume', e.target.value);
-                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -281,14 +269,11 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
             <div className="mt-4 p-3 bg-muted/50 rounded-lg">
               <Label className="text-sm font-medium">Preview of changes:</Label>
               <div className="text-sm text-muted-foreground mt-1">
-                {Object.entries(fieldUpdates)
-                  .filter(([, update]) => update.enabled)
-                  .map(([field, update]) => (
-                    <div key={field}>
-                      • {field.charAt(0).toUpperCase() + field.slice(1)}: {update.value}
-                    </div>
-                  ))}
-                {Object.values(fieldUpdates).every(update => !update.enabled) && (
+                {getPreviewChanges().length > 0 ? (
+                  getPreviewChanges().map((change, index) => (
+                    <div key={index}>• {change}</div>
+                  ))
+                ) : (
                   <div>No fields selected for update</div>
                 )}
               </div>
@@ -300,7 +285,7 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
               </Button>
               <Button 
                 type="submit" 
-                disabled={Object.values(fieldUpdates).every(update => !update.enabled)}
+                disabled={!Object.values(enabledFields).some(enabled => enabled)}
               >
                 Update {selectedFiles.length} Files
               </Button>
