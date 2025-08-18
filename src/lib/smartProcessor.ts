@@ -1,7 +1,7 @@
 import { parseFilename } from "./parser";
-import { searchKnowledgeBase, KnowledgeMatch } from "./knowledgeBase";
 import { QueuedFile, Confidence, Creator } from "@/types";
 import { fetchComicMetadata, fetchMarvelMetadata } from "./scraper";
+import { GcdDatabaseService } from "@/services/gcdDatabaseService";
 
 export interface ProcessingResult {
   success: boolean;
@@ -17,37 +17,60 @@ export interface ProcessingResult {
     title?: string;
     coverDate?: string;
   };
-  suggestions?: KnowledgeMatch[];
   error?: string;
 }
-
-// Check if a file is a mock file (used for testing)
-const isMockFile = (filePath: string): boolean => {
-  return filePath.startsWith('mock://');
-};
 
 // Smart processor that combines parsing with knowledge base matching
 export const processComicFile = async (
   file: QueuedFile, 
   comicVineApiKey: string,
   marvelPublicKey: string,
-  marvelPrivateKey: string
+  marvelPrivateKey: string,
+  gcdDbService?: GcdDatabaseService | null
 ): Promise<ProcessingResult> => {
   try {
-    // Parse the filename (works for both real and mock files)
     const parsed = parseFilename(file.path);
     
-    // Check if we have minimum required information
     if (!parsed.series || !parsed.issue) {
       return {
         success: false,
         confidence: "Low",
         error: "Could not extract series name or issue number from filename",
-        suggestions: []
       };
     }
 
-    // 1. Attempt Marvel API fetch first if it's a Marvel comic
+    // 1. Attempt GCD DB search first
+    if (gcdDbService && parsed.series) {
+      const gcdResults = await gcdDbService.searchSeries(parsed.series);
+      if (gcdResults && gcdResults.length > 0) {
+        const bestMatch = gcdResults[0];
+        
+        const issueDetails = await gcdDbService.getIssueDetails(bestMatch.id, parsed.issue);
+        
+        let creators: Creator[] = [];
+        if (issueDetails) {
+          creators = await gcdDbService.getIssueCreators(issueDetails.id);
+        }
+        
+        return {
+          success: true,
+          confidence: issueDetails ? "High" : "Medium",
+          data: {
+            series: bestMatch.name,
+            issue: parsed.issue,
+            year: parsed.year || bestMatch.year_began,
+            publisher: bestMatch.publisher,
+            volume: String(bestMatch.year_began),
+            summary: issueDetails?.notes || `Matched from local GCD: ${bestMatch.name}`,
+            title: issueDetails?.title,
+            coverDate: issueDetails?.publication_date,
+            creators: creators
+          }
+        };
+      }
+    }
+
+    // 2. Attempt Marvel API fetch if it's a Marvel comic
     if (parsed.publisher?.toLowerCase() === 'marvel comics' && marvelPublicKey && marvelPrivateKey) {
       const marvelResult = await fetchMarvelMetadata(parsed, marvelPublicKey, marvelPrivateKey);
       if (marvelResult.success && marvelResult.data) {
@@ -69,7 +92,7 @@ export const processComicFile = async (
       }
     }
 
-    // 2. Attempt Comic Vine API fetch for other publishers
+    // 3. Attempt Comic Vine API fetch for other publishers
     if (comicVineApiKey) {
       const apiResult = await fetchComicMetadata(parsed, comicVineApiKey);
       if (apiResult.success && apiResult.data) {
@@ -87,26 +110,6 @@ export const processComicFile = async (
           }
         };
       }
-    }
-
-    // 3. Fallback to Knowledge Base
-    const knowledgeMatches = searchKnowledgeBase(parsed);
-    if (knowledgeMatches.length > 0) {
-      const bestMatch = knowledgeMatches[0];
-      return {
-        success: true,
-        confidence: bestMatch.confidence,
-        data: {
-          series: bestMatch.series,
-          issue: parsed.issue,
-          year: parsed.year || bestMatch.startYear,
-          publisher: parsed.publisher || bestMatch.publisher,
-          volume: bestMatch.volume,
-          summary: `Processed using knowledge base: ${bestMatch.series}`,
-          creators: []
-        },
-        suggestions: knowledgeMatches.slice(1, 4)
-      };
     }
 
     // 4. Fallback to parsed data only
@@ -131,7 +134,6 @@ export const processComicFile = async (
       success: false,
       confidence: "Low",
       error: "Insufficient information to process file",
-      suggestions: knowledgeMatches
     };
 
   } catch (error) {
@@ -149,6 +151,7 @@ export const batchProcessFiles = async (
   comicVineApiKey: string,
   marvelPublicKey: string,
   marvelPrivateKey: string,
+  gcdDbService: GcdDatabaseService | null,
   onProgress?: (processed: number, total: number, currentFile: string) => void
 ): Promise<Map<string, ProcessingResult>> => {
   const results = new Map<string, ProcessingResult>();
@@ -157,7 +160,7 @@ export const batchProcessFiles = async (
     const file = files[i];
     onProgress?.(i, files.length, file.name);
     
-    const result = await processComicFile(file, comicVineApiKey, marvelPublicKey, marvelPrivateKey);
+    const result = await processComicFile(file, comicVineApiKey, marvelPublicKey, marvelPrivateKey, gcdDbService);
     results.set(file.id, result);
     
     // Small delay to prevent UI blocking

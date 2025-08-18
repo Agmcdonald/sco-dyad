@@ -58,6 +58,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   gcdDbConnect: (dbPath) => ipcRenderer.invoke('gcd-db:connect', dbPath),
   gcdDbDisconnect: () => ipcRenderer.invoke('gcd-db:disconnect'),
   gcdDbSearchSeries: (seriesName) => ipcRenderer.invoke('gcd-db:search-series', seriesName),
+  gcdDbGetIssueDetails: (seriesId, issueNumber) => ipcRenderer.invoke('gcd-db:get-issue-details', seriesId, issueNumber),
+  gcdDbGetIssueCreators: (issueId) => ipcRenderer.invoke('gcd-db:get-issue-creators', issueId),
+  gcdDbSearchPublishers: (query) => ipcRenderer.invoke('gcd-db:search-publishers', query),
 
   // Backup and Restore
   saveBackup: (data) => ipcRenderer.invoke('dialog:save-backup', data),

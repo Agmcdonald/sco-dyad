@@ -1,12 +1,18 @@
 import { useElectron } from '@/hooks/useElectron';
-import { AppSettings } from '@/types';
+import { AppSettings, Creator } from '@/types';
 
-// This is a placeholder for the actual structure we'd get from the DB
 export interface GcdSeriesSearchResult {
   id: number;
   name: string;
   publisher: string;
   year_began: number;
+}
+
+export interface GcdIssueDetails {
+  id: number;
+  title: string;
+  publication_date: string;
+  notes: string;
 }
 
 export class GcdDatabaseService {
@@ -32,7 +38,6 @@ export class GcdDatabaseService {
 
   async searchSeries(seriesName: string): Promise<GcdSeriesSearchResult[]> {
     if (!this.isConnected || !this.electronAPI) {
-      // console.warn("GCD database not connected. Cannot perform search.");
       return [];
     }
     try {
@@ -40,6 +45,45 @@ export class GcdDatabaseService {
       return results;
     } catch (error) {
       console.error(`Error searching for series "${seriesName}":`, error);
+      return [];
+    }
+  }
+
+  async getIssueDetails(seriesId: number, issueNumber: string): Promise<GcdIssueDetails | null> {
+    if (!this.isConnected || !this.electronAPI) {
+      return null;
+    }
+    try {
+      const result = await this.electronAPI.gcdDbGetIssueDetails(seriesId, issueNumber);
+      return result;
+    } catch (error) {
+      console.error(`Error getting details for issue "${issueNumber}" in series "${seriesId}":`, error);
+      return null;
+    }
+  }
+
+  async getIssueCreators(issueId: number): Promise<Creator[]> {
+    if (!this.isConnected || !this.electronAPI) {
+      return [];
+    }
+    try {
+      const results = await this.electronAPI.gcdDbGetIssueCreators(issueId);
+      return results;
+    } catch (error) {
+      console.error(`Error getting creators for issue ID "${issueId}":`, error);
+      return [];
+    }
+  }
+
+  async searchPublishers(query: string): Promise<string[]> {
+    if (!this.isConnected || !this.electronAPI) {
+      return [];
+    }
+    try {
+      const results = await this.electronAPI.gcdDbSearchPublishers(query);
+      return results;
+    } catch (error) {
+      console.error(`Error searching for publishers with query "${query}":`, error);
       return [];
     }
   }
