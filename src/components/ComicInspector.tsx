@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Comic } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,7 +14,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Tag, BookOpen, PlusCircle, Users, Trash2, Calendar, FileText } from "lucide-react";
+import { 
+  Tag, 
+  BookOpen, 
+  PlusCircle, 
+  Users, 
+  Trash2, 
+  Calendar, 
+  FileText, 
+  DollarSign,
+  Barcode,
+  Globe,
+  MapPin
+} from "lucide-react";
 import EditComicModal from "./EditComicModal";
 import ComicReader from "./ComicReader";
 import RatingSelector from "./RatingSelector";
@@ -78,8 +91,10 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
           <div className="aspect-w-2 aspect-h-3 rounded-lg bg-muted overflow-hidden">
             <img src={comic.coverUrl} alt="Cover" className="object-cover w-full h-full" />
           </div>
+          
+          {/* Basic Details */}
           <div>
-            <h4 className="font-semibold text-sm mb-2">Details</h4>
+            <h4 className="font-semibold text-sm mb-2">Basic Information</h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground flex items-center"><FileText className="h-3 w-3 mr-1.5" /> Publisher</span>
@@ -93,8 +108,65 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
                 <span className="text-muted-foreground flex items-center"><Calendar className="h-3 w-3 mr-1.5" /> Cover Date</span>
                 <span>{comic.coverDate || comic.year}</span>
               </div>
+              {comic.genre && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground flex items-center"><Tag className="h-3 w-3 mr-1.5" /> Genre</span>
+                  <span>{comic.genre}</span>
+                </div>
+              )}
+              {comic.price && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground flex items-center"><DollarSign className="h-3 w-3 mr-1.5" /> Price</span>
+                  <span>{comic.price}</span>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Additional Metadata */}
+          {(comic.barcode || comic.languageCode || comic.countryCode) && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="font-semibold text-sm mb-2">Additional Details</h4>
+                <div className="space-y-2 text-sm">
+                  {comic.barcode && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground flex items-center"><Barcode className="h-3 w-3 mr-1.5" /> Barcode</span>
+                      <span className="font-mono text-xs">{comic.barcode}</span>
+                    </div>
+                  )}
+                  {comic.languageCode && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground flex items-center"><Globe className="h-3 w-3 mr-1.5" /> Language</span>
+                      <Badge variant="outline" className="text-xs">{comic.languageCode}</Badge>
+                    </div>
+                  )}
+                  {comic.countryCode && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground flex items-center"><MapPin className="h-3 w-3 mr-1.5" /> Country</span>
+                      <Badge variant="outline" className="text-xs">{comic.countryCode}</Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Characters */}
+          {comic.characters && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="font-semibold text-sm mb-2">Characters</h4>
+                <p className="text-sm text-muted-foreground">
+                  {comic.characters}
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* Summary */}
           <Separator />
           <div>
             <h4 className="font-semibold text-sm mb-2">Summary</h4>
@@ -102,6 +174,8 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
               {comic.summary || "No summary available."}
             </p>
           </div>
+
+          {/* Creators */}
           {comic.creators && comic.creators.length > 0 && (
             <>
               <Separator />

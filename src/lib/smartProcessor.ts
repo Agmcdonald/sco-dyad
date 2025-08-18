@@ -14,10 +14,16 @@ export interface ProcessingResult {
     volume: string;
     summary: string;
     creators?: Creator[];
+    confidence: 'High' | 'Medium' | 'Low';
+    source: 'knowledge' | 'api';
     title?: string;
     coverDate?: string;
     genre?: string;
     characters?: string;
+    price?: string;
+    barcode?: string;
+    languageCode?: string;
+    countryCode?: string;
   };
   error?: string;
 }
@@ -78,7 +84,13 @@ export const processComicFile = async (
               coverDate: issueDetails?.publication_date,
               genre: issueDetails?.genre,
               characters: issueDetails?.characters,
-              creators: creators
+              price: issueDetails?.price,
+              barcode: issueDetails?.barcode,
+              languageCode: issueDetails?.language_code,
+              countryCode: issueDetails?.series_country_code,
+              creators: creators,
+              confidence: issueDetails ? "High" : "Medium",
+              source: 'knowledge'
             }
           };
         }
@@ -109,6 +121,8 @@ export const processComicFile = async (
             creators: marvelResult.data.creators,
             title: marvelResult.data.title,
             coverDate: marvelResult.data.coverDate,
+            confidence: marvelResult.data.confidence,
+            source: marvelResult.data.source
           }
         };
       }
@@ -130,7 +144,9 @@ export const processComicFile = async (
             publisher: apiResult.data.publisher,
             volume: apiResult.data.volume,
             summary: apiResult.data.summary,
-            creators: apiResult.data.creators
+            creators: apiResult.data.creators,
+            confidence: apiResult.data.confidence,
+            source: apiResult.data.source
           }
         };
       }
@@ -149,7 +165,9 @@ export const processComicFile = async (
           publisher: parsed.publisher || "Unknown Publisher",
           volume: parsed.volume || String(parsed.year),
           summary: `Parsed from filename: ${file.name}`,
-          creators: []
+          creators: [],
+          confidence: parsed.publisher ? "Medium" : "Low",
+          source: 'knowledge'
         }
       };
     }
