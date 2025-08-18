@@ -33,28 +33,35 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
     loadKnowledgeBase();
   }, [isElectron, electronAPI]);
 
-  const addToKnowledgeBase = useCallback((newEntry: ComicKnowledge) => {
-    setKnowledgeBase(prev => {
-      // Avoid duplicates
-      if (prev.some(entry => entry.series.toLowerCase() === newEntry.series.toLowerCase() && entry.publisher.toLowerCase() === newEntry.publisher.toLowerCase())) {
-        return prev;
-      }
-      return [...prev, newEntry];
-    });
-  }, []);
-
-  const saveKnowledgeBase = async () => {
+  const saveKnowledgeBase = useCallback(async (dataToSave: ComicKnowledge[]) => {
     if (isElectron && electronAPI) {
       try {
-        await electronAPI.saveKnowledgeBase(knowledgeBase);
+        await electronAPI.saveKnowledgeBase(dataToSave);
       } catch (error) {
         console.error("Failed to save knowledge base:", error);
       }
     }
-  };
+  }, [isElectron, electronAPI]);
+
+  const addToKnowledgeBase = useCallback((newEntry: ComicKnowledge) => {
+    setKnowledgeBase(prev => {
+      const exists = prev.some(entry => 
+        entry.series.toLowerCase() === newEntry.series.toLowerCase() && 
+        entry.publisher.toLowerCase() === newEntry.publisher.toLowerCase()
+      );
+      
+      if (exists) {
+        return prev;
+      }
+      
+      const updatedKb = [...prev, newEntry];
+      saveKnowledgeBase(updatedKb); // Auto-save on update
+      return updatedKb;
+    });
+  }, [saveKnowledgeBase]);
 
   return (
-    <KnowledgeBaseContext.Provider value={{ knowledgeBase, addToKnowledgeBase, saveKnowledgeBase }}>
+    <KnowledgeBaseContext.Provider value={{ knowledgeBase, addToKnowledgeBase, saveKnowledgeBase: () => saveKnowledgeBase(knowledgeBase) }}>
       {children}
     </KnowledgeBaseContext.Provider>
   );

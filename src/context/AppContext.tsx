@@ -12,6 +12,7 @@ import { useReadingList } from './hooks/useReadingList';
 import { useRecentlyRead } from './hooks/useRecentlyRead';
 import { processComicFile } from '@/lib/smartProcessor';
 import { useGcdDatabaseService } from '@/services/gcdDatabaseService';
+import { useKnowledgeBase } from './KnowledgeBaseContext';
 
 interface AppContextType {
   files: QueuedFile[];
@@ -87,8 +88,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
   const gcdDbService = useGcdDatabaseService();
+  const { addToKnowledgeBase } = useKnowledgeBase();
 
   const addComic = useCallback(async (comicData: NewComic, originalFile: QueuedFile) => {
+    // Learn from this new comic
+    addToKnowledgeBase({
+      series: comicData.series,
+      publisher: comicData.publisher,
+      startYear: comicData.year,
+      volumes: [{ volume: comicData.volume, year: comicData.year }]
+    });
+
     if (isMockFile(originalFile.path)) {
       const newComic: Comic = {
         ...comicData,
@@ -166,7 +176,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       });
       showSuccess(`Added '${newComic.series} #${newComic.issue}' to library`);
     }
-  }, [isElectron, electronAPI, databaseService, settings, logAction, refreshComics, setComics]);
+  }, [isElectron, electronAPI, databaseService, settings, logAction, refreshComics, setComics, addToKnowledgeBase]);
 
   const updateComic = useCallback(async (updatedComic: Comic) => {
     console.log('[APP-CONTEXT] Updating comic:', updatedComic.series, 'with rating:', updatedComic.rating);
