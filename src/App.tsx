@@ -72,15 +72,15 @@ const App = () => {
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <TooltipProvider>
           <SettingsProvider>
-            <AppProvider>
-              <KnowledgeBaseProvider>
+            <KnowledgeBaseProvider>
+              <AppProvider>
                 <SelectionProvider>
                   <Toaster />
                   <Sonner />
                   <RouterProvider router={router} />
                 </SelectionProvider>
-              </KnowledgeBaseProvider>
-            </AppProvider>
+              </AppProvider>
+            </KnowledgeBaseProvider>
           </SettingsProvider>
         </TooltipProvider>
       </ThemeProvider>
