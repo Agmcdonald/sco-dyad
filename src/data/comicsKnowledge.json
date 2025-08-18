@@ -1,0 +1,28 @@
+[
+  {
+    "series": "Saga",
+    "publisher": "Image Comics",
+    "startYear": 2012,
+    "volumes": [
+      { "volume": "1", "year": 2012 }
+    ]
+  },
+  {
+    "series": "The Amazing Spider-Man",
+    "publisher": "Marvel Comics",
+    "startYear": 1963,
+    "volumes": [
+      { "volume": "1", "year": 1963 }
+    ]
+  },
+  {
+    "series": "Batman",
+    "publisher": "DC Comics",
+    "startYear": 1940,
+    "volumes": [
+      { "volume": "1", "year": 1940 },
+      { "volume": "2", "year": 2011 },
+      { "volume": "3", "year": 2016 }
+    ]
+  }
+]
