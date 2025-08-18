@@ -10,6 +10,7 @@ export interface ParsedComicInfo {
 const issueRegex = /(?:#|issue|\s)(\d{1,4}(?:\.\d{1,2})?)/i;
 const yearRegex = /\((20\d{2}|19\d{2})\)/;
 const volumeRegex = /(?:v|vol|volume)\s*(\d{1,3})/i;
+const issueRangeRegex = /\d{3}-\d{3}/; // Detects ranges like "001-006"
 
 // Character to publisher mapping
 const characterPublisherMap: Record<string, string> = {
@@ -137,6 +138,24 @@ const detectPublisherFromCharacters = (seriesName: string): string | null => {
   return null;
 };
 
+// Check if a folder name contains an issue range (like "001-006")
+const containsIssueRange = (folderName: string): boolean => {
+  return issueRangeRegex.test(folderName);
+};
+
+// Extract clean series name from folder, removing issue ranges
+const extractSeriesFromFolder = (folderName: string): string => {
+  let cleanFolder = folderName;
+  
+  // Remove issue ranges like "001-006"
+  cleanFolder = cleanFolder.replace(/\s*\d{3}-\d{3}\s*/g, '').trim();
+  
+  // Remove year in parentheses to get just the series name
+  cleanFolder = cleanFolder.replace(/\s*\(\d{4}\)\s*/g, '').trim();
+  
+  return cleanFolder;
+};
+
 export const parseFilename = (path: string): ParsedComicInfo => {
   console.log(`[PARSER] Parsing filename: ${path}`);
   
@@ -198,20 +217,39 @@ export const parseFilename = (path: string): ParsedComicInfo => {
     console.log(`[PARSER] After volume removal: ${cleanedFilename}`);
   }
 
-  // Clean the remaining text to get series name
-  let series = clean(cleanedFilename);
-  series = series.replace(/\([^)]*\)/g, '').replace(/\[[^\]]*\]/g, '').trim();
-  console.log(`[PARSER] Series after cleaning: ${series}`);
+  // Clean the remaining text to get series name from filename
+  let seriesFromFile = clean(cleanedFilename);
+  seriesFromFile = seriesFromFile.replace(/\([^)]*\)/g, '').replace(/\[[^\]]*\]/g, '').trim();
+  console.log(`[PARSER] Series from file after cleaning: ${seriesFromFile}`);
 
   // --- Parse Folder Name ---
-  const seriesFromFolder = clean(folderName);
-  console.log(`[PARSER] Series from folder: ${seriesFromFolder}`);
+  let seriesFromFolder = '';
+  if (folderName && !/incoming|scans|comics|downloads/i.test(folderName)) {
+    if (containsIssueRange(folderName)) {
+      console.log(`[PARSER] Folder contains issue range, extracting series name only`);
+      seriesFromFolder = extractSeriesFromFolder(folderName);
+    } else {
+      seriesFromFolder = clean(folderName);
+    }
+    console.log(`[PARSER] Series from folder: ${seriesFromFolder}`);
+  }
 
   // --- Combine Results ---
-  // Prefer the folder name for the series if it's not a generic name
-  if (seriesFromFolder && !/incoming|scans|comics|downloads/i.test(seriesFromFolder)) {
-    series = seriesFromFolder;
-    console.log(`[PARSER] Using folder name for series: ${series}`);
+  // NEW LOGIC: Prioritize file parsing, use folder only as fallback for series name
+  let finalSeries = seriesFromFile;
+  
+  // Only use folder name if:
+  // 1. We couldn't get a series from the file, OR
+  // 2. The folder series is significantly longer/more descriptive
+  if (!seriesFromFile && seriesFromFolder) {
+    finalSeries = seriesFromFolder;
+    console.log(`[PARSER] Using folder name as fallback: ${finalSeries}`);
+  } else if (seriesFromFile && seriesFromFolder && seriesFromFolder.length > seriesFromFile.length + 5) {
+    // Only override if folder name is significantly more descriptive
+    finalSeries = seriesFromFolder;
+    console.log(`[PARSER] Using more descriptive folder name: ${finalSeries}`);
+  } else if (seriesFromFile) {
+    console.log(`[PARSER] Using series from filename: ${finalSeries}`);
   }
 
   // Format issue number with leading zeros for display
@@ -224,11 +262,11 @@ export const parseFilename = (path: string): ParsedComicInfo => {
   }
 
   // Detect publisher based on character names
-  const detectedPublisher = detectPublisherFromCharacters(series);
+  const detectedPublisher = detectPublisherFromCharacters(finalSeries);
   console.log(`[PARSER] Detected publisher: ${detectedPublisher}`);
 
   const result = { 
-    series: series || null, 
+    series: finalSeries || null, 
     issue: issue || null, 
     year, 
     volume,
