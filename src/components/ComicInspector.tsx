@@ -86,26 +86,34 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
     }
     setIsRefreshing(true);
     try {
+      console.log(`[COMIC-INSPECTOR] Starting refresh for series: "${comic.series}"`);
+      
       const seriesResults = await gcdDbService.searchSeries(comic.series);
+      console.log(`[COMIC-INSPECTOR] Search results:`, seriesResults);
+      
       if (seriesResults.length === 0) {
         showError(`Could not find series "${comic.series}" in the local database.`);
         return;
       }
       
       const seriesMatch = seriesResults[0];
+      console.log(`[COMIC-INSPECTOR] Using series match:`, seriesMatch);
       
       const issueDetails = await gcdDbService.getIssueDetails(seriesMatch.id, comic.issue);
+      console.log(`[COMIC-INSPECTOR] Issue details:`, issueDetails);
+      
       if (!issueDetails) {
         showError(`Could not find issue #${comic.issue} for "${comic.series}" in the database.`);
         return;
       }
 
       const creators = await gcdDbService.getIssueCreators(issueDetails.id);
+      console.log(`[COMIC-INSPECTOR] Creators:`, creators);
 
       const updatedData = {
         ...comic,
         publisher: seriesMatch.publisher,
-        year: parseInt(issueDetails.publication_date.substring(0, 4), 10) || comic.year,
+        year: parseInt(issueDetails.publication_date?.substring(0, 4), 10) || comic.year,
         volume: String(seriesMatch.year_began),
         summary: issueDetails.synopsis || comic.summary,
         title: issueDetails.title || comic.title,
@@ -119,12 +127,13 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
         countryCode: issueDetails.countryCode || comic.countryCode,
       };
 
+      console.log(`[COMIC-INSPECTOR] Updating comic with data:`, updatedData);
       await updateComic(updatedData);
       showSuccess("Comic metadata updated from local database.");
 
     } catch (error) {
-      console.error("Error refreshing from DB:", error);
-      showError("An error occurred while refreshing data.");
+      console.error("[COMIC-INSPECTOR] Error refreshing from DB:", error);
+      showError(`An error occurred while refreshing data: ${error.message}`);
     } finally {
       setIsRefreshing(false);
     }
