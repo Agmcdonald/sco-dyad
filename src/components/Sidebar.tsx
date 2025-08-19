@@ -10,6 +10,8 @@ import {
   Settings,
   Search,
   Wrench,
+  BookOpen,
+  Tag,
 } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 
@@ -21,6 +23,7 @@ const navItems = [
   { to: "/app/activity", icon: History, label: "Activity" },
   { to: "/app/maintenance", icon: Wrench, label: "Maintenance" },
   { to: "/app/settings", icon: Settings, label: "Settings" },
+  { to: "/app/knowledge", icon: Tag, label: "Knowledge" },
 ];
 
 const Sidebar = () => {
