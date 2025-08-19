@@ -166,7 +166,16 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     const dbPath = path.join(app.getPath('userData'), 'gcd_local.sqlite');
     
     try {
-      if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
+      // Close any existing connection before trying to delete the file.
+      if (gcdDb) {
+        gcdDb.close();
+        gcdDb = null;
+      }
+
+      if (fs.existsSync(dbPath)) {
+        fs.unlinkSync(dbPath);
+      }
+      
       const localDb = new Database(dbPath);
       
       localDb.exec(`
@@ -231,7 +240,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       const sequenceLines = await processFile(sequencesPath, 'story_details', false);
 
       localDb.close();
-      if (gcdDb) gcdDb.close();
+      
       gcdDb = new Database(dbPath, { readonly: true, fileMustExist: true });
 
       database.saveSetting('gcdDbPath', dbPath);
