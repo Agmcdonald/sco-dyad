@@ -305,10 +305,17 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('gcd-db:search-series', (event, seriesName) => {
     if (!gcdDb) return [];
     try {
+      // This query now groups by series to return unique results, making it more reliable.
       const stmt = gcdDb.prepare(`
-        SELECT id, series_name as name, publisher_name as publisher, SUBSTR(publication_date, 1, 4) as year_began
+        SELECT 
+          MIN(id) as id, -- Use the ID of the first issue as a representative ID for the series
+          series_name as name, 
+          publisher_name as publisher, 
+          SUBSTR(MIN(publication_date), 1, 4) as year_began
         FROM issues
         WHERE series_name LIKE ?
+        GROUP BY series_name, publisher_name
+        ORDER BY series_name
         LIMIT 20
       `);
       return stmt.all(`%${seriesName}%`);
@@ -321,18 +328,45 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('gcd-db:get-issue-details', (event, seriesId, issueNumber) => {
     if (!gcdDb) return null;
     try {
-      const issueStmt = gcdDb.prepare(`SELECT * FROM issues WHERE id = ?`);
-      const issue = issueStmt.get(seriesId);
-      if (!issue) return null;
+      // Step 1: Get the series name and publisher from the representative seriesId.
+      const seriesInfoStmt = gcdDb.prepare(`SELECT series_name, publisher_name FROM issues WHERE id = ?`);
+      const seriesInfo = seriesInfoStmt.get(seriesId);
+      if (!seriesInfo) {
+        console.error(`Could not find series info for representative ID: ${seriesId}`);
+        return null;
+      }
+
+      // Step 2: Find the specific issue using series name, publisher, and issue number.
+      // This is more robust and handles cases where issue numbers are not zero-padded.
+      const issueStmt = gcdDb.prepare(`
+        SELECT * FROM issues 
+        WHERE series_name = ? AND publisher_name = ? AND issue_number = ?
+      `);
+      // Try exact match first, then try matching as numbers to handle padding (e.g. '1' vs '001')
+      let issue = issueStmt.get(seriesInfo.series_name, seriesInfo.publisher_name, issueNumber);
+      if (!issue) {
+        const numericIssueStmt = gcdDb.prepare(`
+          SELECT * FROM issues
+          WHERE series_name = ? AND publisher_name = ? AND CAST(issue_number AS REAL) = CAST(? AS REAL)
+        `);
+        issue = numericIssueStmt.get(seriesInfo.series_name, seriesInfo.publisher_name, issueNumber);
+      }
+
+      if (!issue) {
+        console.error(`Could not find issue #${issueNumber} for series "${seriesInfo.series_name}"`);
+        return null;
+      }
+      
+      const issueId = issue.id;
 
       const detailsStmt = gcdDb.prepare(`SELECT key, value FROM issue_details WHERE issue_id = ?`);
-      const details = detailsStmt.all(seriesId).reduce((acc, row) => {
+      const details = detailsStmt.all(issueId).reduce((acc, row) => {
         acc[row.key.replace(/\s/g, '_')] = row.value;
         return acc;
       }, {});
 
       const storiesStmt = gcdDb.prepare(`SELECT * FROM story_details WHERE issue_id = ? ORDER BY sequence_number`);
-      const storyRows = storiesStmt.all(seriesId);
+      const storyRows = storiesStmt.all(issueId);
       
       const stories = {};
       storyRows.forEach(row => {
