@@ -21,6 +21,7 @@ import { showSuccess, showError } from "@/utils/toast";
 import { useElectron } from "@/hooks/useElectron";
 import { useGcdDatabaseService } from "@/services/gcdDatabaseService";
 import { RefreshCw, Loader2 } from "lucide-react";
+import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 
 const formSchema = z.object({
   series: z.string().min(1, "Series is required"),
@@ -43,6 +44,8 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
   const gcdDbService = useGcdDatabaseService();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -55,23 +58,27 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
     },
   });
 
-  // Generate publisher options from existing comics
+  // Generate publisher options from existing comics + knowledge base
   const publisherOptions: ComboboxOption[] = useMemo(() => {
-    const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
-    return publishersFromComics.map(publisher => ({
+    const publishersFromComics = [...new Set(comics.map(c => c.publisher))].filter(Boolean) as string[];
+    const publishersFromKb = [...new Set(knowledgeBase.map(k => k.publisher))].filter(Boolean) as string[];
+    const merged = [...new Set([...publishersFromComics, ...publishersFromKb, 'Unknown Publisher'])];
+    return merged.map(publisher => ({
       label: publisher,
       value: publisher
     })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [comics]);
+  }, [comics, knowledgeBase]);
 
-  // Generate series options from existing comics
+  // Generate series options from existing comics + knowledge base
   const seriesOptions: ComboboxOption[] = useMemo(() => {
-    const seriesFromComics = [...new Set(comics.map(c => c.series))];
-    return seriesFromComics.map(s => ({
-      label: s,
-      value: s
+    const seriesFromComics = [...new Set(comics.map(c => c.series))].filter(Boolean) as string[];
+    const seriesFromKb = [...new Set(knowledgeBase.map(k => k.series))].filter(Boolean) as string[];
+    const merged = [...new Set([...seriesFromComics, ...seriesFromKb])];
+    return merged.map(series => ({
+      label: series,
+      value: series
     })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [comics]);
+  }, [comics, knowledgeBase]);
 
   useEffect(() => {
     form.reset({
@@ -108,7 +115,7 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
       form.reset({
         series: seriesMatch.name,
         issue: comic.issue,
-        year: parseInt(issueDetails.publication_date.substring(0, 4), 10) || comic.year,
+        year: parseInt(issueDetails.publication_date?.substring(0, 4), 10) || comic.year,
         publisher: seriesMatch.publisher,
         volume: String(seriesMatch.year_began),
         summary: issueDetails.synopsis || comic.summary,
@@ -124,10 +131,28 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
     }
   };
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    updateComic({ ...comic, ...values });
-    showSuccess("Comic details updated.");
-    onClose();
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    const updated = { ...comic, ...values };
+    try {
+      await updateComic(updated);
+      // Ensure knowledge base contains this series/publisher
+      try {
+        addToKnowledgeBase({
+          series: values.series,
+          publisher: values.publisher,
+          startYear: values.year,
+          volumes: values.volume ? [{ volume: values.volume, year: values.year }] : []
+        });
+      } catch (kbErr) {
+        console.warn("Failed to add to knowledge base:", kbErr);
+      }
+
+      showSuccess("Comic details updated.");
+      onClose();
+    } catch (err) {
+      console.error("Failed to update comic:", err);
+      showError("Failed to save changes.");
+    }
   };
 
   return (
