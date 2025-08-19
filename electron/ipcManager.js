@@ -309,6 +309,17 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
     try {
       console.log(`[GCD-SEARCH] Searching for series: "${seriesName}"`);
+      
+      // DEBUGGING STEP: Raw search without grouping
+      const rawStmt = gcdDb.prepare(`
+        SELECT id, series_name, publisher_name, publication_date 
+        FROM issues
+        WHERE series_name LIKE ? COLLATE NOCASE
+        LIMIT 50
+      `);
+      const rawResults = rawStmt.all(`%${seriesName}%`);
+      console.log(`[GCD-SEARCH-DEBUG] Raw results for "%${seriesName}%":`, rawResults);
+
       const stmt = gcdDb.prepare(`
         SELECT 
           MIN(id) as id,
@@ -328,7 +339,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
         LIMIT 20
       `);
       const results = stmt.all(`%${seriesName}%`, seriesName, `${seriesName}%`);
-      console.log(`[GCD-SEARCH] Found ${results.length} results for "${seriesName}"`);
+      console.log(`[GCD-SEARCH] Found ${results.length} grouped results for "${seriesName}"`);
       return results;
     } catch (error) {
       console.error('[GCD-SEARCH] Search failed:', error);
@@ -345,13 +356,14 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
         console.error(`[GET-ISSUE] Could not find series info for representative ID: ${seriesId}`);
         return null;
       }
-      console.log(`[GET-ISSUE] Found series name: "${seriesInfo.series_name}"`);
+      const seriesName = seriesInfo.series_name;
+      console.log(`[GET-ISSUE] Found series name: "${seriesName}"`);
 
       const issueStmt = gcdDb.prepare(`
         SELECT * FROM issues 
         WHERE series_name = ? AND issue_number = ?
       `);
-      let issue = issueStmt.get(seriesInfo.series_name, issueNumber);
+      let issue = issueStmt.get(seriesName, issueNumber);
       
       if (!issue) {
         console.log(`[GET-ISSUE] Exact match for issue number failed. Trying numeric match.`);
@@ -359,11 +371,11 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
           SELECT * FROM issues
           WHERE series_name = ? AND CAST(issue_number AS REAL) = CAST(? AS REAL)
         `);
-        issue = numericIssueStmt.get(seriesInfo.series_name, issueNumber);
+        issue = numericIssueStmt.get(seriesName, issueNumber);
       }
 
       if (!issue) {
-        console.error(`[GET-ISSUE] Could not find issue #${issueNumber} for series "${seriesInfo.series_name}"`);
+        console.error(`[GET-ISSUE] Could not find issue #${issueNumber} for series "${seriesName}"`);
         return null;
       }
       
