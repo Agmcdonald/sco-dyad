@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -17,7 +17,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { Comic } from "@/types";
 import { useAppContext } from "@/context/AppContext";
-import { showSuccess } from "@/utils/toast";
+import { showSuccess, showError } from "@/utils/toast";
+import { useElectron } from "@/hooks/useElectron";
+import { useGcdDatabaseService } from "@/services/gcdDatabaseService";
+import { RefreshCw, Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   series: z.string().min(1, "Series is required"),
@@ -36,6 +39,9 @@ interface EditComicModalProps {
 
 const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
   const { updateComic, comics } = useAppContext();
+  const { isElectron } = useElectron();
+  const gcdDbService = useGcdDatabaseService();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -78,6 +84,46 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
     });
   }, [comic, form]);
 
+  const handleRefreshFromDb = async () => {
+    if (!gcdDbService) {
+      showError("Local database is not connected.");
+      return;
+    }
+    setIsRefreshing(true);
+    try {
+      const seriesResults = await gcdDbService.searchSeries(comic.series);
+      if (seriesResults.length === 0) {
+        showError(`Could not find series "${comic.series}" in the local database.`);
+        return;
+      }
+      
+      const seriesMatch = seriesResults[0];
+      const issueDetails = await gcdDbService.getIssueDetails(seriesMatch.id, comic.issue);
+      if (!issueDetails) {
+        showError(`Could not find issue #${comic.issue} for "${comic.series}" in the database.`);
+        return;
+      }
+
+      // Update the form fields directly
+      form.reset({
+        series: seriesMatch.name,
+        issue: comic.issue,
+        year: parseInt(issueDetails.publication_date.substring(0, 4), 10) || comic.year,
+        publisher: seriesMatch.publisher,
+        volume: String(seriesMatch.year_began),
+        summary: issueDetails.synopsis || comic.summary,
+      });
+
+      showSuccess("Form data refreshed from local database.");
+
+    } catch (error) {
+      console.error("Error refreshing from DB:", error);
+      showError("An error occurred while refreshing data.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     updateComic({ ...comic, ...values });
     showSuccess("Comic details updated.");
@@ -88,7 +134,23 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Metadata</DialogTitle>
+          <div className="flex justify-between items-center">
+            <DialogTitle>Edit Metadata</DialogTitle>
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleRefreshFromDb} 
+              disabled={!isElectron || isRefreshing}
+            >
+              {isRefreshing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              Refresh
+            </Button>
+          </div>
           <DialogDescription>
             Make changes to the comic details here. Click save when you're done.
           </DialogDescription>
