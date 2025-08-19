@@ -166,38 +166,23 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     const dbPath = path.join(app.getPath('userData'), 'gcd_local.sqlite');
     
     try {
-      // Delete old DB if it exists
-      if (fs.existsSync(dbPath)) {
-        fs.unlinkSync(dbPath);
-      }
-      
+      if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
       const localDb = new Database(dbPath);
       
-      // Create schema
       localDb.exec(`
-        CREATE TABLE issues (
-          id INTEGER PRIMARY KEY,
-          series_name TEXT,
-          issue_number TEXT,
-          publication_date TEXT,
-          publisher_name TEXT
-        );
         CREATE TABLE issue_details (
           issue_id INTEGER,
           key TEXT,
-          value TEXT,
-          PRIMARY KEY (issue_id, key)
+          value TEXT
         );
         CREATE TABLE story_details (
           issue_id INTEGER,
           sequence_number INTEGER,
           key TEXT,
-          value TEXT,
-          PRIMARY KEY (issue_id, sequence_number, key),
-          FOREIGN KEY(issue_id) REFERENCES issues(id)
+          value TEXT
         );
-        CREATE INDEX idx_issues_series_name ON issues(series_name);
-        CREATE INDEX idx_issue_details_issue_id ON issue_details(issue_id);
+        CREATE INDEX idx_issue_details_issue_id_key ON issue_details(issue_id, key);
+        CREATE INDEX idx_issue_details_key_value ON issue_details(key, value);
         CREATE INDEX idx_story_details_issue_id ON story_details(issue_id);
       `);
 
@@ -205,17 +190,12 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
         const fileStream = fs.createReadStream(filePath);
         const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
         
-        let insertStmt;
-        if (isIssuesFile) {
-          insertStmt = localDb.prepare(`INSERT OR IGNORE INTO ${tableName} (issue_id, key, value) VALUES (?, ?, ?)`);
-        } else {
-          insertStmt = localDb.prepare(`INSERT OR IGNORE INTO ${tableName} (issue_id, sequence_number, key, value) VALUES (?, ?, ?, ?)`);
-        }
+        const insertStmt = isIssuesFile
+          ? localDb.prepare(`INSERT INTO ${tableName} (issue_id, key, value) VALUES (?, ?, ?)`)
+          : localDb.prepare(`INSERT INTO ${tableName} (issue_id, sequence_number, key, value) VALUES (?, ?, ?, ?)`);
         
         const transaction = localDb.transaction((rows) => {
-          for (const row of rows) {
-            insertStmt.run(row);
-          }
+          for (const row of rows) insertStmt.run(row);
         });
 
         let buffer = [];
@@ -230,10 +210,10 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
             if (parts.length === 4) buffer.push([parseInt(parts[0]), parseInt(parts[1]), parts[2], parts[3]]);
           }
 
-          if (buffer.length >= 10000) {
+          if (buffer.length >= 50000) {
             transaction(buffer);
             buffer = [];
-            event.sender.send('importer:progress', { percent: 50, message: `Processing ${tableName}: ${lineCount.toLocaleString()} lines...` });
+            event.sender.send('importer:progress', { percent: 50, message: `Processing ${path.basename(filePath)}: ${lineCount.toLocaleString()} lines...` });
           }
         });
 
@@ -244,34 +224,16 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
         rl.on('error', reject);
       });
 
-      // Process issues.tsv
       event.sender.send('importer:progress', { percent: 10, message: 'Processing issues file...' });
       const issueLines = await processFile(issuesPath, 'issue_details', true);
       
-      // Populate main issues table from details
-      localDb.exec(`
-        INSERT INTO issues (id, series_name, issue_number, publication_date, publisher_name)
-        SELECT 
-          issue_id,
-          MAX(CASE WHEN key = 'series name' THEN value END),
-          MAX(CASE WHEN key = 'issue number' THEN value END),
-          MAX(CASE WHEN key = 'publication date' THEN value END),
-          MAX(CASE WHEN key = 'publisher name' THEN value END)
-        FROM issue_details
-        GROUP BY issue_id
-      `);
-
-      // Process sequences.tsv
       event.sender.send('importer:progress', { percent: 60, message: 'Processing story file...' });
       const sequenceLines = await processFile(sequencesPath, 'story_details', false);
 
       localDb.close();
-      
-      // Connect to the new DB for future queries
       if (gcdDb) gcdDb.close();
       gcdDb = new Database(dbPath, { readonly: true, fileMustExist: true });
 
-      // Save paths to settings
       database.saveSetting('gcdDbPath', dbPath);
       database.saveSetting('gcdIssuesPath', issuesPath);
       database.saveSetting('gcdSequencesPath', sequencesPath);
@@ -288,12 +250,8 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     const localDbPath = dbPath || path.join(app.getPath('userData'), 'gcd_local.sqlite');
     try {
       if (gcdDb) gcdDb.close();
-      if (!fs.existsSync(localDbPath)) {
-        console.log('Local GCD database not found.');
-        return false;
-      }
+      if (!fs.existsSync(localDbPath)) return false;
       gcdDb = new Database(localDbPath, { readonly: true, fileMustExist: true });
-      console.log('Successfully connected to local GCD database.');
       return true;
     } catch (error) {
       console.error('Failed to connect to GCD database:', error);
@@ -303,44 +261,21 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   });
 
   ipcMain.handle('gcd-db:search-series', (event, seriesName) => {
-    if (!gcdDb) {
-      console.log('[GCD-SEARCH] Database not connected');
-      return [];
-    }
+    if (!gcdDb) return [];
     try {
-      console.log(`[GCD-SEARCH] Searching for series: "${seriesName}"`);
-      
-      // DEBUGGING STEP: Raw search without grouping
-      const rawStmt = gcdDb.prepare(`
-        SELECT id, series_name, publisher_name, publication_date 
-        FROM issues
-        WHERE series_name LIKE ? COLLATE NOCASE
-        LIMIT 50
-      `);
-      const rawResults = rawStmt.all(`%${seriesName}%`);
-      console.log(`[GCD-SEARCH-DEBUG] Raw results for "%${seriesName}%":`, rawResults);
-
       const stmt = gcdDb.prepare(`
-        SELECT 
-          MIN(id) as id,
-          series_name as name, 
-          publisher_name as publisher, 
-          SUBSTR(MIN(publication_date), 1, 4) as year_began
-        FROM issues
-        WHERE series_name LIKE ? COLLATE NOCASE
-        GROUP BY series_name, publisher_name
-        ORDER BY 
-          CASE 
-            WHEN series_name = ? THEN 1
-            WHEN series_name LIKE ? THEN 2
-            ELSE 3
-          END,
-          series_name
+        SELECT
+          s.issue_id as id,
+          s.value as name,
+          (SELECT value FROM issue_details WHERE issue_id = s.issue_id AND key = 'publisher name') as publisher,
+          (SELECT SUBSTR(value, 1, 4) FROM issue_details WHERE issue_id = s.issue_id AND key = 'publication date') as year_began
+        FROM issue_details s
+        WHERE s.key = 'series name' AND s.value LIKE ? COLLATE NOCASE
+        GROUP BY s.value, publisher
+        ORDER BY CASE WHEN s.value = ? THEN 1 WHEN s.value LIKE ? THEN 2 ELSE 3 END, s.value
         LIMIT 20
       `);
-      const results = stmt.all(`%${seriesName}%`, seriesName, `${seriesName}%`);
-      console.log(`[GCD-SEARCH] Found ${results.length} grouped results for "${seriesName}"`);
-      return results;
+      return stmt.all(`%${seriesName}%`, seriesName, `${seriesName}%`);
     } catch (error) {
       console.error('[GCD-SEARCH] Search failed:', error);
       return [];
@@ -350,54 +285,28 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('gcd-db:get-issue-details', (event, seriesId, issueNumber) => {
     if (!gcdDb) return null;
     try {
-      const seriesInfoStmt = gcdDb.prepare(`SELECT series_name FROM issues WHERE id = ?`);
-      const seriesInfo = seriesInfoStmt.get(seriesId);
-      if (!seriesInfo) {
-        console.error(`[GET-ISSUE] Could not find series info for representative ID: ${seriesId}`);
-        return null;
-      }
-      const seriesName = seriesInfo.series_name;
-      console.log(`[GET-ISSUE] Found series name: "${seriesName}"`);
+      const seriesNameStmt = gcdDb.prepare(`SELECT value FROM issue_details WHERE issue_id = ? AND key = 'series name'`);
+      const seriesNameResult = seriesNameStmt.get(seriesId);
+      if (!seriesNameResult) return null;
+      const seriesName = seriesNameResult.value;
 
-      const issueStmt = gcdDb.prepare(`
-        SELECT * FROM issues 
-        WHERE series_name = ? AND issue_number = ?
+      const issueIdStmt = gcdDb.prepare(`
+        SELECT s.issue_id FROM issue_details s
+        JOIN issue_details i ON s.issue_id = i.issue_id
+        WHERE s.key = 'series name' AND s.value = ?
+          AND i.key = 'issue number' AND i.value = ?
       `);
-      let issue = issueStmt.get(seriesName, issueNumber);
-      
-      if (!issue) {
-        console.log(`[GET-ISSUE] Exact match for issue number failed. Trying numeric match.`);
-        const numericIssueStmt = gcdDb.prepare(`
-          SELECT * FROM issues
-          WHERE series_name = ? AND CAST(issue_number AS REAL) = CAST(? AS REAL)
-        `);
-        issue = numericIssueStmt.get(seriesName, issueNumber);
-      }
-
-      if (!issue) {
-        console.error(`[GET-ISSUE] Could not find issue #${issueNumber} for series "${seriesName}"`);
-        return null;
-      }
-      
-      console.log(`[GET-ISSUE] Found matching issue record:`, issue);
-      const issueId = issue.id;
+      const issueIdResult = issueIdStmt.get(seriesName, issueNumber);
+      if (!issueIdResult) return null;
+      const issueId = issueIdResult.issue_id;
 
       const detailsStmt = gcdDb.prepare(`SELECT key, value FROM issue_details WHERE issue_id = ?`);
       const details = detailsStmt.all(issueId).reduce((acc, row) => {
         acc[row.key.replace(/\s/g, '_')] = row.value;
         return acc;
-      }, {});
+      }, { id: issueId });
 
-      const storiesStmt = gcdDb.prepare(`SELECT * FROM story_details WHERE issue_id = ? ORDER BY sequence_number`);
-      const storyRows = storiesStmt.all(issueId);
-      
-      const stories = {};
-      storyRows.forEach(row => {
-        if (!stories[row.sequence_number]) stories[row.sequence_number] = { sequence_number: row.sequence_number };
-        stories[row.sequence_number][row.key.replace(/\s/g, '_')] = row.value;
-      });
-
-      return { ...issue, ...details, stories: Object.values(stories) };
+      return details;
     } catch (error) {
       console.error('GCD issue details search failed:', error);
       return null;
@@ -414,11 +323,10 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
         GROUP BY key, value
         ORDER BY sequence_number
       `);
-      const creators = stmt.all(issueId).map(row => ({
+      return stmt.all(issueId).map(row => ({
         ...row,
         role: row.role.charAt(0).toUpperCase() + row.role.slice(1)
       }));
-      return creators;
     } catch (error) {
       console.error('GCD creator search failed:', error);
       return [];
@@ -432,9 +340,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       defaultPath: `comic-library-backup-${new Date().toISOString().split('T')[0]}.json`,
       filters: [{ name: 'JSON Files', extensions: ['json'] }]
     });
-
     if (canceled || !filePath) return { success: false, path: null };
-
     try {
       await fs.promises.writeFile(filePath, data, 'utf-8');
       return { success: true, path: filePath };
@@ -449,9 +355,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       properties: ['openFile'],
       filters: [{ name: 'JSON Files', extensions: ['json'] }]
     });
-
     if (canceled || filePaths.length === 0) return { success: false, data: null };
-
     try {
       const data = await fs.promises.readFile(filePaths[0], 'utf-8');
       return { success: true, data };
