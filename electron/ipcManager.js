@@ -303,12 +303,51 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   });
 
   ipcMain.handle('gcd-db:search-series', (event, seriesName) => {
-    if (!gcdDb) return [];
+    if (!gcdDb) {
+      console.log('[GCD-SEARCH] Database not connected');
+      return [];
+    }
+    
     try {
-      // This query now groups by series to return unique results, making it more reliable.
-      const stmt = gcdDb.prepare(`
+      console.log(`[GCD-SEARCH] Searching for series: "${seriesName}"`);
+      
+      // First, let's see what series names are actually in the database
+      const sampleStmt = gcdDb.prepare(`
+        SELECT DISTINCT series_name 
+        FROM issues 
+        WHERE series_name IS NOT NULL 
+        ORDER BY series_name 
+        LIMIT 10
+      `);
+      const sampleSeries = sampleStmt.all();
+      console.log('[GCD-SEARCH] Sample series in database:', sampleSeries.map(s => s.series_name));
+      
+      // Now let's try different search approaches
+      console.log(`[GCD-SEARCH] Trying exact match for: "${seriesName}"`);
+      const exactStmt = gcdDb.prepare(`
         SELECT 
-          MIN(id) as id, -- Use the ID of the first issue as a representative ID for the series
+          MIN(id) as id,
+          series_name as name, 
+          publisher_name as publisher, 
+          SUBSTR(MIN(publication_date), 1, 4) as year_began
+        FROM issues
+        WHERE series_name = ?
+        GROUP BY series_name, publisher_name
+        ORDER BY series_name
+        LIMIT 20
+      `);
+      const exactResults = exactStmt.all(seriesName);
+      console.log('[GCD-SEARCH] Exact match results:', exactResults);
+      
+      if (exactResults.length > 0) {
+        return exactResults;
+      }
+      
+      // Try LIKE search
+      console.log(`[GCD-SEARCH] Trying LIKE search for: "%${seriesName}%"`);
+      const likeStmt = gcdDb.prepare(`
+        SELECT 
+          MIN(id) as id,
           series_name as name, 
           publisher_name as publisher, 
           SUBSTR(MIN(publication_date), 1, 4) as year_began
@@ -318,9 +357,34 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
         ORDER BY series_name
         LIMIT 20
       `);
-      return stmt.all(`%${seriesName}%`);
+      const likeResults = likeStmt.all(`%${seriesName}%`);
+      console.log('[GCD-SEARCH] LIKE search results:', likeResults);
+      
+      if (likeResults.length > 0) {
+        return likeResults;
+      }
+      
+      // Try case-insensitive search
+      console.log(`[GCD-SEARCH] Trying case-insensitive search`);
+      const caseInsensitiveStmt = gcdDb.prepare(`
+        SELECT 
+          MIN(id) as id,
+          series_name as name, 
+          publisher_name as publisher, 
+          SUBSTR(MIN(publication_date), 1, 4) as year_began
+        FROM issues
+        WHERE LOWER(series_name) LIKE LOWER(?)
+        GROUP BY series_name, publisher_name
+        ORDER BY series_name
+        LIMIT 20
+      `);
+      const caseInsensitiveResults = caseInsensitiveStmt.all(`%${seriesName}%`);
+      console.log('[GCD-SEARCH] Case-insensitive search results:', caseInsensitiveResults);
+      
+      return caseInsensitiveResults;
+      
     } catch (error) {
-      console.error('GCD series search failed:', error);
+      console.error('[GCD-SEARCH] Search failed:', error);
       return [];
     }
   });
