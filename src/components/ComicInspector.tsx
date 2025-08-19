@@ -25,7 +25,9 @@ import {
   DollarSign,
   Barcode,
   Globe,
-  MapPin
+  MapPin,
+  RefreshCw,
+  Loader2
 } from "lucide-react";
 import EditComicModal from "./EditComicModal";
 import ComicReader from "./ComicReader";
@@ -34,6 +36,8 @@ import { useAppContext } from "@/context/AppContext";
 import { useSelection } from "@/context/SelectionContext";
 import { useElectron } from "@/hooks/useElectron";
 import { RATING_EMOJIS } from "@/lib/ratings";
+import { useGcdDatabaseService } from "@/services/gcdDatabaseService";
+import { showError, showSuccess } from "@/utils/toast";
 
 interface ComicInspectorProps {
   comic: Comic;
@@ -42,9 +46,11 @@ interface ComicInspectorProps {
 const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReaderOpen, setIsReaderOpen] = useState(false);
-  const { comics, readingList, addToReadingList, removeComic, updateComicRating } = useAppContext();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { comics, readingList, addToReadingList, removeComic, updateComicRating, updateComic } = useAppContext();
   const { setSelectedItem } = useSelection();
   const { isElectron } = useElectron();
+  const gcdDbService = useGcdDatabaseService();
 
   const comic = useMemo(() => {
     return comics.find(c => c.id === initialComic.id) || initialComic;
@@ -70,6 +76,57 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
       console.log(`[COMIC-INSPECTOR] Rating updated successfully`);
     } catch (error) {
       console.error(`[COMIC-INSPECTOR] Failed to update rating:`, error);
+    }
+  };
+
+  const handleRefreshFromDb = async () => {
+    if (!gcdDbService) {
+      showError("Local database is not connected.");
+      return;
+    }
+    setIsRefreshing(true);
+    try {
+      const seriesResults = await gcdDbService.searchSeries(comic.series);
+      if (seriesResults.length === 0) {
+        showError(`Could not find series "${comic.series}" in the local database.`);
+        return;
+      }
+      
+      const seriesMatch = seriesResults[0];
+      
+      const issueDetails = await gcdDbService.getIssueDetails(seriesMatch.id, comic.issue);
+      if (!issueDetails) {
+        showError(`Could not find issue #${comic.issue} for "${comic.series}" in the database.`);
+        return;
+      }
+
+      const creators = await gcdDbService.getIssueCreators(issueDetails.id);
+
+      const updatedData = {
+        ...comic,
+        publisher: seriesMatch.publisher,
+        year: parseInt(issueDetails.publication_date.substring(0, 4), 10) || comic.year,
+        volume: String(seriesMatch.year_began),
+        summary: issueDetails.synopsis || comic.summary,
+        title: issueDetails.title || comic.title,
+        coverDate: issueDetails.publication_date,
+        creators: creators.length > 0 ? creators : comic.creators,
+        genre: issueDetails.genre || comic.genre,
+        characters: issueDetails.characters || comic.characters,
+        price: issueDetails.price || comic.price,
+        barcode: issueDetails.barcode || comic.barcode,
+        languageCode: issueDetails.languageCode || comic.languageCode,
+        countryCode: issueDetails.countryCode || comic.countryCode,
+      };
+
+      await updateComic(updatedData);
+      showSuccess("Comic metadata updated from local database.");
+
+    } catch (error) {
+      console.error("Error refreshing from DB:", error);
+      showError("An error occurred while refreshing data.");
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -227,40 +284,52 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
             <PlusCircle className="mr-2 h-4 w-4" /> 
             {isInReadingList ? 'In Reading List' : 'Add to Reading List'}
           </Button>
-          <div className="flex gap-2">
-            <Button className="w-full" variant="outline" onClick={() => setIsModalOpen(true)}>
-              <Tag className="mr-2 h-4 w-4" /> Edit Metadata
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" onClick={() => setIsModalOpen(true)}>
+              <Tag className="mr-2 h-4 w-4" /> Edit
             </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="w-full">
-                  <Trash2 className="mr-2 h-4 w-4" /> Delete
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete "{comic.series} #{comic.issue}"?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. Choose whether to remove the comic from your library or permanently delete the file from your computer.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter className="gap-2">
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleRemoveFromLibrary}>
-                    Remove from Library
-                  </AlertDialogAction>
-                  {isElectron && comic.filePath && (
-                    <AlertDialogAction
-                      onClick={handleDeletePermanently}
-                      className="bg-red-600 hover:bg-red-700"
-                    >
-                      Delete File Permanently
-                    </AlertDialogAction>
-                  )}
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button 
+              variant="outline" 
+              onClick={handleRefreshFromDb} 
+              disabled={!isElectron || isRefreshing}
+            >
+              {isRefreshing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Refresh
+            </Button>
           </div>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" className="w-full">
+                <Trash2 className="mr-2 h-4 w-4" /> Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete "{comic.series} #{comic.issue}"?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. Choose whether to remove the comic from your library or permanently delete the file from your computer.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="gap-2">
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleRemoveFromLibrary}>
+                  Remove from Library
+                </AlertDialogAction>
+                {isElectron && comic.filePath && (
+                  <AlertDialogAction
+                    onClick={handleDeletePermanently}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Delete File Permanently
+                  </AlertDialogAction>
+                )}
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
       
