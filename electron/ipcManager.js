@@ -339,35 +339,35 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('gcd-db:get-issue-details', (event, seriesId, issueNumber) => {
     if (!gcdDb) return null;
     try {
-      // Step 1: Get the series name and publisher from the representative seriesId.
-      const seriesInfoStmt = gcdDb.prepare(`SELECT series_name, publisher_name FROM issues WHERE id = ?`);
+      const seriesInfoStmt = gcdDb.prepare(`SELECT series_name FROM issues WHERE id = ?`);
       const seriesInfo = seriesInfoStmt.get(seriesId);
       if (!seriesInfo) {
-        console.error(`Could not find series info for representative ID: ${seriesId}`);
+        console.error(`[GET-ISSUE] Could not find series info for representative ID: ${seriesId}`);
         return null;
       }
+      console.log(`[GET-ISSUE] Found series name: "${seriesInfo.series_name}"`);
 
-      // Step 2: Find the specific issue using series name, publisher, and issue number.
-      // This is more robust and handles cases where issue numbers are not zero-padded.
       const issueStmt = gcdDb.prepare(`
         SELECT * FROM issues 
-        WHERE series_name = ? AND publisher_name = ? AND issue_number = ?
+        WHERE series_name = ? AND issue_number = ?
       `);
-      // Try exact match first, then try matching as numbers to handle padding (e.g. '1' vs '001')
-      let issue = issueStmt.get(seriesInfo.series_name, seriesInfo.publisher_name, issueNumber);
+      let issue = issueStmt.get(seriesInfo.series_name, issueNumber);
+      
       if (!issue) {
+        console.log(`[GET-ISSUE] Exact match for issue number failed. Trying numeric match.`);
         const numericIssueStmt = gcdDb.prepare(`
           SELECT * FROM issues
-          WHERE series_name = ? AND publisher_name = ? AND CAST(issue_number AS REAL) = CAST(? AS REAL)
+          WHERE series_name = ? AND CAST(issue_number AS REAL) = CAST(? AS REAL)
         `);
-        issue = numericIssueStmt.get(seriesInfo.series_name, seriesInfo.publisher_name, issueNumber);
+        issue = numericIssueStmt.get(seriesInfo.series_name, issueNumber);
       }
 
       if (!issue) {
-        console.error(`Could not find issue #${issueNumber} for series "${seriesInfo.series_name}"`);
+        console.error(`[GET-ISSUE] Could not find issue #${issueNumber} for series "${seriesInfo.series_name}"`);
         return null;
       }
       
+      console.log(`[GET-ISSUE] Found matching issue record:`, issue);
       const issueId = issue.id;
 
       const detailsStmt = gcdDb.prepare(`SELECT key, value FROM issue_details WHERE issue_id = ?`);
