@@ -20,6 +20,7 @@ import { AppProvider } from "./context/AppContext";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { SettingsProvider } from "./context/SettingsContext";
 import { KnowledgeBaseProvider } from "./context/KnowledgeBaseContext";
+import KnowledgeBase from "./pages/KnowledgeBase";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const router = createBrowserRouter([
           { path: "activity", element: <Activity /> },
           { path: "settings", element: <Settings /> },
           { path: "maintenance", element: <Maintenance /> },
+          { path: "knowledge", element: <KnowledgeBase /> },
         ],
       },
       {
