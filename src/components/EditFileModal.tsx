@@ -18,6 +18,7 @@ import { QueuedFile } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { useSelection } from "@/context/SelectionContext";
 import { showSuccess } from "@/utils/toast";
+import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 
 const formSchema = z.object({
   series: z.string().min(1, "Series is required"),
@@ -35,6 +36,7 @@ interface EditFileModalProps {
 const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
   const { updateFile, comics } = useAppContext();
   const { setSelectedItem } = useSelection();
+  const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -46,23 +48,21 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
     },
   });
 
-  // Generate publisher options from existing comics
+  // Generate publisher options from existing comics + knowledge base
   const publisherOptions: ComboboxOption[] = useMemo(() => {
-    const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
-    return publishersFromComics.map(publisher => ({
-      label: publisher,
-      value: publisher
-    })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [comics]);
+    const publishersFromComics = [...new Set(comics.map(c => c.publisher))].filter(Boolean) as string[];
+    const publishersFromKnowledge = [...new Set(knowledgeBase.map(entry => entry.publisher))].filter(Boolean) as string[];
+    const all = [...new Set([...publishersFromComics, ...publishersFromKnowledge])];
+    return all.map(publisher => ({ label: publisher, value: publisher })).sort((a,b) => a.label.localeCompare(b.label));
+  }, [comics, knowledgeBase]);
 
-  // Generate series options from existing comics
+  // Generate series options from existing comics + knowledge base
   const seriesOptions: ComboboxOption[] = useMemo(() => {
-    const seriesFromComics = [...new Set(comics.map(c => c.series))];
-    return seriesFromComics.map(series => ({
-      label: series,
-      value: series
-    })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [comics]);
+    const seriesFromComics = [...new Set(comics.map(c => c.series))].filter(Boolean) as string[];
+    const seriesFromKnowledge = [...new Set(knowledgeBase.map(entry => entry.series))].filter(Boolean) as string[];
+    const all = [...new Set([...seriesFromComics, ...seriesFromKnowledge])];
+    return all.map(s => ({ label: s, value: s })).sort((a,b) => a.label.localeCompare(b.label));
+  }, [comics, knowledgeBase]);
 
   useEffect(() => {
     form.reset({
@@ -82,6 +82,19 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
     };
     updateFile(updatedFileData);
     setSelectedItem({ ...updatedFileData, type: 'file' });
+
+    // Add to knowledge base if series/publisher are new
+    try {
+      addToKnowledgeBase({
+        series: values.series,
+        publisher: values.publisher,
+        startYear: values.year,
+        volumes: values.year ? [{ volume: String(values.year), year: values.year }] : []
+      });
+    } catch (err) {
+      console.warn("Failed to add KB entry:", err);
+    }
+
     showSuccess("File details updated.");
     onClose();
   };

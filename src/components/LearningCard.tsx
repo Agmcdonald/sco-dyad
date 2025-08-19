@@ -12,6 +12,7 @@ import { useAppContext } from "@/context/AppContext";
 import { showSuccess } from "@/utils/toast";
 import { parseFilename, generateSuggestedFilename } from "@/lib/parser";
 import Suggestions, { Suggestion } from "./Suggestions";
+import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 
 interface LearningCardProps {
   file: QueuedFile;
@@ -29,6 +30,7 @@ type FormSchemaType = z.infer<typeof formSchema>;
 
 const LearningCard = ({ file }: LearningCardProps) => {
   const { addComic, removeFile, skipFile, comics } = useAppContext();
+  const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
 
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
@@ -43,23 +45,27 @@ const LearningCard = ({ file }: LearningCardProps) => {
 
   const parsedInfo = useMemo(() => parseFilename(file.path), [file.path]);
 
-  // Generate publisher options from existing comics
+  // Generate publisher options from existing comics + knowledge base
   const publisherOptions: ComboboxOption[] = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
-    return publishersFromComics.map(publisher => ({
+    const publishersFromKb = [...new Set(knowledgeBase.map(k => k.publisher))];
+    const merged = [...new Set([...publishersFromComics, ...publishersFromKb])];
+    return merged.map(publisher => ({
       label: publisher,
       value: publisher
     })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [comics]);
+  }, [comics, knowledgeBase]);
 
-  // Generate series options from existing comics
+  // Generate series options from existing comics + knowledge base
   const seriesOptions: ComboboxOption[] = useMemo(() => {
     const seriesFromComics = [...new Set(comics.map(c => c.series))];
-    return seriesFromComics.map(series => ({
+    const seriesFromKb = [...new Set(knowledgeBase.map(k => k.series))];
+    const merged = [...new Set([...seriesFromComics, ...seriesFromKb])];
+    return merged.map(series => ({
       label: series,
       value: series
     })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [comics]);
+  }, [comics, knowledgeBase]);
 
   useEffect(() => {
     form.reset({
@@ -101,6 +107,19 @@ const LearningCard = ({ file }: LearningCardProps) => {
     
     addComic(comicData, file);
     removeFile(file.id);
+
+    // Add mapping to knowledge base
+    try {
+      addToKnowledgeBase({
+        series: values.series,
+        publisher: values.publisher,
+        startYear: values.year,
+        volumes: [{ volume: values.volume, year: values.year }]
+      });
+    } catch (err) {
+      console.warn("Failed to add to knowledge base:", err);
+    }
+
     showSuccess(`'${values.series} #${values.issue}' added to library.`);
   };
 
