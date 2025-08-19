@@ -173,27 +173,28 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       
       const localDb = new Database(dbPath);
       
+      // This is the safer way: create tables if they don't exist, then wipe them clean.
       localDb.exec(`
-        DROP TABLE IF EXISTS issue_details;
-        DROP TABLE IF EXISTS story_details;
-        DROP INDEX IF EXISTS idx_issue_details_issue_id_key;
-        DROP INDEX IF EXISTS idx_issue_details_key_value;
-        DROP INDEX IF EXISTS idx_story_details_issue_id;
-
-        CREATE TABLE issue_details (
+        CREATE TABLE IF NOT EXISTS issue_details (
           issue_id INTEGER,
           key TEXT,
           value TEXT
         );
-        CREATE TABLE story_details (
+        CREATE TABLE IF NOT EXISTS story_details (
           issue_id INTEGER,
           sequence_number INTEGER,
           key TEXT,
           value TEXT
         );
-        CREATE INDEX idx_issue_details_issue_id_key ON issue_details(issue_id, key);
-        CREATE INDEX idx_issue_details_key_value ON issue_details(key, value);
-        CREATE INDEX idx_story_details_issue_id ON story_details(issue_id);
+        DELETE FROM issue_details;
+        DELETE FROM story_details;
+      `);
+      
+      // Create indexes if they don't exist
+      localDb.exec(`
+        CREATE INDEX IF NOT EXISTS idx_issue_details_issue_id_key ON issue_details(issue_id, key);
+        CREATE INDEX IF NOT EXISTS idx_issue_details_key_value ON issue_details(key, value);
+        CREATE INDEX IF NOT EXISTS idx_story_details_issue_id ON story_details(issue_id);
       `);
 
       const processFile = (filePath, tableName, isIssuesFile) => new Promise((resolve, reject) => {

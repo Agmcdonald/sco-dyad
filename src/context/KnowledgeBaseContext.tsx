@@ -45,17 +45,29 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
 
   const addToKnowledgeBase = useCallback((newEntry: ComicKnowledge) => {
     setKnowledgeBase(prev => {
-      const exists = prev.some(entry => 
-        entry.series.toLowerCase() === newEntry.series.toLowerCase() && 
-        entry.publisher.toLowerCase() === newEntry.publisher.toLowerCase()
+      const updatedKb = [...prev];
+      const existingEntryIndex = updatedKb.findIndex(entry => 
+        entry.series.toLowerCase() === newEntry.series.toLowerCase()
       );
-      
-      if (exists) {
-        return prev;
+
+      if (existingEntryIndex > -1) {
+        // Series exists, update it with new publisher/volume info
+        const existingEntry = updatedKb[existingEntryIndex];
+        existingEntry.publisher = newEntry.publisher; // Overwrite publisher
+        if (newEntry.startYear < existingEntry.startYear) {
+          existingEntry.startYear = newEntry.startYear;
+        }
+        const volumeExists = existingEntry.volumes.some(v => v.volume === newEntry.volumes[0].volume);
+        if (!volumeExists) {
+          existingEntry.volumes.push(newEntry.volumes[0]);
+        }
+        updatedKb[existingEntryIndex] = existingEntry;
+      } else {
+        // New series, add it
+        updatedKb.push(newEntry);
       }
       
-      const updatedKb = [...prev, newEntry];
-      saveKnowledgeBase(updatedKb); // Auto-save on update
+      saveKnowledgeBase(updatedKb);
       return updatedKb;
     });
   }, [saveKnowledgeBase]);
