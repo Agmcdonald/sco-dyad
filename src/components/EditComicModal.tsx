@@ -38,6 +38,16 @@ interface EditComicModalProps {
   onClose: () => void;
 }
 
+const extractComboboxValue = (val: any): string => {
+  if (!val && val !== "") return "";
+  if (typeof val === "string") return val;
+  if (typeof val === "object" && val !== null) {
+    if ("value" in val && typeof val.value === "string") return val.value;
+    if ("label" in val && typeof val.label === "string") return val.label;
+  }
+  return String(val);
+};
+
 const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
   const { updateComic, comics } = useAppContext();
   const { isElectron } = useElectron();
@@ -191,8 +201,8 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                   <FormControl>
                     <Combobox
                       options={seriesOptions}
-                      value={field.value}
-                      onValueChange={field.onChange}
+                      value={typeof field.value === 'object' && field.value !== null ? (field.value.value ?? field.value.label ?? '') : (field.value ?? '')}
+                      onValueChange={(v) => field.onChange(extractComboboxValue(v))}
                       placeholder="Select or type series..."
                       emptyText="No series found."
                     />
@@ -238,8 +248,8 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                   <FormControl>
                     <Combobox
                       options={publisherOptions}
-                      value={field.value}
-                      onValueChange={field.onChange}
+                      value={typeof field.value === 'object' && field.value !== null ? (field.value.value ?? field.value.label ?? '') : (field.value ?? '')}
+                      onValueChange={(v) => field.onChange(extractComboboxValue(v))}
                       placeholder="Select or type publisher..."
                       emptyText="No publishers found."
                     />

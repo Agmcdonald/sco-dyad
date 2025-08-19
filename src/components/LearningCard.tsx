@@ -28,6 +28,16 @@ const formSchema = z.object({
 
 type FormSchemaType = z.infer<typeof formSchema>;
 
+const extractComboboxValue = (val: any): string => {
+  if (!val && val !== "") return "";
+  if (typeof val === "string") return val;
+  if (typeof val === "object" && val !== null) {
+    if ("value" in val && typeof val.value === "string") return val.value;
+    if ("label" in val && typeof val.label === "string") return val.label;
+  }
+  return String(val);
+};
+
 const LearningCard = ({ file }: LearningCardProps) => {
   const { addComic, removeFile, skipFile, comics } = useAppContext();
   const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
@@ -159,8 +169,8 @@ const LearningCard = ({ file }: LearningCardProps) => {
                       <FormControl>
                         <Combobox
                           options={publisherOptions}
-                          value={field.value}
-                          onValueChange={field.onChange}
+                          value={typeof field.value === 'object' && field.value !== null ? (field.value.value ?? field.value.label ?? '') : (field.value ?? '')}
+                          onValueChange={(v) => field.onChange(extractComboboxValue(v))}
                           placeholder="Select or type publisher..."
                           emptyText="No publishers found."
                         />
@@ -178,8 +188,8 @@ const LearningCard = ({ file }: LearningCardProps) => {
                       <FormControl>
                         <Combobox
                           options={seriesOptions}
-                          value={field.value}
-                          onValueChange={field.onChange}
+                          value={typeof field.value === 'object' && field.value !== null ? (field.value.value ?? field.value.label ?? '') : (field.value ?? '')}
+                          onValueChange={(v) => field.onChange(extractComboboxValue(v))}
                           placeholder="Select or type series..."
                           emptyText="No series found."
                         />
