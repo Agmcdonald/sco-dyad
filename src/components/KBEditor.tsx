@@ -21,7 +21,7 @@ const emptyEntry = (): ComicKnowledge => ({
 const normalize = (s: string | undefined | null) => (s || "").trim().toLowerCase();
 
 const KBEditor = () => {
-  const { knowledgeBase, addToKnowledgeBase, saveKnowledgeBase } = useKnowledgeBase();
+  const { knowledgeBase, addToKnowledgeBase, replaceKnowledgeBase, saveKnowledgeBase } = useKnowledgeBase();
   const [localKB, setLocalKB] = useState<ComicKnowledge[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -182,23 +182,47 @@ const KBEditor = () => {
   const handleSaveAll = async () => {
     setIsSaving(true);
     try {
-      // Persist each entry into knowledge base via addToKnowledgeBase (which merges/updates)
-      for (const entry of localKB) {
-        if (!entry.series || entry.series.trim() === "") continue;
-        // Ensure volumes normalized
-        const normalized = {
-          ...entry,
-          series: entry.series.trim(),
-          publisher: entry.publisher?.trim() || "Unknown Publisher",
-          startYear: Number(entry.startYear) || new Date().getFullYear(),
-          volumes: (entry.volumes || []).map(v => ({
+      // Build normalized local KB and dedupe volumes per series (case-insensitive)
+      const map = new Map<string, ComicKnowledge>();
+      for (const rawEntry of localKB) {
+        if (!rawEntry.series || rawEntry.series.trim() === "") continue;
+        const key = normalize(rawEntry.series);
+        const normalizedEntry: ComicKnowledge = {
+          series: (rawEntry.series || "").trim(),
+          publisher: (rawEntry.publisher || "Unknown Publisher").trim(),
+          startYear: Number(rawEntry.startYear) || new Date().getFullYear(),
+          volumes: (rawEntry.volumes || []).map(v => ({
             volume: String((v as any).volume || "").trim(),
-            year: Number((v as any).year) || new Date().getFullYear()
+            year: Number((v as any).year) || Number(rawEntry.startYear) || new Date().getFullYear()
           }))
         };
-        addToKnowledgeBase(normalized);
+
+        if (map.has(key)) {
+          const existing = map.get(key)!;
+          // earliest year
+          if (normalizedEntry.startYear < (existing.startYear || Number.MAX_SAFE_INTEGER)) {
+            existing.startYear = normalizedEntry.startYear;
+          }
+          // overwrite publisher if provided
+          if (normalizedEntry.publisher) existing.publisher = normalizedEntry.publisher;
+          // merge volumes deduped by normalized volume string
+          const existingSet = new Set(existing.volumes.map(v => normalize(v.volume)));
+          for (const vol of normalizedEntry.volumes) {
+            const volKey = normalize(vol.volume);
+            if (!existingSet.has(volKey)) {
+              existing.volumes.push(vol);
+              existingSet.add(volKey);
+            }
+          }
+        } else {
+          map.set(key, normalizedEntry);
+        }
       }
-      await saveKnowledgeBase();
+
+      const finalKb = Array.from(map.values());
+      // Replace entire persisted KB (this enables deletions)
+      await replaceKnowledgeBase(finalKb);
+
       showSuccess("Knowledge base saved.");
     } catch (err) {
       console.error("KB save failed:", err);
