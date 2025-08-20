@@ -117,7 +117,7 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
         volume: String(seriesMatch.year_began),
         summary: issueDetails.synopsis || comic.summary,
         title: issueDetails.title || comic.title,
-        coverDate: issueDetails.publication_date,
+        publicationDate: issueDetails.publication_date,
         creators: creators.length > 0 ? creators : comic.creators,
         genre: issueDetails.genre || comic.genre,
         characters: issueDetails.characters || comic.characters,
@@ -171,8 +171,8 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
                 <span>{comic.volume}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground flex items-center"><Calendar className="h-3 w-3 mr-1.5" /> Cover Date</span>
-                <span>{comic.coverDate || comic.year}</span>
+                <span className="text-muted-foreground flex items-center"><Calendar className="h-3 w-3 mr-1.5" /> Publication Date</span>
+                <span>{comic.publicationDate || comic.year}</span>
               </div>
               {comic.genre && (
                 <div className="flex justify-between">

@@ -17,7 +17,7 @@ export interface ProcessingResult {
     confidence: 'High' | 'Medium' | 'Low';
     source: 'knowledge' | 'api';
     title?: string;
-    coverDate?: string;
+    publicationDate?: string;
     genre?: string;
     characters?: string;
     price?: string;
@@ -81,7 +81,7 @@ export const processComicFile = async (
               volume: String(bestMatch.year_began),
               summary: issueDetails?.synopsis || `Matched from local GCD: ${bestMatch.name}`,
               title: issueDetails?.title,
-              coverDate: issueDetails?.publication_date,
+              publicationDate: issueDetails?.publication_date,
               genre: issueDetails?.genre,
               characters: issueDetails?.characters,
               price: issueDetails?.price,
@@ -120,7 +120,7 @@ export const processComicFile = async (
             summary: marvelResult.data.summary,
             creators: marvelResult.data.creators,
             title: marvelResult.data.title,
-            coverDate: marvelResult.data.coverDate,
+            publicationDate: marvelResult.data.publicationDate,
             confidence: marvelResult.data.confidence,
             source: marvelResult.data.source
           }
