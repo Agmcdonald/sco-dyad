@@ -58,15 +58,17 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
   });
 
   useEffect(() => {
-    form.reset({
-      series: comic?.series || "",
-      issue: comic.issue,
-      year: comic.year,
-      publisher: comic?.publisher || "",
-      volume: comic.volume,
-      summary: comic.summary || "",
-    });
-  }, [comic, form]);
+    if (comic) {
+      form.reset({
+        series: comic.series || "",
+        issue: comic.issue || "",
+        year: comic.year || new Date().getFullYear(),
+        publisher: comic.publisher || "",
+        volume: comic.volume || "",
+        summary: comic.summary || "",
+      });
+    }
+  }, [comic?.id, form]);
 
   const publisherOptions = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))].filter(Boolean) as string[];
