@@ -11,7 +11,7 @@ interface ScraperResult {
         confidence: 'High' | 'Medium' | 'Low';
         source: 'knowledge' | 'api';
         title?: string;
-        coverDate?: string;
+        publicationDate?: string;
     };
     error?: string;
 }
@@ -28,7 +28,7 @@ const mockMarvelApiData: Record<string, any> = {
             { name: "John Romita Sr.", role: "Cover Artist" }
         ],
         issueData: {
-            "300": { title: "Venom", coverDate: "1988-05-01" }
+            "300": { title: "Venom", publicationDate: "1988-05-01" }
         }
     },
     "Invincible Iron Man": {
@@ -40,7 +40,7 @@ const mockMarvelApiData: Record<string, any> = {
             { name: "Salvador Larroca", role: "Artist" }
         ],
         issueData: {
-            "1": { title: "The Five Nightmares, Part 1", coverDate: "2008-07-01" }
+            "1": { title: "The Five Nightmares, Part 1", publicationDate: "2008-07-01" }
         }
     }
 };
@@ -109,7 +109,7 @@ export const fetchMarvelMetadata = async (
                 summary: seriesMatch.summary,
                 creators: seriesMatch.creators,
                 title: issueMatch?.title,
-                coverDate: issueMatch?.coverDate,
+                publicationDate: issueMatch?.publicationDate,
                 confidence: 'High',
                 source: 'api'
             }

@@ -10,7 +10,7 @@ export interface NewComic {
   publisher: string;
   volume: string;
   title?: string; // Name of the specific issue
-  coverDate?: string; // Specific cover date, e.g., "2023-10-25"
+  publicationDate?: string; // Specific publication date, e.g., "2023-10-25"
   summary?: string;
   creators?: Creator[];
   rating?: number;

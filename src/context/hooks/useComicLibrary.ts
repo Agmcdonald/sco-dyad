@@ -12,16 +12,9 @@ export const useComicLibrary = (logAction: (type: any, message: string) => void)
       try {
         const dbComics = await databaseService.getComics();
         const appComics = dbComics.map(dbComic => ({
-          id: dbComic.id,
-          series: dbComic.series,
-          issue: dbComic.issue,
-          year: dbComic.year,
-          publisher: dbComic.publisher,
-          volume: dbComic.volume,
-          summary: dbComic.summary,
-          coverUrl: dbComic.coverUrl || '/placeholder.svg',
+          ...dbComic,
           dateAdded: new Date(dbComic.dateAdded),
-          filePath: dbComic.filePath,
+          coverUrl: dbComic.coverUrl || '/placeholder.svg',
         }));
         setComics(appComics);
         

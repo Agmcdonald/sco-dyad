@@ -428,8 +428,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             updatedComic.title = result.data.title;
             hasNewData = true;
         }
-        if (result.data.coverDate && !comic.coverDate) {
-            updatedComic.coverDate = result.data.coverDate;
+        if (result.data.publicationDate && !comic.publicationDate) {
+            updatedComic.publicationDate = result.data.publicationDate;
             hasNewData = true;
         }
         if (result.data.genre && !comic.genre) {
