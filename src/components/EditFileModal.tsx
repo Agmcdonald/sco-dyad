@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { QueuedFile } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { useSelection } from "@/context/SelectionContext";
@@ -57,18 +56,16 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
     });
   }, [file, form]);
 
-  const publisherOptions: ComboboxOption[] = useMemo(() => {
+  const publisherOptions = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))].filter(Boolean) as string[];
     const publishersFromKnowledge = [...new Set(knowledgeBase.map(entry => entry.publisher))].filter(Boolean) as string[];
-    const all = [...new Set([...publishersFromComics, ...publishersFromKnowledge])];
-    return all.map(publisher => ({ label: publisher, value: publisher })).sort((a,b) => a.label.localeCompare(b.label));
+    return [...new Set([...publishersFromComics, ...publishersFromKnowledge])].sort();
   }, [comics, knowledgeBase]);
 
-  const seriesOptions: ComboboxOption[] = useMemo(() => {
+  const seriesOptions = useMemo(() => {
     const seriesFromComics = [...new Set(comics.map(c => c.series))].filter(Boolean) as string[];
     const seriesFromKnowledge = [...new Set(knowledgeBase.map(entry => entry.series))].filter(Boolean) as string[];
-    const all = [...new Set([...seriesFromComics, ...seriesFromKnowledge])];
-    return all.map(s => ({ label: s, value: s })).sort((a,b) => a.label.localeCompare(b.label));
+    return [...new Set([...seriesFromComics, ...seriesFromKnowledge])].sort();
   }, [comics, knowledgeBase]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
@@ -110,13 +107,14 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
                 <FormItem>
                   <FormLabel>Series</FormLabel>
                   <FormControl>
-                    <Combobox
-                      options={seriesOptions}
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      placeholder="Select or type series..."
-                      emptyText="No series found."
-                    />
+                    <>
+                      <Input {...field} list="series-options-file" placeholder="Type or select series..." />
+                      <datalist id="series-options-file">
+                        {seriesOptions.map((option) => (
+                          <option key={option} value={option} />
+                        ))}
+                      </datalist>
+                    </>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -157,13 +155,14 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
                 <FormItem>
                   <FormLabel>Publisher</FormLabel>
                   <FormControl>
-                    <Combobox
-                      options={publisherOptions}
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      placeholder="Select or type publisher..."
-                      emptyText="No publishers found."
-                    />
+                    <>
+                      <Input {...field} list="publisher-options-file" placeholder="Type or select publisher..." />
+                      <datalist id="publisher-options-file">
+                        {publisherOptions.map((option) => (
+                          <option key={option} value={option} />
+                        ))}
+                      </datalist>
+                    </>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

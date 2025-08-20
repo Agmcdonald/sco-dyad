@@ -6,7 +6,6 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { QueuedFile, NewComic } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess } from "@/utils/toast";
@@ -45,24 +44,16 @@ const LearningCard = ({ file }: LearningCardProps) => {
 
   const parsedInfo = useMemo(() => parseFilename(file.path), [file.path]);
 
-  const publisherOptions: ComboboxOption[] = useMemo(() => {
+  const publisherOptions = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
     const publishersFromKb = [...new Set(knowledgeBase.map(k => k.publisher))];
-    const merged = [...new Set([...publishersFromComics, ...publishersFromKb])];
-    return merged.map(publisher => ({
-      label: publisher,
-      value: publisher
-    })).sort((a, b) => a.label.localeCompare(b.label));
+    return [...new Set([...publishersFromComics, ...publishersFromKb])].sort();
   }, [comics, knowledgeBase]);
 
-  const seriesOptions: ComboboxOption[] = useMemo(() => {
+  const seriesOptions = useMemo(() => {
     const seriesFromComics = [...new Set(comics.map(c => c.series))];
     const seriesFromKb = [...new Set(knowledgeBase.map(k => k.series))];
-    const merged = [...new Set([...seriesFromComics, ...seriesFromKb])];
-    return merged.map(series => ({
-      label: series,
-      value: series
-    })).sort((a, b) => a.label.localeCompare(b.label));
+    return [...new Set([...seriesFromComics, ...seriesFromKb])].sort();
   }, [comics, knowledgeBase]);
 
   useEffect(() => {
@@ -150,13 +141,14 @@ const LearningCard = ({ file }: LearningCardProps) => {
                     <FormItem>
                       <FormLabel>Publisher</FormLabel>
                       <FormControl>
-                        <Combobox
-                          options={publisherOptions}
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          placeholder="Select or type publisher..."
-                          emptyText="No publishers found."
-                        />
+                        <>
+                          <Input {...field} list="publisher-options-learning" placeholder="Type or select publisher..." />
+                          <datalist id="publisher-options-learning">
+                            {publisherOptions.map((option) => (
+                              <option key={option} value={option} />
+                            ))}
+                          </datalist>
+                        </>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -169,13 +161,14 @@ const LearningCard = ({ file }: LearningCardProps) => {
                     <FormItem>
                       <FormLabel>Series</FormLabel>
                       <FormControl>
-                        <Combobox
-                          options={seriesOptions}
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          placeholder="Select or type series..."
-                          emptyText="No series found."
-                        />
+                        <>
+                          <Input {...field} list="series-options-learning" placeholder="Type or select series..." />
+                          <datalist id="series-options-learning">
+                            {seriesOptions.map((option) => (
+                              <option key={option} value={option} />
+                            ))}
+                          </datalist>
+                        </>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
