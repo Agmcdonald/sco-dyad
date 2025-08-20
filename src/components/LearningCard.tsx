@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -28,16 +28,6 @@ const formSchema = z.object({
 
 type FormSchemaType = z.infer<typeof formSchema>;
 
-const extractComboboxValue = (val: any): string => {
-  if (!val && val !== "") return "";
-  if (typeof val === "string") return val;
-  if (typeof val === "object" && val !== null) {
-    if ("value" in val && typeof val.value === "string") return val.value;
-    if ("label" in val && typeof val.label === "string") return val.label;
-  }
-  return String(val);
-};
-
 const LearningCard = ({ file }: LearningCardProps) => {
   const { addComic, removeFile, skipFile, comics } = useAppContext();
   const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
@@ -55,11 +45,6 @@ const LearningCard = ({ file }: LearningCardProps) => {
 
   const parsedInfo = useMemo(() => parseFilename(file.path), [file.path]);
 
-  // Controlled local state for visible Combobox values
-  const [seriesValue, setSeriesValue] = useState<string>(parsedInfo.series || "");
-  const [publisherValue, setPublisherValue] = useState<string>(parsedInfo.publisher || "");
-
-  // Generate publisher options from existing comics + knowledge base
   const publisherOptions: ComboboxOption[] = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
     const publishersFromKb = [...new Set(knowledgeBase.map(k => k.publisher))];
@@ -70,7 +55,6 @@ const LearningCard = ({ file }: LearningCardProps) => {
     })).sort((a, b) => a.label.localeCompare(b.label));
   }, [comics, knowledgeBase]);
 
-  // Generate series options from existing comics + knowledge base
   const seriesOptions: ComboboxOption[] = useMemo(() => {
     const seriesFromComics = [...new Set(comics.map(c => c.series))];
     const seriesFromKb = [...new Set(knowledgeBase.map(k => k.series))];
@@ -89,8 +73,6 @@ const LearningCard = ({ file }: LearningCardProps) => {
       volume: parsedInfo.volume || "",
       publisher: parsedInfo.publisher || "",
     });
-    setSeriesValue(parsedInfo.series || "");
-    setPublisherValue(parsedInfo.publisher || "");
   }, [parsedInfo, form]);
 
   const suggestions: Suggestion[] = useMemo(() => {
@@ -109,42 +91,29 @@ const LearningCard = ({ file }: LearningCardProps) => {
 
   const handleSuggestionClick = (field: string, value: string) => {
     form.setValue(field as keyof FormSchemaType, value, { shouldValidate: true });
-    if (field === "series") setSeriesValue(value);
-    if (field === "publisher") setPublisherValue(value);
   };
 
   const onSubmit = (values: FormSchemaType) => {
-    const normalized = {
-      ...values,
-      series: seriesValue || values.series,
-      publisher: publisherValue || values.publisher,
-    };
-
     const comicData: NewComic = {
-      series: normalized.series,
-      issue: normalized.issue,
-      year: normalized.year,
-      publisher: normalized.publisher,
-      volume: normalized.volume,
+      series: values.series,
+      issue: values.issue,
+      year: values.year,
+      publisher: values.publisher,
+      volume: values.volume,
       summary: `Manually mapped from file: ${file.name}`,
     };
     
     addComic(comicData, file);
     removeFile(file.id);
 
-    // Add mapping to knowledge base
-    try {
-      addToKnowledgeBase({
-        series: normalized.series,
-        publisher: normalized.publisher,
-        startYear: normalized.year,
-        volumes: [{ volume: normalized.volume, year: normalized.year }]
-      });
-    } catch (err) {
-      console.warn("Failed to add to knowledge base:", err);
-    }
+    addToKnowledgeBase({
+      series: values.series,
+      publisher: values.publisher,
+      startYear: values.year,
+      volumes: [{ volume: values.volume, year: values.year }]
+    });
 
-    showSuccess(`'${normalized.series} #${normalized.issue}' added to library.`);
+    showSuccess(`'${values.series} #${values.issue}' added to library.`);
   };
 
   const handleSkip = () => {
@@ -183,12 +152,8 @@ const LearningCard = ({ file }: LearningCardProps) => {
                       <FormControl>
                         <Combobox
                           options={publisherOptions}
-                          value={publisherValue}
-                          onValueChange={(v) => {
-                            const plain = extractComboboxValue(v);
-                            setPublisherValue(plain);
-                            field.onChange(plain);
-                          }}
+                          value={field.value}
+                          onValueChange={field.onChange}
                           placeholder="Select or type publisher..."
                           emptyText="No publishers found."
                         />
@@ -206,12 +171,8 @@ const LearningCard = ({ file }: LearningCardProps) => {
                       <FormControl>
                         <Combobox
                           options={seriesOptions}
-                          value={seriesValue}
-                          onValueChange={(v) => {
-                            const plain = extractComboboxValue(v);
-                            setSeriesValue(plain);
-                            field.onChange(plain);
-                          }}
+                          value={field.value}
+                          onValueChange={field.onChange}
                           placeholder="Select or type series..."
                           emptyText="No series found."
                         />
