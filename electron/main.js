@@ -8,6 +8,11 @@ const { registerIpcHandlers } = require('./ipcManager');
 
 const isDev = !app.isPackaged;
 
+// Enable remote debugging for MCP in development mode
+if (isDev) {
+  app.commandLine.appendSwitch('remote-debugging-port', '9222');
+}
+
 let mainWindow;
 let fileHandler;
 let database;
