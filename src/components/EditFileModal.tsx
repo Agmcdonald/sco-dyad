@@ -48,13 +48,15 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
   });
 
   useEffect(() => {
-    form.reset({
-      series: file?.series || "",
-      issue: file.issue || "",
-      year: file.year || new Date().getFullYear(),
-      publisher: file?.publisher || "",
-    });
-  }, [file, form]);
+    if (file) {
+      form.reset({
+        series: file.series || "",
+        issue: file.issue || "",
+        year: file.year || new Date().getFullYear(),
+        publisher: file.publisher || "",
+      });
+    }
+  }, [file?.id, form]);
 
   const publisherOptions = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))].filter(Boolean) as string[];

@@ -42,8 +42,6 @@ const LearningCard = ({ file }: LearningCardProps) => {
     },
   });
 
-  const parsedInfo = useMemo(() => parseFilename(file.path), [file.path]);
-
   const publisherOptions = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
     const publishersFromKb = [...new Set(knowledgeBase.map(k => k.publisher))];
@@ -57,16 +55,18 @@ const LearningCard = ({ file }: LearningCardProps) => {
   }, [comics, knowledgeBase]);
 
   useEffect(() => {
+    const parsed = parseFilename(file.path);
     form.reset({
-      series: parsedInfo.series || "",
-      issue: parsedInfo.issue || "",
-      year: parsedInfo.year || new Date().getFullYear(),
-      volume: parsedInfo.volume || "",
-      publisher: parsedInfo.publisher || "",
+      series: parsed.series || "",
+      issue: parsed.issue || "",
+      year: parsed.year || new Date().getFullYear(),
+      volume: parsed.volume || "",
+      publisher: parsed.publisher || "",
     });
-  }, [parsedInfo, form]);
+  }, [file.id, form]);
 
   const suggestions: Suggestion[] = useMemo(() => {
+    const parsedInfo = parseFilename(file.path);
     const suggs: Suggestion[] = [];
     if (parsedInfo.series) suggs.push({ label: "Series", value: parsedInfo.series, field: "series" });
     if (parsedInfo.issue) suggs.push({ label: "Issue", value: parsedInfo.issue, field: "issue" });
@@ -74,11 +74,12 @@ const LearningCard = ({ file }: LearningCardProps) => {
     if (parsedInfo.volume) suggs.push({ label: "Volume", value: parsedInfo.volume, field: "volume" });
     if (parsedInfo.publisher) suggs.push({ label: "Publisher", value: parsedInfo.publisher, field: "publisher" });
     return suggs;
-  }, [parsedInfo]);
+  }, [file.path]);
 
   const suggestedFilename = useMemo(() => {
+    const parsedInfo = parseFilename(file.path);
     return generateSuggestedFilename(parsedInfo);
-  }, [parsedInfo]);
+  }, [file.path]);
 
   const handleSuggestionClick = (field: string, value: string) => {
     form.setValue(field as keyof FormSchemaType, value, { shouldValidate: true });
