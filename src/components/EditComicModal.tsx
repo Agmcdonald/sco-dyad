@@ -14,7 +14,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { Comic } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess, showError } from "@/utils/toast";
@@ -69,24 +68,16 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
     });
   }, [comic, form]);
 
-  const publisherOptions: ComboboxOption[] = useMemo(() => {
+  const publisherOptions = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))].filter(Boolean) as string[];
     const publishersFromKb = [...new Set(knowledgeBase.map(k => k.publisher))].filter(Boolean) as string[];
-    const merged = [...new Set([...publishersFromComics, ...publishersFromKb, 'Unknown Publisher'])];
-    return merged.map(publisher => ({
-      label: publisher,
-      value: publisher
-    })).sort((a, b) => a.label.localeCompare(b.label));
+    return [...new Set([...publishersFromComics, ...publishersFromKb, 'Unknown Publisher'])].sort();
   }, [comics, knowledgeBase]);
 
-  const seriesOptions: ComboboxOption[] = useMemo(() => {
+  const seriesOptions = useMemo(() => {
     const seriesFromComics = [...new Set(comics.map(c => c.series))].filter(Boolean) as string[];
     const seriesFromKb = [...new Set(knowledgeBase.map(k => k.series))].filter(Boolean) as string[];
-    const merged = [...new Set([...seriesFromComics, ...seriesFromKb])];
-    return merged.map(series => ({
-      label: series,
-      value: series
-    })).sort((a, b) => a.label.localeCompare(b.label));
+    return [...new Set([...seriesFromComics, ...seriesFromKb])].sort();
   }, [comics, knowledgeBase]);
 
   const handleRefreshFromDb = async () => {
@@ -180,13 +171,14 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                 <FormItem>
                   <FormLabel>Series</FormLabel>
                   <FormControl>
-                    <Combobox
-                      options={seriesOptions}
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      placeholder="Select or type series..."
-                      emptyText="No series found."
-                    />
+                    <>
+                      <Input {...field} list="series-options" placeholder="Type or select series..." />
+                      <datalist id="series-options">
+                        {seriesOptions.map((option) => (
+                          <option key={option} value={option} />
+                        ))}
+                      </datalist>
+                    </>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -227,13 +219,14 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                 <FormItem>
                   <FormLabel>Publisher</FormLabel>
                   <FormControl>
-                    <Combobox
-                      options={publisherOptions}
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      placeholder="Select or type publisher..."
-                      emptyText="No publishers found."
-                    />
+                    <>
+                      <Input {...field} list="publisher-options" placeholder="Type or select publisher..." />
+                      <datalist id="publisher-options">
+                        {publisherOptions.map((option) => (
+                          <option key={option} value={option} />
+                        ))}
+                      </datalist>
+                    </>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
