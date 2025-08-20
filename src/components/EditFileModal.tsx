@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -58,6 +58,24 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
     },
   });
 
+  // Local controlled state
+  const [seriesValue, setSeriesValue] = useState<string>(form.getValues("series") || "");
+  const [publisherValue, setPublisherValue] = useState<string>(form.getValues("publisher") || "");
+
+  useEffect(() => {
+    const defaultSeries = file?.series || "";
+    const defaultPublisher = file?.publisher || "";
+    form.reset({
+      series: defaultSeries,
+      issue: file.issue,
+      year: file.year || new Date().getFullYear(),
+      publisher: defaultPublisher,
+    });
+    setSeriesValue(defaultSeries);
+    setPublisherValue(defaultPublisher);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file]);
+
   // Generate publisher options from existing comics + knowledge base
   const publisherOptions: ComboboxOption[] = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))].filter(Boolean) as string[];
@@ -74,19 +92,16 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
     return all.map(s => ({ label: s, value: s })).sort((a,b) => a.label.localeCompare(b.label));
   }, [comics, knowledgeBase]);
 
-  useEffect(() => {
-    form.reset({
-      series: file.series || "",
-      issue: file.issue || "",
-      year: file.year || new Date().getFullYear(),
-      publisher: file.publisher || "",
-    });
-  }, [file, form]);
-
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    const normalized = {
+      ...values,
+      series: seriesValue || values.series,
+      publisher: publisherValue || values.publisher,
+    };
+
     const updatedFileData = { 
         ...file, 
-        ...values, 
+        ...normalized, 
         confidence: "High" as const,
         status: "Pending" as const
     };
@@ -96,10 +111,10 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
     // Add to knowledge base if series/publisher are new
     try {
       addToKnowledgeBase({
-        series: values.series,
-        publisher: values.publisher,
-        startYear: values.year,
-        volumes: values.year ? [{ volume: String(values.year), year: values.year }] : []
+        series: normalized.series,
+        publisher: normalized.publisher,
+        startYear: normalized.year,
+        volumes: normalized.year ? [{ volume: String(normalized.year), year: normalized.year }] : []
       });
     } catch (err) {
       console.warn("Failed to add KB entry:", err);
@@ -129,8 +144,12 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
                   <FormControl>
                     <Combobox
                       options={seriesOptions}
-                      value={typeof field.value === 'object' && field.value !== null ? (field.value.value ?? field.value.label ?? '') : (field.value ?? '')}
-                      onValueChange={(v) => field.onChange(extractComboboxValue(v))}
+                      value={seriesValue}
+                      onValueChange={(v) => {
+                        const plain = extractComboboxValue(v);
+                        setSeriesValue(plain);
+                        field.onChange(plain);
+                      }}
                       placeholder="Select or type series..."
                       emptyText="No series found."
                     />
@@ -176,8 +195,12 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
                   <FormControl>
                     <Combobox
                       options={publisherOptions}
-                      value={typeof field.value === 'object' && field.value !== null ? (field.value.value ?? field.value.label ?? '') : (field.value ?? '')}
-                      onValueChange={(v) => field.onChange(extractComboboxValue(v))}
+                      value={publisherValue}
+                      onValueChange={(v) => {
+                        const plain = extractComboboxValue(v);
+                        setPublisherValue(plain);
+                        field.onChange(plain);
+                      }}
                       placeholder="Select or type publisher..."
                       emptyText="No publishers found."
                     />
