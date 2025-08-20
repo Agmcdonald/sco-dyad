@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -33,16 +33,6 @@ interface EditFileModalProps {
   onClose: () => void;
 }
 
-const extractComboboxValue = (val: any): string => {
-  if (!val && val !== "") return "";
-  if (typeof val === "string") return val;
-  if (typeof val === "object" && val !== null) {
-    if ("value" in val && typeof val.value === "string") return val.value;
-    if ("label" in val && typeof val.label === "string") return val.label;
-  }
-  return String(val);
-};
-
 const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
   const { updateFile, comics } = useAppContext();
   const { setSelectedItem } = useSelection();
@@ -58,25 +48,15 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
     },
   });
 
-  // Local controlled state
-  const [seriesValue, setSeriesValue] = useState<string>(form.getValues("series") || "");
-  const [publisherValue, setPublisherValue] = useState<string>(form.getValues("publisher") || "");
-
   useEffect(() => {
-    const defaultSeries = file?.series || "";
-    const defaultPublisher = file?.publisher || "";
     form.reset({
-      series: defaultSeries,
-      issue: file.issue,
+      series: file?.series || "",
+      issue: file.issue || "",
       year: file.year || new Date().getFullYear(),
-      publisher: defaultPublisher,
+      publisher: file?.publisher || "",
     });
-    setSeriesValue(defaultSeries);
-    setPublisherValue(defaultPublisher);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file]);
+  }, [file, form]);
 
-  // Generate publisher options from existing comics + knowledge base
   const publisherOptions: ComboboxOption[] = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))].filter(Boolean) as string[];
     const publishersFromKnowledge = [...new Set(knowledgeBase.map(entry => entry.publisher))].filter(Boolean) as string[];
@@ -84,7 +64,6 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
     return all.map(publisher => ({ label: publisher, value: publisher })).sort((a,b) => a.label.localeCompare(b.label));
   }, [comics, knowledgeBase]);
 
-  // Generate series options from existing comics + knowledge base
   const seriesOptions: ComboboxOption[] = useMemo(() => {
     const seriesFromComics = [...new Set(comics.map(c => c.series))].filter(Boolean) as string[];
     const seriesFromKnowledge = [...new Set(knowledgeBase.map(entry => entry.series))].filter(Boolean) as string[];
@@ -93,32 +72,21 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
   }, [comics, knowledgeBase]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    const normalized = {
-      ...values,
-      series: seriesValue || values.series,
-      publisher: publisherValue || values.publisher,
-    };
-
     const updatedFileData = { 
         ...file, 
-        ...normalized, 
+        ...values, 
         confidence: "High" as const,
         status: "Pending" as const
     };
     updateFile(updatedFileData);
     setSelectedItem({ ...updatedFileData, type: 'file' });
 
-    // Add to knowledge base if series/publisher are new
-    try {
-      addToKnowledgeBase({
-        series: normalized.series,
-        publisher: normalized.publisher,
-        startYear: normalized.year,
-        volumes: normalized.year ? [{ volume: String(normalized.year), year: normalized.year }] : []
-      });
-    } catch (err) {
-      console.warn("Failed to add KB entry:", err);
-    }
+    addToKnowledgeBase({
+      series: values.series,
+      publisher: values.publisher,
+      startYear: values.year,
+      volumes: values.year ? [{ volume: String(values.year), year: values.year }] : []
+    });
 
     showSuccess("File details updated.");
     onClose();
@@ -144,12 +112,8 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
                   <FormControl>
                     <Combobox
                       options={seriesOptions}
-                      value={seriesValue}
-                      onValueChange={(v) => {
-                        const plain = extractComboboxValue(v);
-                        setSeriesValue(plain);
-                        field.onChange(plain);
-                      }}
+                      value={field.value}
+                      onValueChange={field.onChange}
                       placeholder="Select or type series..."
                       emptyText="No series found."
                     />
@@ -195,12 +159,8 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
                   <FormControl>
                     <Combobox
                       options={publisherOptions}
-                      value={publisherValue}
-                      onValueChange={(v) => {
-                        const plain = extractComboboxValue(v);
-                        setPublisherValue(plain);
-                        field.onChange(plain);
-                      }}
+                      value={field.value}
+                      onValueChange={field.onChange}
                       placeholder="Select or type publisher..."
                       emptyText="No publishers found."
                     />

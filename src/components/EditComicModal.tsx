@@ -38,16 +38,6 @@ interface EditComicModalProps {
   onClose: () => void;
 }
 
-const extractComboboxValue = (val: any): string => {
-  if (!val && val !== "") return "";
-  if (typeof val === "string") return val;
-  if (typeof val === "object" && val !== null) {
-    if ("value" in val && typeof val.value === "string") return val.value;
-    if ("label" in val && typeof val.label === "string") return val.label;
-  }
-  return String(val);
-};
-
 const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
   const { updateComic, comics } = useAppContext();
   const { isElectron } = useElectron();
@@ -68,28 +58,17 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
     },
   });
 
-  // Local controlled values so the visible Combobox updates immediately
-  const [seriesValue, setSeriesValue] = useState<string>(form.getValues("series") || "");
-  const [publisherValue, setPublisherValue] = useState<string>(form.getValues("publisher") || "");
-
-  // Keep local state in sync when the comic prop or the form resets
   useEffect(() => {
-    const defaultSeries = comic?.series || "";
-    const defaultPublisher = comic?.publisher || "";
     form.reset({
-      series: defaultSeries,
+      series: comic?.series || "",
       issue: comic.issue,
       year: comic.year,
-      publisher: defaultPublisher,
+      publisher: comic?.publisher || "",
       volume: comic.volume,
       summary: comic.summary || "",
     });
-    setSeriesValue(defaultSeries);
-    setPublisherValue(defaultPublisher);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [comic]);
+  }, [comic, form]);
 
-  // Generate publisher options from existing comics + knowledge base
   const publisherOptions: ComboboxOption[] = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))].filter(Boolean) as string[];
     const publishersFromKb = [...new Set(knowledgeBase.map(k => k.publisher))].filter(Boolean) as string[];
@@ -100,7 +79,6 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
     })).sort((a, b) => a.label.localeCompare(b.label));
   }, [comics, knowledgeBase]);
 
-  // Generate series options from existing comics + knowledge base
   const seriesOptions: ComboboxOption[] = useMemo(() => {
     const seriesFromComics = [...new Set(comics.map(c => c.series))].filter(Boolean) as string[];
     const seriesFromKb = [...new Set(knowledgeBase.map(k => k.series))].filter(Boolean) as string[];
@@ -131,23 +109,14 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
         return;
       }
 
-      // Update the form fields directly and sync local state
-      const newSeries = seriesMatch.name;
-      const newPublisher = seriesMatch.publisher;
-      const newYear = parseInt(issueDetails.publication_date?.substring(0, 4), 10) || comic.year;
-      const newVolume = String(seriesMatch.year_began);
-
       form.reset({
-        series: newSeries,
+        series: seriesMatch.name,
         issue: comic.issue,
-        year: newYear,
-        publisher: newPublisher,
-        volume: newVolume,
+        year: parseInt(issueDetails.publication_date?.substring(0, 4), 10) || comic.year,
+        publisher: seriesMatch.publisher,
+        volume: String(seriesMatch.year_began),
         summary: issueDetails.synopsis || comic.summary,
       });
-
-      setSeriesValue(newSeries);
-      setPublisherValue(newPublisher);
 
       showSuccess("Form data refreshed from local database.");
 
@@ -160,28 +129,15 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    // Ensure we use the normalized plain strings (seriesValue/publisherValue) if they're set
-    const normalized = {
-      ...values,
-      series: seriesValue || values.series,
-      publisher: publisherValue || values.publisher,
-    };
-
-    const updated = { ...comic, ...normalized };
+    const updated = { ...comic, ...values };
     try {
       await updateComic(updated);
-      // Ensure knowledge base contains this series/publisher
-      try {
-        addToKnowledgeBase({
-          series: normalized.series,
-          publisher: normalized.publisher,
-          startYear: normalized.year,
-          volumes: normalized.volume ? [{ volume: normalized.volume, year: normalized.year }] : []
-        });
-      } catch (kbErr) {
-        console.warn("Failed to add to knowledge base:", kbErr);
-      }
-
+      addToKnowledgeBase({
+        series: values.series,
+        publisher: values.publisher,
+        startYear: values.year,
+        volumes: values.volume ? [{ volume: values.volume, year: values.year }] : []
+      });
       showSuccess("Comic details updated.");
       onClose();
     } catch (err) {
@@ -226,12 +182,8 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                   <FormControl>
                     <Combobox
                       options={seriesOptions}
-                      value={seriesValue}
-                      onValueChange={(v) => {
-                        const plain = extractComboboxValue(v);
-                        setSeriesValue(plain);
-                        field.onChange(plain);
-                      }}
+                      value={field.value}
+                      onValueChange={field.onChange}
                       placeholder="Select or type series..."
                       emptyText="No series found."
                     />
@@ -277,12 +229,8 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                   <FormControl>
                     <Combobox
                       options={publisherOptions}
-                      value={publisherValue}
-                      onValueChange={(v) => {
-                        const plain = extractComboboxValue(v);
-                        setPublisherValue(plain);
-                        field.onChange(plain);
-                      }}
+                      value={field.value}
+                      onValueChange={field.onChange}
                       placeholder="Select or type publisher..."
                       emptyText="No publishers found."
                     />
