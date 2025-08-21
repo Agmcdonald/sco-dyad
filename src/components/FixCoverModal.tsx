@@ -39,8 +39,10 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
   const [isExtracting, setIsExtracting] = useState(false);
   const [customUrl, setCustomUrl] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
+  const [previewError, setPreviewError] = useState("");
   const [availablePages, setAvailablePages] = useState<string[]>([]);
   const [isLoadingPages, setIsLoadingPages] = useState(false);
+  const [pageImages, setPageImages] = useState<Record<string, string>>({});
 
   // Load available pages from the comic file
   useEffect(() => {
@@ -49,10 +51,25 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
       
       setIsLoadingPages(true);
       try {
+        console.log('[FIX-COVER] Loading pages for:', comic.filePath);
         const pages = await electronAPI.getComicPages(comic.filePath);
+        console.log('[FIX-COVER] Found pages:', pages);
         setAvailablePages(pages.slice(0, 10)); // Show first 10 pages
+        
+        // Load thumbnails for the first few pages
+        const thumbnails: Record<string, string> = {};
+        for (let i = 0; i < Math.min(pages.length, 5); i++) {
+          try {
+            const pageDataUrl = await electronAPI.getComicPageDataUrl(comic.filePath!, pages[i]);
+            thumbnails[pages[i]] = pageDataUrl;
+          } catch (error) {
+            console.warn(`[FIX-COVER] Could not load thumbnail for page ${pages[i]}:`, error);
+          }
+        }
+        setPageImages(thumbnails);
       } catch (error) {
-        console.error('Error loading comic pages:', error);
+        console.error('[FIX-COVER] Error loading comic pages:', error);
+        showError("Could not load pages from comic file. The file might be corrupted or in an unsupported format.");
       } finally {
         setIsLoadingPages(false);
       }
@@ -91,20 +108,13 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
     }
 
     try {
-      // Test if the URL is valid by trying to load it
-      const img = new Image();
-      img.onload = async () => {
-        const updatedComic = { ...comic, coverUrl: customUrl.trim() };
-        await updateComic(updatedComic);
-        showSuccess("Custom cover image set successfully!");
-        onClose();
-      };
-      img.onerror = () => {
-        showError("Could not load image from the provided URL.");
-      };
-      img.src = customUrl.trim();
+      const updatedComic = { ...comic, coverUrl: customUrl.trim() };
+      await updateComic(updatedComic);
+      showSuccess("Custom cover image set successfully!");
+      onClose();
     } catch (error) {
-      showError("Invalid image URL.");
+      console.error('Error setting custom URL:', error);
+      showError("Failed to set custom cover URL.");
     }
   };
 
@@ -115,8 +125,7 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
       // Get the page as a data URL
       const pageDataUrl = await electronAPI.getComicPageDataUrl(comic.filePath, pageName);
       
-      // For now, we'll use the data URL directly
-      // In a real implementation, you might want to save this as a proper file
+      // Use the data URL directly as the cover
       const updatedComic = { ...comic, coverUrl: pageDataUrl };
       await updateComic(updatedComic);
       showSuccess(`Set page "${pageName}" as the cover!`);
@@ -128,10 +137,33 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
   };
 
   const handlePreviewUrl = () => {
-    if (customUrl.trim()) {
-      setPreviewUrl(customUrl.trim());
+    if (!customUrl.trim()) {
+      setPreviewError("Please enter a URL first");
+      return;
     }
+
+    setPreviewError("");
+    setPreviewUrl("");
+
+    // Test if the URL is a valid image
+    const img = new Image();
+    img.crossOrigin = "anonymous"; // Try to handle CORS
+    img.onload = () => {
+      setPreviewUrl(customUrl.trim());
+      setPreviewError("");
+    };
+    img.onerror = () => {
+      setPreviewError("Could not load image from URL. This might be due to CORS restrictions or an invalid URL.");
+      setPreviewUrl("");
+    };
+    img.src = customUrl.trim();
   };
+
+  // Clear preview when URL changes
+  useEffect(() => {
+    setPreviewUrl("");
+    setPreviewError("");
+  }, [customUrl]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -210,6 +242,9 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
                     Preview
                   </Button>
                 </div>
+                {previewError && (
+                  <p className="text-sm text-red-500 mt-1">{previewError}</p>
+                )}
               </div>
               
               {previewUrl && (
@@ -219,7 +254,10 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
                       src={previewUrl} 
                       alt="Preview" 
                       className="w-full h-full object-cover"
-                      onError={() => setPreviewUrl("")}
+                      onError={() => {
+                        setPreviewUrl("");
+                        setPreviewError("Failed to load preview image");
+                      }}
                     />
                   </div>
                   <p className="text-sm text-muted-foreground mt-2">Preview</p>
@@ -229,7 +267,7 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
               <div>
                 <h4 className="font-medium">Use Custom Image URL</h4>
                 <p className="text-sm text-muted-foreground">
-                  Enter a direct link to an image file to use as the cover.
+                  Enter a direct link to an image file to use as the cover. Note: Some websites block external access to their images (CORS policy).
                 </p>
               </div>
             </div>
@@ -257,6 +295,9 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
                 <div className="text-center py-8">
                   <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">No pages found in comic file.</p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    This might happen if the file is corrupted or in an unsupported format.
+                  </p>
                 </div>
               ) : (
                 <ScrollArea className="h-64">
@@ -267,11 +308,19 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
                           className="w-full aspect-[2/3] bg-muted rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary transition-all"
                           onClick={() => handleUsePageAsCover(pageName)}
                         >
-                          <div className="w-full h-full flex items-center justify-center">
-                            <div className="text-xs text-muted-foreground">
-                              Page {index + 1}
+                          {pageImages[pageName] ? (
+                            <img 
+                              src={pageImages[pageName]} 
+                              alt={`Page ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <div className="text-xs text-muted-foreground">
+                                Page {index + 1}
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1 truncate">
                           {pageName}
