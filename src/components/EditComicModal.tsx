@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -51,6 +51,20 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
     summary: "",
     creators: [] as Creator[]
   });
+
+  // Generate options for datalists
+  const publisherOptions = useMemo(() => {
+    const publishersFromComics = [...new Set(comics.map(c => c.publisher))].filter(Boolean) as string[];
+    const publishersFromKb = [...new Set(knowledgeBase.map(k => k.publisher))].filter(Boolean) as string[];
+    const commonPublishers = ['Marvel Comics', 'DC Comics', 'Image Comics', 'Dark Horse Comics', 'IDW Publishing'];
+    return [...new Set([...publishersFromComics, ...publishersFromKb, ...commonPublishers])].sort();
+  }, [comics, knowledgeBase]);
+
+  const seriesOptions = useMemo(() => {
+    const seriesFromComics = [...new Set(comics.map(c => c.series))].filter(Boolean) as string[];
+    const seriesFromKb = [...new Set(knowledgeBase.map(k => k.series))].filter(Boolean) as string[];
+    return [...new Set([...seriesFromComics, ...seriesFromKb])].sort();
+  }, [comics, knowledgeBase]);
 
   // Initialize form data only when modal opens with a new comic
   useEffect(() => {
@@ -241,9 +255,15 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                   id="series"
                   value={formData.series}
                   onChange={(e) => handleInputChange('series', e.target.value)}
-                  placeholder="Type series name..."
+                  placeholder="Type or select series..."
+                  list="series-options-edit"
                   required
                 />
+                <datalist id="series-options-edit">
+                  {seriesOptions.map((option) => (
+                    <option key={option} value={option} />
+                  ))}
+                </datalist>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -275,12 +295,27 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                   id="publisher"
                   value={formData.publisher}
                   onChange={(e) => handleInputChange('publisher', e.target.value)}
-                  placeholder="Type publisher name..."
+                  placeholder="Type or select publisher..."
+                  list="publisher-options-edit"
                   required
                 />
+                <datalist id="publisher-options-edit">
+                  {publisherOptions.map((option) => (
+                    <option key={option} value={option} />
+                  ))}
+                </datalist>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="volume">Volume</Label>
+                  <Input
+                    id="volume"
+                    value={formData.volume}
+                    onChange={(e) => handleInputChange('volume', e.target.value)}
+                    placeholder="e.g., 2016"
+                  />
+                </div>
                 <div>
                   <Label htmlFor="genre">Genre</Label>
                   <Input
@@ -290,6 +325,9 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                     placeholder="e.g., Superhero"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="price">Price</Label>
                   <Input
@@ -299,16 +337,15 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                     placeholder="e.g., $3.99"
                   />
                 </div>
-              </div>
-
-              <div>
-                <Label htmlFor="publicationDate">Publication Date</Label>
-                <Input
-                  id="publicationDate"
-                  value={formData.publicationDate}
-                  onChange={(e) => handleInputChange('publicationDate', e.target.value)}
-                  placeholder="e.g., 2023-10-25"
-                />
+                <div>
+                  <Label htmlFor="publicationDate">Publication Date</Label>
+                  <Input
+                    id="publicationDate"
+                    value={formData.publicationDate}
+                    onChange={(e) => handleInputChange('publicationDate', e.target.value)}
+                    placeholder="e.g., 2023-10-25"
+                  />
+                </div>
               </div>
 
               <div>
