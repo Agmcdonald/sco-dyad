@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,6 +35,7 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
   const gcdDbService = useGcdDatabaseService();
   const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const initializedRef = useRef<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -51,10 +52,12 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
     creators: [] as Creator[]
   });
 
-  // Initialize form data when modal opens
+  // Initialize form data only when modal opens with a new comic
   useEffect(() => {
-    if (comic && isOpen) {
-      console.log('[EDIT-COMIC] Initializing form with comic:', comic);
+    if (isOpen && comic && comic.id !== initializedRef.current) {
+      console.log('[EDIT-COMIC] Initializing form with comic:', comic.id);
+      initializedRef.current = comic.id;
+      
       setFormData({
         title: comic.title || "",
         series: comic.series || "",
@@ -66,10 +69,15 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
         price: comic.price || "",
         publicationDate: comic.publicationDate || "",
         summary: comic.summary || "",
-        creators: comic.creators || []
+        creators: comic.creators ? [...comic.creators] : []
       });
     }
-  }, [comic, isOpen]);
+    
+    // Reset the ref when modal closes
+    if (!isOpen) {
+      initializedRef.current = null;
+    }
+  }, [isOpen, comic?.id]); // Only depend on isOpen and comic.id
 
   const handleInputChange = (field: string, value: any) => {
     console.log(`[EDIT-COMIC] Updating field ${field} with value:`, value);
