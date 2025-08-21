@@ -13,9 +13,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { QueuedFile } from "@/types";
+import { Comic } from "@/types";
 import { useAppContext } from "@/context/AppContext";
-import { useSelection } from "@/context/SelectionContext";
 import { showSuccess } from "@/utils/toast";
 import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 
@@ -24,39 +23,44 @@ const formSchema = z.object({
   issue: z.string().min(1, "Issue is required"),
   year: z.coerce.number().min(1900, "Invalid year"),
   publisher: z.string().min(1, "Publisher is required"),
+  volume: z.string().min(1, "Volume is required"),
+  title: z.string().optional(),
 });
 
-interface EditFileModalProps {
-  file: QueuedFile;
+interface EditComicModalProps {
+  comic: Comic;
   isOpen: boolean;
   onClose: () => void;
 }
 
-const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
-  const { updateFile, comics } = useAppContext();
-  const { setSelectedItem } = useSelection();
-  const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
+const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
+  const { updateComic, comics } = useAppContext();
+  const { knowledgeBase } = useKnowledgeBase();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      series: file.series || "",
-      issue: file.issue || "",
-      year: file.year || new Date().getFullYear(),
-      publisher: file.publisher || "",
+      series: comic.series || "",
+      issue: comic.issue || "",
+      year: comic.year || new Date().getFullYear(),
+      publisher: comic.publisher || "",
+      volume: comic.volume || "",
+      title: comic.title || "",
     },
   });
 
   useEffect(() => {
-    if (file) {
+    if (comic) {
       form.reset({
-        series: file.series || "",
-        issue: file.issue || "",
-        year: file.year || new Date().getFullYear(),
-        publisher: file.publisher || "",
+        series: comic.series || "",
+        issue: comic.issue || "",
+        year: comic.year || new Date().getFullYear(),
+        publisher: comic.publisher || "",
+        volume: comic.volume || "",
+        title: comic.title || "",
       });
     }
-  }, [file?.id, form]);
+  }, [comic, form]);
 
   const publisherOptions = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))].filter(Boolean) as string[];
@@ -71,23 +75,12 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
   }, [comics, knowledgeBase.series]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    const updatedFileData = { 
-        ...file, 
+    const updatedComicData = { 
+        ...comic, 
         ...values, 
-        confidence: "High" as const,
-        status: "Pending" as const
     };
-    updateFile(updatedFileData);
-    setSelectedItem({ ...updatedFileData, type: 'file' });
-
-    addToKnowledgeBase({
-      series: values.series,
-      publisher: values.publisher,
-      startYear: values.year,
-      volumes: values.year ? [{ volume: String(values.year), year: values.year }] : []
-    });
-
-    showSuccess("File details updated.");
+    updateComic(updatedComicData);
+    showSuccess("Comic details updated.");
     onClose();
   };
 
@@ -95,9 +88,9 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Correct File Match</DialogTitle>
+          <DialogTitle>Edit Comic Details</DialogTitle>
           <DialogDescription>
-            Edit the detected details for this file. Click save when you're done.
+            Edit the details for this comic. Click save when you're done.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -110,8 +103,8 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
                   <FormLabel>Series</FormLabel>
                   <FormControl>
                     <>
-                      <Input {...field} list="series-options-file" placeholder="Type or select series..." />
-                      <datalist id="series-options-file">
+                      <Input {...field} list="series-options-comic" placeholder="Type or select series..." />
+                      <datalist id="series-options-comic">
                         {seriesOptions.map((option) => (
                           <option key={option} value={option} />
                         ))}
@@ -122,13 +115,39 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Title</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="e.g., The Last Hunt" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-3 gap-4">
               <FormField
                 control={form.control}
                 name="issue"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Issue</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="volume"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Volume</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -158,8 +177,8 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
                   <FormLabel>Publisher</FormLabel>
                   <FormControl>
                     <>
-                      <Input {...field} list="publisher-options-file" placeholder="Type or select publisher..." />
-                      <datalist id="publisher-options-file">
+                      <Input {...field} list="publisher-options-comic" placeholder="Type or select publisher..." />
+                      <datalist id="publisher-options-comic">
                         {publisherOptions.map((option) => (
                           <option key={option} value={option} />
                         ))}
@@ -180,4 +199,4 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
   );
 };
 
-export default EditFileModal;
+export default EditComicModal;
