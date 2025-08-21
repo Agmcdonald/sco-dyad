@@ -69,7 +69,7 @@ const Header = ({ isInspectorOpen, toggleInspector }: HeaderProps) => {
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Open in New Window</p>
+              <p>Open in New Window (WIP)</p>
             </TooltipContent>
           </Tooltip>
 
