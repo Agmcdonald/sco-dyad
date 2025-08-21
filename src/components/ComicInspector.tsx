@@ -27,7 +27,8 @@ import {
   Globe,
   MapPin,
   RefreshCw,
-  Loader2
+  Loader2,
+  Image
 } from "lucide-react";
 import EditComicModal from "./EditComicModal";
 import ComicReader from "./ComicReader";
@@ -59,6 +60,16 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
   const isInReadingList = readingList.some(item => item.comicId === comic.id);
   const rating = comic.rating;
 
+  // Check if this comic is currently the series cover
+  const isCurrentSeriesCover = comic.isSeriesCover;
+  
+  // Check if there are other comics in this series
+  const seriesComics = comics.filter(c => 
+    c.series.toLowerCase() === comic.series.toLowerCase() && 
+    c.publisher.toLowerCase() === comic.publisher.toLowerCase()
+  );
+  const hasMultipleIssues = seriesComics.length > 1;
+
   const handleRemoveFromLibrary = () => {
     removeComic(comic.id, false);
     setSelectedItem(null);
@@ -76,6 +87,34 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
       console.log(`[COMIC-INSPECTOR] Rating updated successfully`);
     } catch (error) {
       console.error(`[COMIC-INSPECTOR] Failed to update rating:`, error);
+    }
+  };
+
+  const handleSetAsSeriesCover = async () => {
+    try {
+      // First, unmark any existing series cover for this series
+      const currentSeriesCover = seriesComics.find(c => c.isSeriesCover);
+      if (currentSeriesCover && currentSeriesCover.id !== comic.id) {
+        await updateComic({ ...currentSeriesCover, isSeriesCover: false });
+      }
+
+      // Then mark this comic as the series cover
+      await updateComic({ ...comic, isSeriesCover: true });
+      
+      showSuccess(`"${comic.series} #${comic.issue}" is now the series cover`);
+    } catch (error) {
+      console.error('Error setting series cover:', error);
+      showError('Failed to set series cover');
+    }
+  };
+
+  const handleRemoveAsSeriesCover = async () => {
+    try {
+      await updateComic({ ...comic, isSeriesCover: false });
+      showSuccess(`Removed "${comic.series} #${comic.issue}" as series cover`);
+    } catch (error) {
+      console.error('Error removing series cover:', error);
+      showError('Failed to remove series cover');
     }
   };
 
@@ -152,6 +191,12 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
             )}
           </h3>
           <p className="text-sm text-muted-foreground">{comic.title || `(${comic.year})`}</p>
+          {isCurrentSeriesCover && (
+            <Badge variant="default" className="mt-1 text-xs">
+              <Image className="h-3 w-3 mr-1" />
+              Series Cover
+            </Badge>
+          )}
         </div>
         <div className="flex-1 p-4 space-y-4 overflow-y-auto">
           <div className="aspect-w-2 aspect-h-3 rounded-lg bg-muted overflow-hidden">
@@ -293,6 +338,22 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
             <PlusCircle className="mr-2 h-4 w-4" /> 
             {isInReadingList ? 'In Reading List' : 'Add to Reading List'}
           </Button>
+          
+          {/* Series Cover Controls */}
+          {hasMultipleIssues && (
+            <div className="grid grid-cols-1 gap-2">
+              {isCurrentSeriesCover ? (
+                <Button variant="outline" onClick={handleRemoveAsSeriesCover}>
+                  <Image className="mr-2 h-4 w-4" /> Remove as Series Cover
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={handleSetAsSeriesCover}>
+                  <Image className="mr-2 h-4 w-4" /> Set as Series Cover
+                </Button>
+              )}
+            </div>
+          )}
+          
           <div className="grid grid-cols-2 gap-2">
             <Button variant="outline" onClick={() => setIsModalOpen(true)}>
               <Tag className="mr-2 h-4 w-4" /> Edit
