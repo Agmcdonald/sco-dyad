@@ -229,20 +229,17 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                         <FormItem>
                           <FormLabel>Publisher</FormLabel>
                           <FormControl>
-                            <>
-                              <Input
-                                {...field}
-                                list="publisher-options-bulk"
-                                placeholder="Type or select publisher..."
-                                disabled={!enabledFields.publisher}
-                              />
-                              <datalist id="publisher-options-bulk">
-                                {publisherOptions.map((option) => (
-                                  <option key={option} value={option} />
-                                ))}
-                              </datalist>
-                            </>
+                            <Input
+                              {...field}
+                              list="publisher-options-bulk"
+                              placeholder="Type or select publisher..."
+                            />
                           </FormControl>
+                          <datalist id="publisher-options-bulk">
+                            {publisherOptions.map((option) => (
+                              <option key={option} value={option} />
+                            ))}
+                          </datalist>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -269,7 +266,6 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                             <Input
                               {...field}
                               placeholder="e.g., Superhero, Horror, Sci-Fi"
-                              disabled={!enabledFields.genre}
                             />
                           </FormControl>
                           <FormMessage />
@@ -298,7 +294,6 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                             <Input
                               {...field}
                               placeholder="e.g., 2016"
-                              disabled={!enabledFields.volume}
                             />
                           </FormControl>
                           <FormMessage />
@@ -325,7 +320,6 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                           variant="outline" 
                           size="sm" 
                           onClick={addCreator}
-                          disabled={!enabledFields.creators}
                         >
                           <Plus className="h-4 w-4 mr-2" /> Add Creator
                         </Button>
@@ -337,13 +331,11 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                               placeholder="Creator Name"
                               value={creator.name}
                               onChange={(e) => updateCreator(index, 'name', e.target.value)}
-                              disabled={!enabledFields.creators}
                               className="flex-1"
                             />
                             <Select 
                               value={creator.role} 
                               onValueChange={(value) => updateCreator(index, 'role', value)}
-                              disabled={!enabledFields.creators}
                             >
                               <SelectTrigger className="flex-1">
                                 <SelectValue placeholder="Role" />
@@ -359,7 +351,6 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                               variant="ghost" 
                               size="icon" 
                               onClick={() => removeCreator(index)}
-                              disabled={!enabledFields.creators}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
