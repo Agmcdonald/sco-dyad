@@ -44,15 +44,15 @@ const LearningCard = ({ file }: LearningCardProps) => {
 
   const publisherOptions = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
-    const publishersFromKb = [...new Set(knowledgeBase.map(k => k.publisher))];
+    const publishersFromKb = [...new Set(knowledgeBase.series.map(k => k.publisher))];
     return [...new Set([...publishersFromComics, ...publishersFromKb])].sort();
-  }, [comics, knowledgeBase]);
+  }, [comics, knowledgeBase.series]);
 
   const seriesOptions = useMemo(() => {
     const seriesFromComics = [...new Set(comics.map(c => c.series))];
-    const seriesFromKb = [...new Set(knowledgeBase.map(k => k.series))];
+    const seriesFromKb = [...new Set(knowledgeBase.series.map(k => k.series))];
     return [...new Set([...seriesFromComics, ...seriesFromKb])].sort();
-  }, [comics, knowledgeBase]);
+  }, [comics, knowledgeBase.series]);
 
   useEffect(() => {
     const parsed = parseFilename(file.path);
