@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,6 +31,7 @@ interface BulkEditComicsModalProps {
 const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEditComicsModalProps) => {
   const { updateComic } = useAppContext();
   const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
+  const initializedRef = useRef(false);
   
   // Simple state variables - same pattern as the working test
   const [publisher, setPublisher] = useState("");
@@ -58,58 +59,72 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
       .sort();
   })();
 
-  // Initialize form values when modal opens
+  // Initialize form values ONLY when modal first opens
   useEffect(() => {
-    if (isOpen && selectedComicObjects.length > 0) {
-      // Find most common publisher
-      const publishers = selectedComicObjects.map(c => c.publisher).filter(Boolean);
-      const publisherCounts = publishers.reduce((acc, pub) => {
-        acc[pub!] = (acc[pub!] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      const mostCommonPublisher = Object.entries(publisherCounts)
-        .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
+    if (isOpen && !initializedRef.current) {
+      console.log("Initializing bulk edit form values");
+      initializedRef.current = true;
+      
+      if (selectedComicObjects.length > 0) {
+        // Find most common publisher
+        const publishers = selectedComicObjects.map(c => c.publisher).filter(Boolean);
+        const publisherCounts = publishers.reduce((acc, pub) => {
+          acc[pub!] = (acc[pub!] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        const mostCommonPublisher = Object.entries(publisherCounts)
+          .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
 
-      // Find most common genre
-      const genres = selectedComicObjects.map(c => c.genre).filter(Boolean);
-      const genreCounts = genres.reduce((acc, g) => {
-        acc[g!] = (acc[g!] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      const mostCommonGenre = Object.entries(genreCounts)
-        .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
+        // Find most common genre
+        const genres = selectedComicObjects.map(c => c.genre).filter(Boolean);
+        const genreCounts = genres.reduce((acc, g) => {
+          acc[g!] = (acc[g!] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        const mostCommonGenre = Object.entries(genreCounts)
+          .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
 
-      // Find most common volume
-      const volumes = selectedComicObjects.map(c => c.volume).filter(Boolean);
-      const volumeCounts = volumes.reduce((acc, v) => {
-        acc[v!] = (acc[v!] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      const mostCommonVolume = Object.entries(volumeCounts)
-        .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
+        // Find most common volume
+        const volumes = selectedComicObjects.map(c => c.volume).filter(Boolean);
+        const volumeCounts = volumes.reduce((acc, v) => {
+          acc[v!] = (acc[v!] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        const mostCommonVolume = Object.entries(volumeCounts)
+          .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
 
-      setPublisher(mostCommonPublisher);
-      setGenre(mostCommonGenre);
-      setVolume(mostCommonVolume);
-      setCreators([]);
+        setPublisher(mostCommonPublisher);
+        setGenre(mostCommonGenre);
+        setVolume(mostCommonVolume);
+        setCreators([]);
+      }
     }
-  }, [isOpen, selectedComics, comics]);
+    
+    // Reset when modal closes
+    if (!isOpen) {
+      initializedRef.current = false;
+    }
+  }, [isOpen]); // Only depend on isOpen
 
   const addCreator = () => {
+    console.log("Adding creator");
     setCreators(prev => [...prev, { name: "", role: "Writer" }]);
   };
 
   const removeCreator = (index: number) => {
+    console.log("Removing creator at index:", index);
     setCreators(prev => prev.filter((_, i) => i !== index));
   };
 
   const updateCreatorName = (index: number, name: string) => {
+    console.log("Updating creator name at index:", index, "to:", name);
     setCreators(prev => prev.map((creator, i) => 
       i === index ? { ...creator, name } : creator
     ));
   };
 
   const updateCreatorRole = (index: number, role: string) => {
+    console.log("Updating creator role at index:", index, "to:", role);
     setCreators(prev => prev.map((creator, i) => 
       i === index ? { ...creator, role } : creator
     ));
@@ -167,6 +182,7 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
   };
 
   const handleClose = () => {
+    console.log("Closing bulk edit modal");
     setUpdatePublisher(false);
     setUpdateGenre(false);
     setUpdateVolume(false);
@@ -175,6 +191,7 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
     setPublisher("");
     setGenre("");
     setVolume("");
+    initializedRef.current = false;
     onClose();
   };
 
@@ -197,7 +214,10 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                 <Checkbox
                   id="update-publisher"
                   checked={updatePublisher}
-                  onCheckedChange={(checked) => setUpdatePublisher(Boolean(checked))}
+                  onCheckedChange={(checked) => {
+                    console.log("Publisher checkbox changed:", checked);
+                    setUpdatePublisher(Boolean(checked));
+                  }}
                   className="mt-2"
                 />
                 <div className="flex-1">
@@ -205,7 +225,10 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                   <Input
                     id="publisher-input"
                     value={publisher}
-                    onChange={(e) => setPublisher(e.target.value)}
+                    onChange={(e) => {
+                      console.log("Publisher input changed:", e.target.value);
+                      setPublisher(e.target.value);
+                    }}
                     list="publisher-options-bulk"
                     placeholder="Type or select publisher..."
                   />
@@ -222,7 +245,10 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                 <Checkbox
                   id="update-genre"
                   checked={updateGenre}
-                  onCheckedChange={(checked) => setUpdateGenre(Boolean(checked))}
+                  onCheckedChange={(checked) => {
+                    console.log("Genre checkbox changed:", checked);
+                    setUpdateGenre(Boolean(checked));
+                  }}
                   className="mt-2"
                 />
                 <div className="flex-1">
@@ -230,7 +256,10 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                   <Input
                     id="genre-input"
                     value={genre}
-                    onChange={(e) => setGenre(e.target.value)}
+                    onChange={(e) => {
+                      console.log("Genre input changed:", e.target.value);
+                      setGenre(e.target.value);
+                    }}
                     placeholder="e.g., Superhero, Horror, Sci-Fi"
                   />
                 </div>
@@ -241,7 +270,10 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                 <Checkbox
                   id="update-volume"
                   checked={updateVolume}
-                  onCheckedChange={(checked) => setUpdateVolume(Boolean(checked))}
+                  onCheckedChange={(checked) => {
+                    console.log("Volume checkbox changed:", checked);
+                    setUpdateVolume(Boolean(checked));
+                  }}
                   className="mt-2"
                 />
                 <div className="flex-1">
@@ -249,7 +281,10 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                   <Input
                     id="volume-input"
                     value={volume}
-                    onChange={(e) => setVolume(e.target.value)}
+                    onChange={(e) => {
+                      console.log("Volume input changed:", e.target.value);
+                      setVolume(e.target.value);
+                    }}
                     placeholder="e.g., 2016"
                   />
                 </div>
@@ -260,7 +295,10 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                 <Checkbox
                   id="update-creators"
                   checked={updateCreators}
-                  onCheckedChange={(checked) => setUpdateCreators(Boolean(checked))}
+                  onCheckedChange={(checked) => {
+                    console.log("Creators checkbox changed:", checked);
+                    setUpdateCreators(Boolean(checked));
+                  }}
                   className="mt-2"
                 />
                 <div className="flex-1">
