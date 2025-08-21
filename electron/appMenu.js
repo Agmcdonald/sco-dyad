@@ -93,28 +93,23 @@ function createMenu(mainWindow) {
           click: () => mainWindow.webContents.send('navigate-to', '/app/library')
         },
         {
-          label: 'Activity',
-          accelerator: 'CmdOrCtrl+3',
-          click: () => mainWindow.webContents.send('navigate-to', '/app/activity')
-        },
-        {
           label: 'Organize',
-          accelerator: 'CmdOrCtrl+4',
+          accelerator: 'CmdOrCtrl+3',
           click: () => mainWindow.webContents.send('navigate-to', '/app/organize')
         },
         {
           label: 'Learning',
-          accelerator: 'CmdOrCtrl+5',
+          accelerator: 'CmdOrCtrl+4',
           click: () => mainWindow.webContents.send('navigate-to', '/app/learning')
         },
         {
           label: 'Knowledge',
-          accelerator: 'CmdOrCtrl+6',
+          accelerator: 'CmdOrCtrl+5',
           click: () => mainWindow.webContents.send('navigate-to', '/app/knowledge')
         },
         {
           label: 'Maintenance',
-          accelerator: 'CmdOrCtrl+7',
+          accelerator: 'CmdOrCtrl+6',
           click: () => mainWindow.webContents.send('navigate-to', '/app/maintenance')
         }
       ]
