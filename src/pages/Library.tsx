@@ -36,6 +36,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOption, setSortOption] = useState("series-asc");
+  const [secondarySort, setSecondarySort] = useState("series-asc");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [coverSize, setCoverSize] = useLocalStorage("library-cover-size", 3);
   const [isDrilledDown, setIsDrilledDown] = useState(false);
@@ -103,24 +104,59 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
     }
 
     return comicsToSort.sort((a, b) => {
+      // Primary sort
+      let primaryCompare = 0;
       switch (sortOption) {
         case "issue-asc":
-          return a.series.localeCompare(b.series) || parseInt(a.issue) - parseInt(b.issue);
+          primaryCompare = a.series.localeCompare(b.series) || parseInt(a.issue) - parseInt(b.issue);
+          break;
         case "issue-desc":
-          return a.series.localeCompare(b.series) || parseInt(b.issue) - parseInt(a.issue);
+          primaryCompare = a.series.localeCompare(b.series) || parseInt(b.issue) - parseInt(a.issue);
+          break;
         case "publisher-asc":
-          return a.publisher.localeCompare(b.publisher);
+          primaryCompare = a.publisher.localeCompare(b.publisher);
+          break;
         case "publisher-desc":
-          return b.publisher.localeCompare(a.publisher);
+          primaryCompare = b.publisher.localeCompare(a.publisher);
+          break;
         case "year-desc":
-          return b.year - a.year;
+          primaryCompare = b.year - a.year;
+          break;
         case "year-asc":
-          return a.year - b.year;
+          primaryCompare = a.year - b.year;
+          break;
         default:
           return 0;
       }
+
+      // If primary sort is equal and we're sorting by publisher, apply secondary sort
+      if (primaryCompare === 0 && sortOption.startsWith('publisher-')) {
+        switch (secondarySort) {
+          case "series-asc":
+            return a.series.localeCompare(b.series);
+          case "series-desc":
+            return b.series.localeCompare(a.series);
+          case "year-asc":
+            return a.year - b.year;
+          case "year-desc":
+            return b.year - a.year;
+          case "issue-count-desc":
+            // Count issues per series for each comic
+            const aIssueCount = comicsToSort.filter(c => c.series === a.series && c.publisher === a.publisher).length;
+            const bIssueCount = comicsToSort.filter(c => c.series === b.series && c.publisher === b.publisher).length;
+            return bIssueCount - aIssueCount;
+          case "issue-count-asc":
+            const aIssueCountAsc = comicsToSort.filter(c => c.series === a.series && c.publisher === a.publisher).length;
+            const bIssueCountAsc = comicsToSort.filter(c => c.series === b.series && c.publisher === b.publisher).length;
+            return aIssueCountAsc - bIssueCountAsc;
+          default:
+            return a.series.localeCompare(b.series);
+        }
+      }
+
+      return primaryCompare;
     });
-  }, [filteredComics, sortOption]);
+  }, [filteredComics, sortOption, secondarySort]);
 
   const handleSeriesDoubleClick = (seriesName: string) => {
     if (sortOption.startsWith('series-')) {
@@ -135,6 +171,8 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
     setSortOption('series-asc');
     setIsDrilledDown(false);
   };
+
+  const isPublisherSort = sortOption.startsWith('publisher-');
 
   return (
     <TooltipProvider>
@@ -198,6 +236,24 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                 <SelectItem value="year-asc">Year (Oldest)</SelectItem>
               </SelectContent>
             </Select>
+            
+            {/* Secondary Sort - only show when sorting by publisher */}
+            {isPublisherSort && (
+              <Select value={secondarySort} onValueChange={setSecondarySort}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Then by..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="series-asc">Series (A-Z)</SelectItem>
+                  <SelectItem value="series-desc">Series (Z-A)</SelectItem>
+                  <SelectItem value="year-asc">Year (Oldest)</SelectItem>
+                  <SelectItem value="year-desc">Year (Newest)</SelectItem>
+                  <SelectItem value="issue-count-desc">Most Issues</SelectItem>
+                  <SelectItem value="issue-count-asc">Fewest Issues</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+            
             <div className="flex items-center gap-2">
               <ZoomIn className="h-4 w-4 text-muted-foreground" />
               <Slider

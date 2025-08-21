@@ -7,7 +7,7 @@ import { Comic } from "@/types";
 interface LibraryGridProps {
   comics: Comic[];
   coverSize: number;
-  sortOption: string; // Add sortOption prop
+  sortOption: string;
   onSeriesDoubleClick?: (seriesName: string) => void;
   onToggleInspector?: () => void;
 }
@@ -28,10 +28,18 @@ const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onTog
         return acc;
       }, {} as Record<string, Comic[]>);
 
-      // Sort publishers and return as array of groups
+      // Sort publishers and comics within each group
       return Object.entries(groups)
         .sort(([a], [b]) => sortOption === 'publisher-asc' ? a.localeCompare(b) : b.localeCompare(a))
-        .map(([publisher, comics]) => ({ publisher, comics }));
+        .map(([publisher, groupComics]) => ({
+          publisher,
+          // Sort comics within each publisher group alphabetically by series, then by issue
+          comics: groupComics.sort((a, b) => {
+            const seriesCompare = a.series.localeCompare(b.series);
+            if (seriesCompare !== 0) return seriesCompare;
+            return parseInt(a.issue) - parseInt(b.issue);
+          })
+        }));
     }
     
     // For non-publisher sorting, return all comics in one group
@@ -113,7 +121,7 @@ const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onTog
               <div className="border-b pb-2">
                 <h2 className="text-xl font-semibold text-foreground">{publisher}</h2>
                 <p className="text-sm text-muted-foreground">
-                  {groupComics.length} comic{groupComics.length !== 1 ? 's' : ''}
+                  {groupComics.length} comic{groupComics.length !== 1 ? 's' : ''} • {[...new Set(groupComics.map(c => c.series))].length} series
                 </p>
               </div>
             )}
