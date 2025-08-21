@@ -27,7 +27,7 @@ const HelpManualModal = ({ isOpen, onClose }: HelpManualModalProps) => {
         <DialogHeader>
           <DialogTitle>User Manual</DialogTitle>
           <DialogDescription>
-            A guide to the features and functions of the Comic Organizer application.
+            A guide to the features and functions of the Super Comic Organizer application.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-[60vh] pr-6">
