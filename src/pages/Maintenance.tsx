@@ -113,9 +113,6 @@ const Maintenance = () => {
         </p>
       </div>
 
-      <GcdDatabaseManager />
-      <GcdImporter />
-
       <div className="grid gap-6 md:grid-cols-2">
         {/* Library Statistics */}
         <Card>
@@ -183,6 +180,9 @@ const Maintenance = () => {
         </Card>
       </div>
 
+      {/* Duplicate Detection */}
+      <DuplicateDetector />
+
       {/* Metadata Enrichment */}
       <Card>
         <CardHeader>
@@ -223,8 +223,8 @@ const Maintenance = () => {
         </CardFooter>
       </Card>
 
-      {/* Duplicate Detection */}
-      <DuplicateDetector />
+      <GcdDatabaseManager />
+      <GcdImporter />
     </div>
   );
 };
