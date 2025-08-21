@@ -76,11 +76,6 @@ const ComicCard = ({ comic, onDoubleClick, onToggleInspector }: ComicCardProps) 
           <p className="text-sm text-muted-foreground">
             Issue #{comic.issue} ({comic.year})
           </p>
-          {process.env.NODE_ENV === 'development' && (
-            <p className="text-xs text-muted-foreground mt-1 truncate">
-              Cover: {comic.coverUrl}
-            </p>
-          )}
         </div>
       </CardFooter>
     </Card>
