@@ -75,6 +75,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Dialog
   showMessageBox: (options) => ipcRenderer.invoke('show-message-box', options),
   
+  // Help Manual
+  onOpenManual: (callback) => {
+    ipcRenderer.on('open-manual', () => callback());
+  },
+
   // Platform info
   platform: process.platform,
   

@@ -125,6 +125,11 @@ function createMenu(mainWindow) {
       role: 'help',
       submenu: [
         {
+          label: 'User Manual',
+          accelerator: 'F1',
+          click: () => mainWindow.webContents.send('open-manual')
+        },
+        {
           label: 'About Comic Organizer',
           click: () => {
             dialog.showMessageBox(mainWindow, {
