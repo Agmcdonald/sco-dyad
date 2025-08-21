@@ -305,7 +305,27 @@ class ComicFileHandler {
       if (keepOriginal) {
         await fs.copyFile(sourcePath, targetPath);
       } else {
-        await fs.rename(sourcePath, targetPath);
+        try {
+          // First, try a fast rename operation.
+          await fs.rename(sourcePath, targetPath);
+        } catch (error) {
+          // If it fails with EXDEV, it's a cross-device move.
+          if (error.code === 'EXDEV') {
+            // Fall back to copy and then rename the original.
+            await fs.copyFile(sourcePath, targetPath);
+            
+            const parsedSource = path.parse(sourcePath);
+            const newSourcePath = path.join(
+              parsedSource.dir,
+              `${parsedSource.name} (Moved)${parsedSource.ext}`
+            );
+            await fs.rename(sourcePath, newSourcePath);
+
+          } else {
+            // For any other error, re-throw it.
+            throw error;
+          }
+        }
       }
 
       return true;
