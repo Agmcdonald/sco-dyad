@@ -85,13 +85,13 @@ const Dashboard = () => {
             <TrendingUp className="h-4 w-4 mr-2" />
             Insights
           </TabsTrigger>
-          <TabsTrigger value="health">
-            <Zap className="h-4 w-4 mr-2" />
-            Health
-          </TabsTrigger>
           <TabsTrigger value="reading">
             <BookOpen className="h-4 w-4 mr-2" />
             Reading
+          </TabsTrigger>
+          <TabsTrigger value="health">
+            <Zap className="h-4 w-4 mr-2" />
+            Health
           </TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
