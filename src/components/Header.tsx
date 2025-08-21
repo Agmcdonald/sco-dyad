@@ -9,12 +9,10 @@ import {
 import {
   Plus,
   FolderPlus,
-  Play,
   Eye,
   ArrowUpRightFromSquare,
   SidebarClose,
   SidebarOpen,
-  Loader2,
 } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import { useSelection } from "@/context/SelectionContext";
@@ -26,18 +24,8 @@ interface HeaderProps {
 
 const Header = ({ isInspectorOpen, toggleInspector }: HeaderProps) => {
   const navigate = useNavigate();
-  const { isProcessing, startProcessing, pauseProcessing, files, triggerSelectFiles, triggerScanFolder } = useAppContext();
+  const { triggerSelectFiles, triggerScanFolder } = useAppContext();
   const { selectedItem } = useSelection();
-  const hasPendingFiles = files.some(f => f.status === 'Pending');
-
-  const handleStartPause = () => {
-    if (isProcessing) {
-      pauseProcessing();
-    } else {
-      startProcessing();
-      navigate('/app/organize');
-    }
-  };
 
   const handleAddFiles = () => {
     triggerSelectFiles();
@@ -72,24 +60,6 @@ const Header = ({ isInspectorOpen, toggleInspector }: HeaderProps) => {
           </Button>
           <Button variant="outline" size="sm" onClick={handleScanFolder}>
             <FolderPlus className="h-4 w-4 mr-2" /> Scan Folder...
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleStartPause}
-            disabled={!hasPendingFiles && !isProcessing}
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                <span>Processing...</span>
-              </>
-            ) : (
-              <>
-                <Play className="h-4 w-4 mr-2" />
-                <span>Start</span>
-              </>
-            )}
           </Button>
         </div>
         <div className="flex-1">{/* Center content like filters will go here */}</div>

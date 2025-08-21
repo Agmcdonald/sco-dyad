@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Play, Pause, SkipForward, Undo, Loader2 } from "lucide-react";
+import { SkipForward, Undo } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import FileQueue from "@/components/FileQueue";
 import BulkActions from "@/components/BulkActions";
@@ -14,22 +12,12 @@ import AdvancedFilters from "@/components/AdvancedFilters";
 import { useSelection } from "@/context/SelectionContext";
 import { useAppContext } from "@/context/AppContext";
 import { QueuedFile } from "@/types";
-import { processComicFile } from "@/lib/smartProcessor";
 import { useElectron } from "@/hooks/useElectron";
-import { useGcdDatabaseService } from "@/services/gcdDatabaseService";
 import { showError } from "@/utils/toast";
-import { useSettings } from "@/context/SettingsContext";
 
 const Organize = () => {
   const { 
     files, 
-    addComic, 
-    removeFile, 
-    isProcessing, 
-    startProcessing, 
-    pauseProcessing,
-    logAction,
-    updateFile,
     lastUndoableAction,
     undoLastAction,
     skipFile,
@@ -38,103 +26,27 @@ const Organize = () => {
   const { selectedItem, setSelectedItem } = useSelection();
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [filteredFiles, setFilteredFiles] = useState<QueuedFile[]>(files);
-  const [processingProgress, setProcessingProgress] = useState(0);
-  const [currentProcessingFile, setCurrentProcessingFile] = useState<string>("");
   const [isDragOver, setIsDragOver] = useState(false);
   
-  const queueIndex = useRef(0);
-  const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
   const { isElectron } = useElectron();
-  const { settings } = useSettings();
-  const gcdDbService = useGcdDatabaseService();
-
-  // Use a ref to hold state that the processing loop needs, to avoid dependency-related loops
-  const processingStateRef = useRef({ files, settings, gcdDbService, selectedItem });
-  useEffect(() => {
-    processingStateRef.current = { files, settings, gcdDbService, selectedItem };
-  }, [files, settings, gcdDbService, selectedItem]);
-
-  const processQueue = useCallback(async () => {
-    const { files, settings, gcdDbService, selectedItem } = processingStateRef.current;
-    const pendingFiles = files.filter(f => f.status === 'Pending');
-    
-    if (queueIndex.current >= pendingFiles.length) {
-      pauseProcessing();
-      setProcessingProgress(100);
-      setCurrentProcessingFile("");
-      queueIndex.current = 0;
-      logAction('info', `Processing complete.`);
-      return;
-    }
-
-    const currentFile = pendingFiles[queueIndex.current];
-    setCurrentProcessingFile(currentFile.name);
-    setProcessingProgress(((queueIndex.current + 1) / pendingFiles.length) * 100);
-
-    try {
-      const result = await processComicFile(
-        currentFile, 
-        settings.comicVineApiKey,
-        settings.marvelPublicKey,
-        settings.marvelPrivateKey,
-        gcdDbService
-      );
-
-      if (result.success && result.data) {
-        const updatedFileData = { ...currentFile, ...result.data, status: "Success" as const, confidence: result.confidence };
-        updateFile(updatedFileData);
-        if (result.confidence === 'High') {
-          addComic(result.data, updatedFileData);
-          removeFile(currentFile.id);
-          if (selectedItem?.id === currentFile.id) {
-            setSelectedItem(null);
-          }
-        }
-      } else {
-        updateFile({ ...currentFile, status: result.confidence === 'Low' ? "Error" as const : "Warning" as const, confidence: result.confidence });
-        if (result.error) logAction('warning', `'${currentFile.name}': ${result.error}`);
-      }
-    } catch (error) {
-      updateFile({ ...currentFile, status: "Error" as const, confidence: "Low" as const });
-      logAction('error', `'${currentFile.name}': Processing failed`);
-    }
-
-    queueIndex.current++;
-    if (isProcessing) {
-      processingTimeoutRef.current = setTimeout(processQueue, 1500);
-    }
-  }, [isProcessing, pauseProcessing, updateFile, addComic, removeFile, setSelectedItem, logAction]);
-
-  useEffect(() => {
-    if (isProcessing) {
-      queueIndex.current = 0;
-      processingTimeoutRef.current = setTimeout(processQueue, 100);
-    }
-    return () => {
-      if (processingTimeoutRef.current) clearTimeout(processingTimeoutRef.current);
-    };
-  }, [isProcessing, processQueue]);
 
   useEffect(() => {
     setFilteredFiles(files);
   }, [files]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
-    if (isElectron) return;
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(true);
-  }, [isElectron]);
+  }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
-    if (isElectron) return;
     e.preventDefault();
     e.stopPropagation();
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
       setIsDragOver(false);
     }
-  }, [isElectron]);
+  }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     if (isElectron) {
@@ -155,8 +67,6 @@ const Organize = () => {
       setSelectedItem(null);
     }
   };
-
-  const pendingCount = files.filter(f => f.status === 'Pending').length;
 
   return (
     <div 
@@ -184,17 +94,6 @@ const Organize = () => {
         </div>
         {files.length > 0 && (
           <div className="flex items-center gap-2">
-            {!isProcessing ? (
-              <Button onClick={startProcessing} disabled={pendingCount === 0}>
-                <Play className="h-4 w-4 mr-2" />
-                Start Processing ({pendingCount})
-              </Button>
-            ) : (
-              <Button variant="outline" onClick={pauseProcessing}>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Pause
-              </Button>
-            )}
             <Button variant="outline" disabled={!selectedItem} onClick={handleSkip}>
               <SkipForward className="h-4 w-4 mr-2" /> Skip
             </Button>
@@ -204,21 +103,6 @@ const Organize = () => {
           </div>
         )}
       </div>
-
-      {isProcessing && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Processing Files</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Progress value={processingProgress} className="w-full" />
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>Processing: {currentProcessingFile}</span>
-              <span>{Math.round(processingProgress)}% complete</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {files.length > 0 && (
         <div className="grid gap-4 lg:grid-cols-3">
