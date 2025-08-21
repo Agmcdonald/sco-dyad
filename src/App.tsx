@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,12 +15,14 @@ import Settings from "./pages/Settings";
 import Maintenance from "./pages/Maintenance";
 import NotFound from "./pages/NotFound";
 import ElectronIntegration from "./components/ElectronIntegration";
+import HelpManualModal from "./components/HelpManualModal";
 import { SelectionProvider } from "./context/SelectionContext";
 import { AppProvider } from "./context/AppContext";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { SettingsProvider } from "./context/SettingsContext";
 import { KnowledgeBaseProvider } from "./context/KnowledgeBaseContext";
 import KnowledgeBase from "./pages/KnowledgeBase";
+import { useElectron } from "./hooks/useElectron";
 
 const queryClient = new QueryClient();
 
@@ -30,12 +32,29 @@ const LibraryWithContext = () => {
   return <Library onToggleInspector={toggleInspector} />;
 };
 
-const Root = () => (
-  <>
-    <ElectronIntegration />
-    <Outlet />
-  </>
-);
+const Root = () => {
+  const [isManualOpen, setIsManualOpen] = useState(false);
+  const { electronAPI } = useElectron();
+
+  useEffect(() => {
+    if (electronAPI) {
+      const openManual = () => setIsManualOpen(true);
+      electronAPI.onOpenManual(openManual);
+
+      return () => {
+        electronAPI.removeAllListeners('open-manual');
+      };
+    }
+  }, [electronAPI]);
+
+  return (
+    <>
+      <ElectronIntegration />
+      <HelpManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
+      <Outlet />
+    </>
+  );
+};
 
 const router = createBrowserRouter([
   {
