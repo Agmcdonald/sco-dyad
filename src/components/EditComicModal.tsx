@@ -60,17 +60,17 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      series: comic.series,
-      issue: comic.issue,
-      year: comic.year,
-      publisher: comic.publisher,
-      volume: comic.volume,
-      summary: comic.summary || "",
-      title: comic.title || "",
-      price: comic.price || "",
-      genre: comic.genre || "",
-      publicationDate: comic.publicationDate || "",
-      creators: comic.creators || [],
+      series: "",
+      issue: "",
+      year: new Date().getFullYear(),
+      publisher: "",
+      volume: "",
+      summary: "",
+      title: "",
+      price: "",
+      genre: "",
+      publicationDate: "",
+      creators: [],
     },
   });
 
@@ -79,8 +79,10 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
     name: "creators",
   });
 
+  // Reset form when comic changes or modal opens
   useEffect(() => {
-    if (comic) {
+    if (comic && isOpen) {
+      console.log('[EDIT-COMIC] Resetting form with comic data:', comic);
       form.reset({
         series: comic.series || "",
         issue: comic.issue || "",
@@ -95,7 +97,7 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
         creators: comic.creators || [],
       });
     }
-  }, [comic, form]);
+  }, [comic, isOpen, form]);
 
   const publisherOptions = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))].filter(Boolean) as string[];
@@ -156,6 +158,7 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    console.log('[EDIT-COMIC] Submitting form with values:', values);
     const updated = { ...comic, ...values };
     try {
       await updateComic(updated);
@@ -171,6 +174,16 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
       console.error("Failed to update comic:", err);
       showError("Failed to save changes.");
     }
+  };
+
+  const handleAddCreator = () => {
+    console.log('[EDIT-COMIC] Adding new creator');
+    append({ name: "", role: "Writer" });
+  };
+
+  const handleRemoveCreator = (index: number) => {
+    console.log('[EDIT-COMIC] Removing creator at index:', index);
+    remove(index);
   };
 
   return (
@@ -208,7 +221,9 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Story Title</FormLabel>
-                      <FormControl><Input {...field} placeholder="e.g., The Dark Knight Returns" /></FormControl>
+                      <FormControl>
+                        <Input {...field} placeholder="e.g., The Dark Knight Returns" />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -220,15 +235,17 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                     <FormItem>
                       <FormLabel>Series</FormLabel>
                       <FormControl>
-                        <>
-                          <Input {...field} list="series-options" placeholder="Type or select series..." />
-                          <datalist id="series-options">
-                            {seriesOptions.map((option) => (
-                              <option key={option} value={option} />
-                            ))}
-                          </datalist>
-                        </>
+                        <Input 
+                          {...field} 
+                          list="series-options-edit" 
+                          placeholder="Type or select series..." 
+                        />
                       </FormControl>
+                      <datalist id="series-options-edit">
+                        {seriesOptions.map((option) => (
+                          <option key={option} value={option} />
+                        ))}
+                      </datalist>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -240,7 +257,9 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Issue</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
+                        <FormControl>
+                          <Input {...field} placeholder="e.g., 001" />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -251,7 +270,9 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Year</FormLabel>
-                        <FormControl><Input type="number" {...field} /></FormControl>
+                        <FormControl>
+                          <Input type="number" {...field} placeholder="e.g., 2025" />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -264,15 +285,17 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                     <FormItem>
                       <FormLabel>Publisher</FormLabel>
                       <FormControl>
-                        <>
-                          <Input {...field} list="publisher-options" placeholder="Type or select publisher..." />
-                          <datalist id="publisher-options">
-                            {publisherOptions.map((option) => (
-                              <option key={option} value={option} />
-                            ))}
-                          </datalist>
-                        </>
+                        <Input 
+                          {...field} 
+                          list="publisher-options-edit" 
+                          placeholder="Type or select publisher..." 
+                        />
                       </FormControl>
+                      <datalist id="publisher-options-edit">
+                        {publisherOptions.map((option) => (
+                          <option key={option} value={option} />
+                        ))}
+                      </datalist>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -284,7 +307,9 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Genre</FormLabel>
-                        <FormControl><Input {...field} placeholder="e.g., Superhero" /></FormControl>
+                        <FormControl>
+                          <Input {...field} placeholder="e.g., Superhero" />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -295,7 +320,9 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Price</FormLabel>
-                        <FormControl><Input {...field} placeholder="e.g., $3.99" /></FormControl>
+                        <FormControl>
+                          <Input {...field} placeholder="e.g., $3.99" />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -307,7 +334,9 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Publication Date</FormLabel>
-                      <FormControl><Input {...field} placeholder="e.g., 2023-10-25" /></FormControl>
+                      <FormControl>
+                        <Input {...field} placeholder="e.g., 2023-10-25" />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -330,8 +359,13 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                   )}
                 />
                 <div>
-                  <FormLabel>Creators</FormLabel>
-                  <div className="space-y-2 mt-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <FormLabel>Creators</FormLabel>
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddCreator}>
+                      <Plus className="h-4 w-4 mr-2" /> Add Creator
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
                     {fields.map((field, index) => (
                       <div key={field.id} className="flex items-center gap-2">
                         <FormField
@@ -339,7 +373,9 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                           name={`creators.${index}.name`}
                           render={({ field }) => (
                             <FormItem className="flex-1">
-                              <FormControl><Input placeholder="Name" {...field} /></FormControl>
+                              <FormControl>
+                                <Input placeholder="Creator Name" {...field} />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -349,31 +385,43 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                           name={`creators.${index}.role`}
                           render={({ field }) => (
                             <FormItem className="flex-1">
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
-                                  <SelectTrigger><SelectValue placeholder="Role" /></SelectTrigger>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Role" />
+                                  </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  {creatorRoles.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}
+                                  {creatorRoles.map(role => (
+                                    <SelectItem key={role} value={role}>{role}</SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                        <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleRemoveCreator(index)}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
-                    <Button type="button" variant="outline" size="sm" onClick={() => append({ name: "", role: "Writer" })}>
-                      <Plus className="h-4 w-4 mr-2" /> Add Creator
-                    </Button>
+                    {fields.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No creators added yet.</p>
+                    )}
                   </div>
                 </div>
               </div>
             </ScrollArea>
             <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
               <Button type="submit">Save Changes</Button>
             </DialogFooter>
           </form>
