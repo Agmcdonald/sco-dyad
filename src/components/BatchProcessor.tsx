@@ -57,8 +57,8 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
     setCurrentFile("");
 
     try {
-      console.log(`[BATCH-PROCESSOR] Starting batch processing of ${filesToProcess.length} files`);
-      console.log(`[BATCH-PROCESSOR] GCD service available:`, !!gcdDbService);
+      console.log(`[FILE-PROCESSOR] Starting processing of ${filesToProcess.length} files`);
+      console.log(`[FILE-PROCESSOR] GCD service available:`, !!gcdDbService);
       
       const results = await batchProcessFiles(
         filesToProcess,
@@ -104,13 +104,13 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
       }
 
       const stats = getProcessingStats(results);
-      logAction('info', `Batch processing complete: ${stats.successful}/${stats.total} files processed successfully`);
+      logAction('info', `File processing complete: ${stats.successful}/${stats.total} files processed successfully`);
       showSuccess(`Processed ${stats.successful} out of ${stats.total} files`);
 
     } catch (error) {
-      console.error(`[BATCH-PROCESSOR] Error:`, error);
-      showError("Batch processing failed");
-      logAction('error', 'Batch processing encountered an error');
+      console.error(`[FILE-PROCESSOR] Error:`, error);
+      showError("File processing failed");
+      logAction('error', 'File processing encountered an error');
     } finally {
       setIsProcessing(false);
       setProgress(0);
@@ -123,9 +123,9 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Batch Processor</CardTitle>
+        <CardTitle className="text-base">File Processor</CardTitle>
         <CardDescription>
-          Process multiple files simultaneously with intelligent detection
+          Process new files to be added to the library with intelligent detection
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
