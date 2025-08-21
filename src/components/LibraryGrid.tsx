@@ -1,4 +1,7 @@
+import { useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import ComicCard from "./ComicCard";
+import LibraryBulkActions from "./LibraryBulkActions";
 import { Comic } from "@/types";
 
 interface LibraryGridProps {
@@ -9,6 +12,24 @@ interface LibraryGridProps {
 }
 
 const LibraryGrid = ({ comics, coverSize, onSeriesDoubleClick, onToggleInspector }: LibraryGridProps) => {
+  const [selectedComics, setSelectedComics] = useState<string[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
+
+  const handleToggleSelectionMode = () => {
+    setSelectionMode(!selectionMode);
+    if (selectionMode) {
+      setSelectedComics([]);
+    }
+  };
+
+  const handleComicSelection = (comicId: string, selected: boolean) => {
+    if (selected) {
+      setSelectedComics(prev => [...prev, comicId]);
+    } else {
+      setSelectedComics(prev => prev.filter(id => id !== comicId));
+    }
+  };
+
   if (comics.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center rounded-lg border-2 border-dashed border-muted-foreground/50 p-12">
@@ -31,15 +52,56 @@ const LibraryGrid = ({ comics, coverSize, onSeriesDoubleClick, onToggleInspector
   const gridClass = sizeClasses[coverSize] || sizeClasses[3];
 
   return (
-    <div className={`grid ${gridClass} gap-4`}>
-      {comics.map((comic) => (
-        <ComicCard 
-          key={comic.id} 
-          comic={comic} 
-          onDoubleClick={onSeriesDoubleClick}
-          onToggleInspector={onToggleInspector}
+    <div className="space-y-4">
+      {/* Selection Mode Toggle */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="selection-mode"
+            checked={selectionMode}
+            onCheckedChange={handleToggleSelectionMode}
+          />
+          <label htmlFor="selection-mode" className="text-sm font-medium">
+            Selection Mode
+          </label>
+        </div>
+        {selectionMode && selectedComics.length > 0 && (
+          <div className="text-sm text-muted-foreground">
+            {selectedComics.length} comic{selectedComics.length !== 1 ? 's' : ''} selected
+          </div>
+        )}
+      </div>
+
+      {/* Bulk Actions */}
+      {selectionMode && (
+        <LibraryBulkActions
+          comics={comics}
+          selectedComics={selectedComics}
+          onSelectionChange={setSelectedComics}
         />
-      ))}
+      )}
+
+      {/* Comics Grid */}
+      <div className={`grid ${gridClass} gap-4`}>
+        {comics.map((comic) => (
+          <div key={comic.id} className="relative">
+            {selectionMode && (
+              <div className="absolute top-2 left-2 z-10">
+                <Checkbox
+                  checked={selectedComics.includes(comic.id)}
+                  onCheckedChange={(checked) => handleComicSelection(comic.id, Boolean(checked))}
+                  className="bg-background border-2 shadow-sm"
+                />
+              </div>
+            )}
+            <ComicCard 
+              comic={comic} 
+              onDoubleClick={onSeriesDoubleClick}
+              onToggleInspector={onToggleInspector}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
