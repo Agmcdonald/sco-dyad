@@ -12,6 +12,7 @@ interface SeriesGroup {
   comics: Comic[];
   totalIssues: number;
   yearRange: string;
+  seriesCover: string; // URL of the cover to use for this series
 }
 
 interface SeriesViewProps {
@@ -32,6 +33,7 @@ const SeriesView = ({ comics }: SeriesViewProps) => {
           comics: [],
           totalIssues: 0,
           yearRange: "",
+          seriesCover: "/placeholder.svg",
         };
       }
       acc[key].comics.push(comic);
@@ -42,10 +44,14 @@ const SeriesView = ({ comics }: SeriesViewProps) => {
     const minYear = years[0];
     const maxYear = years[years.length - 1];
     
+    // Find the designated series cover, or fall back to the first comic's cover
+    const seriesCoverComic = group.comics.find(c => c.isSeriesCover) || group.comics[0];
+    
     return {
       ...group,
       totalIssues: group.comics.length,
       yearRange: minYear === maxYear ? `${minYear}` : `${minYear}-${maxYear}`,
+      seriesCover: seriesCoverComic?.coverUrl || "/placeholder.svg",
       comics: group.comics.sort((a, b) => parseInt(a.issue) - parseInt(b.issue))
     };
   }).sort((a, b) => a.series.localeCompare(b.series));
@@ -94,6 +100,19 @@ const SeriesView = ({ comics }: SeriesViewProps) => {
                       <ChevronRight className="h-4 w-4" />
                     )}
                   </Button>
+                  
+                  {/* Series Cover Thumbnail */}
+                  <div className="w-12 h-16 rounded overflow-hidden bg-muted flex-shrink-0">
+                    <img 
+                      src={group.seriesCover} 
+                      alt={`${group.series} cover`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/placeholder.svg';
+                      }}
+                    />
+                  </div>
+                  
                   <div>
                     <CardTitle className="text-lg">{group.series}</CardTitle>
                     <p className="text-sm text-muted-foreground">

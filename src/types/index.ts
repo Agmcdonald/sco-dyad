@@ -29,6 +29,7 @@ export interface Comic extends NewComic {
   filePath?: string;
   metadataLastChecked?: string;
   ignoreInScans?: boolean;
+  isSeriesCover?: boolean; // Whether this comic's cover should be used for the series
 }
 
 export interface ReadingListItem {
