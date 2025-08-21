@@ -6,7 +6,6 @@ import FileQueue from "@/components/FileQueue";
 import BulkActions from "@/components/BulkActions";
 import ProcessingStats from "@/components/ProcessingStats";
 import SmartSuggestions from "@/components/SmartSuggestions";
-import FilePreview from "@/components/FilePreview";
 import BatchProcessor from "@/components/BatchProcessor";
 import AdvancedFilters from "@/components/AdvancedFilters";
 import { useSelection } from "@/context/SelectionContext";
@@ -126,8 +125,8 @@ const Organize = () => {
         />
       )}
 
-      <div className="flex-1 grid gap-4 lg:grid-cols-4">
-        <div className="lg:col-span-3 rounded-lg border bg-card text-card-foreground shadow-sm">
+      <div className="flex-1">
+        <div className="h-full rounded-lg border bg-card text-card-foreground shadow-sm">
           {files.length === 0 ? (
             <FileDropzone />
           ) : (
@@ -138,12 +137,6 @@ const Organize = () => {
             />
           )}
         </div>
-        
-        {selectedItem?.type === 'file' && (
-          <div className="lg:col-span-1">
-            <FilePreview file={selectedItem as QueuedFile} />
-          </div>
-        )}
       </div>
     </div>
   );
