@@ -148,6 +148,38 @@ electron/
 └── ...                 # Other Electron-related files
 ```
 
+## Packaging for Distribution
+
+This project is configured to use `electron-builder` to create distributable installers for Windows, macOS, and Linux.
+
+### Build Command
+
+To package the application after exporting the code, run the following command in your local terminal:
+
+```bash
+npm run package
+```
+
+### What this command does:
+
+1.  **`vite build`**: This first builds the React web application into an optimized set of static files located in the `dist/` directory.
+2.  **`electron-builder`**: This tool then takes the built web app, your Electron source code (`electron/` directory), and packages them into a native application and installer.
+
+### Output
+
+The packaged application and installer will be created in a new `release/` directory in the project's root. For example, on Windows, you will find a `.exe` installer which can be used to install the application.
+
+### Application Icon
+
+The application will use a default icon. To use a custom icon:
+
+1.  Create your icon in the required formats:
+    *   **Windows**: `icon.ico` (256x256px)
+    *   **macOS**: `icon.icns`
+    *   **Linux**: `icon.png` (512x512px)
+2.  Place these files inside a `build/` directory in the project root.
+3.  Run the `npm run package` command again. `electron-builder` will automatically find and use these icons.
+
 ## Troubleshooting
 
 ### Common Issues
