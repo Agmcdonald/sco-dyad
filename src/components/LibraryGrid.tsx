@@ -28,17 +28,13 @@ const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onTog
         return acc;
       }, {} as Record<string, Comic[]>);
 
-      // Sort publishers and comics within each group
+      // Sort publishers but keep the comics in their already-sorted order
       return Object.entries(groups)
         .sort(([a], [b]) => sortOption === 'publisher-asc' ? a.localeCompare(b) : b.localeCompare(a))
         .map(([publisher, groupComics]) => ({
           publisher,
-          // Sort comics within each publisher group alphabetically by series, then by issue
-          comics: groupComics.sort((a, b) => {
-            const seriesCompare = a.series.localeCompare(b.series);
-            if (seriesCompare !== 0) return seriesCompare;
-            return parseInt(a.issue) - parseInt(b.issue);
-          })
+          // Use the comics in their already-sorted order from the parent component
+          comics: groupComics
         }));
     }
     
