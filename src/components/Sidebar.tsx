@@ -51,43 +51,45 @@ const Sidebar = () => {
 
   return (
     <aside className="h-full flex flex-col bg-muted/40 border-r">
-      <div className="p-4 space-y-4 border-b">
-        <div className="flex justify-center">
+      <div className="border-b">
+        <div className="flex justify-center p-4">
           <img src="/logo.png" alt="Super Comic Organizer Logo" className="h-auto w-full" />
         </div>
-        <form onSubmit={handleSearch} className="relative">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search comics..." 
-            className="pl-8" 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </form>
-        
-        {/* Search Results Dropdown */}
-        {searchResults.length > 0 && (
-          <div className="mt-2 bg-background border rounded-md shadow-lg">
-            <div className="p-2 text-xs font-medium text-muted-foreground border-b">
-              Search Results
+        <div className="px-4 pb-4">
+          <form onSubmit={handleSearch} className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Search comics..." 
+              className="pl-8" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </form>
+          
+          {/* Search Results Dropdown */}
+          {searchResults.length > 0 && (
+            <div className="mt-2 bg-background border rounded-md shadow-lg">
+              <div className="p-2 text-xs font-medium text-muted-foreground border-b">
+                Search Results
+              </div>
+              {searchResults.map((comic) => (
+                <button
+                  key={comic.id}
+                  className="w-full text-left p-2 hover:bg-muted text-sm"
+                  onClick={() => {
+                    navigate('/app/library', { state: { searchTerm: comic.series } });
+                    setSearchTerm("");
+                  }}
+                >
+                  <div className="font-medium">{comic.series}</div>
+                  <div className="text-xs text-muted-foreground">
+                    #{comic.issue} • {comic.publisher}
+                  </div>
+                </button>
+              ))}
             </div>
-            {searchResults.map((comic) => (
-              <button
-                key={comic.id}
-                className="w-full text-left p-2 hover:bg-muted text-sm"
-                onClick={() => {
-                  navigate('/app/library', { state: { searchTerm: comic.series } });
-                  setSearchTerm("");
-                }}
-              >
-                <div className="font-medium">{comic.series}</div>
-                <div className="text-xs text-muted-foreground">
-                  #{comic.issue} • {comic.publisher}
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
+          )}
+        </div>
       </div>
       
       <nav className="flex-1 px-2 py-4 space-y-1">
