@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FolderPlus, GraduationCap, Plus, TrendingUp, BookOpen, Zap } from "lucide-react";
+import { FolderPlus, Tag, Plus, TrendingUp, BookOpen, Zap } from "lucide-react";
 import ProgressStrip from "@/components/ProgressStrip";
 import RecentActions from "@/components/RecentActions";
 import LibraryStats from "@/components/LibraryStats";
@@ -114,8 +114,8 @@ const Dashboard = () => {
                   <Button variant="secondary" onClick={handleScanFolder}>
                     <FolderPlus className="mr-2 h-4 w-4" /> Scan Folder
                   </Button>
-                  <Button variant="secondary" onClick={() => navigate('/app/learning')}>
-                    <GraduationCap className="mr-2 h-4 w-4" /> Open Learning
+                  <Button variant="secondary" onClick={() => navigate('/app/knowledge')}>
+                    <Tag className="mr-2 h-4 w-4" /> Open Knowledge
                   </Button>
                 </CardContent>
               </Card>
