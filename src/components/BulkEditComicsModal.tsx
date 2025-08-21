@@ -1,7 +1,4 @@
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,7 +11,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Trash2 } from "lucide-react";
@@ -24,12 +20,6 @@ import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 import { showSuccess } from "@/utils/toast";
 
 const creatorRoles = ["Writer", "Pencils", "Inks", "Colors", "Letters", "Editor", "Cover Artist", "Artist"];
-
-const formSchema = z.object({
-  publisher: z.string().optional(),
-  genre: z.string().optional(),
-  volume: z.string().optional(),
-});
 
 interface BulkEditComicsModalProps {
   isOpen: boolean;
@@ -41,22 +31,22 @@ interface BulkEditComicsModalProps {
 const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEditComicsModalProps) => {
   const { updateComic } = useAppContext();
   const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    publisher: "",
+    genre: "",
+    volume: "",
+  });
+  
   const [enabledFields, setEnabledFields] = useState({
     publisher: false,
     genre: false,
     volume: false,
     creators: false,
   });
+  
   const [creators, setCreators] = useState<Creator[]>([]);
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      publisher: "",
-      genre: "",
-      volume: "",
-    },
-  });
 
   const selectedComicObjects = comics.filter(c => selectedComics.includes(c.id));
 
@@ -100,7 +90,7 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
       const mostCommonVolume = Object.entries(volumeCounts)
         .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
 
-      form.reset({
+      setFormData({
         publisher: mostCommonPublisher,
         genre: mostCommonGenre,
         volume: mostCommonVolume,
@@ -109,7 +99,14 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
       // Reset creators to empty
       setCreators([]);
     }
-  }, [isOpen, selectedComics, comics, form]);
+  }, [isOpen, selectedComics, comics]);
+
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
   const toggleField = (fieldName: keyof typeof enabledFields) => {
     setEnabledFields(prev => ({
@@ -132,25 +129,27 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
     ));
   };
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     let updatedCount = 0;
 
     for (const comic of selectedComicObjects) {
       const updates: Partial<Comic> = {};
       let hasUpdates = false;
 
-      if (enabledFields.publisher && values.publisher) {
-        updates.publisher = values.publisher;
+      if (enabledFields.publisher && formData.publisher.trim()) {
+        updates.publisher = formData.publisher.trim();
         hasUpdates = true;
       }
 
-      if (enabledFields.genre && values.genre) {
-        updates.genre = values.genre;
+      if (enabledFields.genre && formData.genre.trim()) {
+        updates.genre = formData.genre.trim();
         hasUpdates = true;
       }
 
-      if (enabledFields.volume && values.volume) {
-        updates.volume = values.volume;
+      if (enabledFields.volume && formData.volume.trim()) {
+        updates.volume = formData.volume.trim();
         hasUpdates = true;
       }
 
@@ -191,12 +190,13 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
       creators: false,
     });
     setCreators([]);
-    form.reset();
+    setFormData({
+      publisher: "",
+      genre: "",
+      volume: "",
+    });
     onClose();
   };
-
-  // Watch form values for preview
-  const watchedValues = form.watch();
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -209,198 +209,169 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
           </DialogDescription>
         </DialogHeader>
         
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <ScrollArea className="h-[60vh] p-4">
-              <div className="space-y-4">
-                {/* Publisher Field */}
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="update-publisher"
-                    checked={enabledFields.publisher}
-                    onCheckedChange={() => toggleField('publisher')}
-                    className="mt-2"
+        <form onSubmit={handleSubmit}>
+          <ScrollArea className="h-[60vh] p-4">
+            <div className="space-y-4">
+              {/* Publisher Field */}
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="update-publisher"
+                  checked={enabledFields.publisher}
+                  onCheckedChange={() => toggleField('publisher')}
+                  className="mt-2"
+                />
+                <div className="flex-1">
+                  <Label htmlFor="publisher-input">Publisher</Label>
+                  <Input
+                    id="publisher-input"
+                    value={formData.publisher}
+                    onChange={(e) => handleInputChange('publisher', e.target.value)}
+                    list="publisher-options-bulk"
+                    placeholder="Type or select publisher..."
                   />
-                  <div className="flex-1">
-                    <FormField
-                      control={form.control}
-                      name="publisher"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Publisher</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              list="publisher-options-bulk"
-                              placeholder="Type or select publisher..."
-                            />
-                          </FormControl>
-                          <datalist id="publisher-options-bulk">
-                            {publisherOptions.map((option) => (
-                              <option key={option} value={option} />
-                            ))}
-                          </datalist>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  <datalist id="publisher-options-bulk">
+                    {publisherOptions.map((option) => (
+                      <option key={option} value={option} />
+                    ))}
+                  </datalist>
                 </div>
+              </div>
 
-                {/* Genre Field */}
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="update-genre"
-                    checked={enabledFields.genre}
-                    onCheckedChange={() => toggleField('genre')}
-                    className="mt-2"
+              {/* Genre Field */}
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="update-genre"
+                  checked={enabledFields.genre}
+                  onCheckedChange={() => toggleField('genre')}
+                  className="mt-2"
+                />
+                <div className="flex-1">
+                  <Label htmlFor="genre-input">Genre</Label>
+                  <Input
+                    id="genre-input"
+                    value={formData.genre}
+                    onChange={(e) => handleInputChange('genre', e.target.value)}
+                    placeholder="e.g., Superhero, Horror, Sci-Fi"
                   />
-                  <div className="flex-1">
-                    <FormField
-                      control={form.control}
-                      name="genre"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Genre</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="e.g., Superhero, Horror, Sci-Fi"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
                 </div>
+              </div>
 
-                {/* Volume Field */}
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="update-volume"
-                    checked={enabledFields.volume}
-                    onCheckedChange={() => toggleField('volume')}
-                    className="mt-2"
+              {/* Volume Field */}
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="update-volume"
+                  checked={enabledFields.volume}
+                  onCheckedChange={() => toggleField('volume')}
+                  className="mt-2"
+                />
+                <div className="flex-1">
+                  <Label htmlFor="volume-input">Volume</Label>
+                  <Input
+                    id="volume-input"
+                    value={formData.volume}
+                    onChange={(e) => handleInputChange('volume', e.target.value)}
+                    placeholder="e.g., 2016"
                   />
-                  <div className="flex-1">
-                    <FormField
-                      control={form.control}
-                      name="volume"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Volume</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="e.g., 2016"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
                 </div>
+              </div>
 
-                {/* Creators Field */}
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="update-creators"
-                    checked={enabledFields.creators}
-                    onCheckedChange={() => toggleField('creators')}
-                    className="mt-2"
-                  />
-                  <div className="flex-1">
+              {/* Creators Field */}
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="update-creators"
+                  checked={enabledFields.creators}
+                  onCheckedChange={() => toggleField('creators')}
+                  className="mt-2"
+                />
+                <div className="flex-1">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Creators</Label>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={addCreator}
+                      >
+                        <Plus className="h-4 w-4 mr-2" /> Add Creator
+                      </Button>
+                    </div>
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label>Creators</Label>
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={addCreator}
-                        >
-                          <Plus className="h-4 w-4 mr-2" /> Add Creator
-                        </Button>
-                      </div>
-                      <div className="space-y-2">
-                        {creators.map((creator, index) => (
-                          <div key={index} className="flex items-center gap-2">
-                            <Input
-                              placeholder="Creator Name"
-                              value={creator.name}
-                              onChange={(e) => updateCreator(index, 'name', e.target.value)}
-                              className="flex-1"
-                            />
-                            <Select 
-                              value={creator.role} 
-                              onValueChange={(value) => updateCreator(index, 'role', value)}
-                            >
-                              <SelectTrigger className="flex-1">
-                                <SelectValue placeholder="Role" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {creatorRoles.map(role => (
-                                  <SelectItem key={role} value={role}>{role}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Button 
-                              type="button" 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => removeCreator(index)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                        {creators.length === 0 && (
-                          <p className="text-sm text-muted-foreground">No creators added yet.</p>
-                        )}
-                      </div>
+                      {creators.map((creator, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Input
+                            placeholder="Creator Name"
+                            value={creator.name}
+                            onChange={(e) => updateCreator(index, 'name', e.target.value)}
+                            className="flex-1"
+                          />
+                          <Select 
+                            value={creator.role} 
+                            onValueChange={(value) => updateCreator(index, 'role', value)}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {creatorRoles.map(role => (
+                                <SelectItem key={role} value={role}>{role}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => removeCreator(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                      {creators.length === 0 && (
+                        <p className="text-sm text-muted-foreground">No creators added yet.</p>
+                      )}
                     </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Preview of changes */}
-                <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-                  <Label className="text-sm font-medium">Preview of changes:</Label>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    {enabledFields.publisher && watchedValues.publisher && (
-                      <div>• Publisher: {watchedValues.publisher}</div>
-                    )}
-                    {enabledFields.genre && watchedValues.genre && (
-                      <div>• Genre: {watchedValues.genre}</div>
-                    )}
-                    {enabledFields.volume && watchedValues.volume && (
-                      <div>• Volume: {watchedValues.volume}</div>
-                    )}
-                    {enabledFields.creators && creators.length > 0 && (
-                      <div>• Creators: {creators.filter(c => c.name.trim()).length} creator(s)</div>
-                    )}
-                    {!Object.values(enabledFields).some(enabled => enabled) && (
-                      <div>No fields selected for update</div>
-                    )}
-                  </div>
+              {/* Preview of changes */}
+              <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                <Label className="text-sm font-medium">Preview of changes:</Label>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {enabledFields.publisher && formData.publisher && (
+                    <div>• Publisher: {formData.publisher}</div>
+                  )}
+                  {enabledFields.genre && formData.genre && (
+                    <div>• Genre: {formData.genre}</div>
+                  )}
+                  {enabledFields.volume && formData.volume && (
+                    <div>• Volume: {formData.volume}</div>
+                  )}
+                  {enabledFields.creators && creators.length > 0 && (
+                    <div>• Creators: {creators.filter(c => c.name.trim()).length} creator(s)</div>
+                  )}
+                  {!Object.values(enabledFields).some(enabled => enabled) && (
+                    <div>No fields selected for update</div>
+                  )}
                 </div>
               </div>
-            </ScrollArea>
+            </div>
+          </ScrollArea>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={!Object.values(enabledFields).some(enabled => enabled)}
-              >
-                Update {selectedComics.length} Comics
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={!Object.values(enabledFields).some(enabled => enabled)}
+            >
+              Update {selectedComics.length} Comics
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
