@@ -21,22 +21,26 @@ export const useFileQueue = () => {
     if (paths.length === 0) return;
 
     const filesWithInfo = await Promise.all(
-      paths.map(async (path, index) => {
+      paths.map(async (filePath, index) => {
+        // Safely extract filename from path
+        const fileName = filePath ? filePath.split(/[\\/]/).pop() || 'Unknown File' : 'Unknown File';
+        
         const newFile: QueuedFile = {
           id: `file-${fileIdCounter++}-${index}`,
-          name: path.split(/[\\/]/).pop() || 'Unknown File',
-          path: path,
+          name: fileName,
+          path: filePath || '',
           series: null,
           issue: null,
           year: null,
           publisher: null,
+          volume: null,
           confidence: null,
           status: 'Pending',
         };
 
-        if (isElectron && electronAPI) {
+        if (isElectron && electronAPI && filePath) {
           try {
-            const fileInfo = await electronAPI.readComicFile(path);
+            const fileInfo = await electronAPI.readComicFile(filePath);
             newFile.pageCount = fileInfo?.pageCount || undefined;
           } catch (error) {
             console.warn(`Could not read info for ${newFile.name}:`, error);
