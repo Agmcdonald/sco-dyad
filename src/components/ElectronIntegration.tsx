@@ -4,7 +4,6 @@ import { useElectron, useElectronFileHandlers, useElectronNavigation } from '@/h
 import { useElectronFileService } from '@/services/electronFileService';
 import { useAppContext } from '@/context/AppContext';
 import { showSuccess, showError } from '@/utils/toast';
-import ElectronTesting from './ElectronTesting';
 
 const ElectronIntegration = () => {
   const { isElectron, electronAPI } = useElectron();
@@ -111,9 +110,6 @@ const ElectronIntegration = () => {
           </div>
         </div>
       )}
-      
-      {/* Testing tools in development */}
-      <ElectronTesting />
     </>
   );
 };
