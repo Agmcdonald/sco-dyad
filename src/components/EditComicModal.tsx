@@ -82,7 +82,7 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
         creators: comic.creators || [],
       });
     }
-  }, [comic, form]);
+  }, [comic.id, form.reset]);
 
   const publisherOptions = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))].filter(Boolean) as string[];
