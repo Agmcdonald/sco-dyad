@@ -24,7 +24,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { useElectron } from "@/hooks/useElectron";
 import { showError, showSuccess } from "@/utils/toast";
 import { testApiConnection, testMarvelApiConnection } from "@/lib/scraper";
-import { Loader2, FolderOpen } from "lucide-react";
+import { Loader2, FolderOpen, Sun, Moon } from "lucide-react";
 
 const Settings = () => {
   const { theme, setTheme } = useTheme();
@@ -104,16 +104,13 @@ const Settings = () => {
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
                   <Label>Theme</Label>
-                  <p className="text-sm text-muted-foreground">Select the color theme.</p>
+                  <p className="text-sm text-muted-foreground">Switch between light and dark mode.</p>
                 </div>
-                <Select value={theme} onValueChange={setTheme}>
-                  <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
-                    <SelectItem value="system">System</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Button variant="outline" size="icon" onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
+                  <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                  <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                  <span className="sr-only">Toggle theme</span>
+                </Button>
               </div>
             </CardContent>
           </Card>
