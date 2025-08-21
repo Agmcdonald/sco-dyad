@@ -57,7 +57,7 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
   // Generate publisher options from existing comics and knowledge base
   const publisherOptions: ComboboxOption[] = (() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
-    const publishersFromKnowledge = [...new Set(knowledgeBase.map(entry => entry.publisher))];
+    const publishersFromKnowledge = [...new Set(knowledgeBase.series.map(entry => entry.publisher))];
     
     // Add some common publishers if not already present
     const commonPublishers = ['Marvel Comics', 'DC Comics', 'Image Comics', 'Dark Horse Comics', 'IDW Publishing'];

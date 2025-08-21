@@ -50,7 +50,7 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
   // Generate publisher options
   const publisherOptions = (() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
-    const publishersFromKnowledge = [...new Set(knowledgeBase.map(entry => entry.publisher))];
+    const publishersFromKnowledge = [...new Set(knowledgeBase.series.map(entry => entry.publisher))];
     const commonPublishers = ['Marvel Comics', 'DC Comics', 'Image Comics', 'Dark Horse Comics', 'IDW Publishing'];
     const allPublishers = [...new Set([...publishersFromComics, ...publishersFromKnowledge, ...commonPublishers])];
     
@@ -377,7 +377,7 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
               </div>
             </div>
           </ScrollArea>
-
+          
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
