@@ -8,18 +8,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { 
   RefreshCw, 
-  Upload, 
-  Link, 
   Image as ImageIcon, 
   Loader2,
-  CheckCircle,
   AlertCircle
 } from "lucide-react";
 import { Comic } from "@/types";
@@ -37,32 +31,10 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
   const { updateComic } = useAppContext();
   const { isElectron, electronAPI } = useElectron();
   const [isExtracting, setIsExtracting] = useState(false);
-  const [customUrl, setCustomUrl] = useState("");
-  const [previewUrl, setPreviewUrl] = useState("");
-  const [previewError, setPreviewError] = useState("");
   const [availablePages, setAvailablePages] = useState<string[]>([]);
   const [isLoadingPages, setIsLoadingPages] = useState(false);
   const [pageImages, setPageImages] = useState<Record<string, string>>({});
   const [pageLoadError, setPageLoadError] = useState("");
-
-  // Convert Google Drive sharing URL to direct image URL
-  const convertGoogleDriveUrl = (url: string): string => {
-    const googleDriveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
-    if (googleDriveMatch) {
-      const fileId = googleDriveMatch[1];
-      return `https://drive.google.com/uc?export=view&id=${fileId}`;
-    }
-    return url;
-  };
-
-  // Check if URL looks like a direct image URL
-  const isDirectImageUrl = (url: string): boolean => {
-    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
-    const lowerUrl = url.toLowerCase();
-    return imageExtensions.some(ext => lowerUrl.includes(ext)) || 
-           lowerUrl.includes('uc?export=view') || // Google Drive direct
-           lowerUrl.includes('amazonaws.com'); // AWS S3
-  };
 
   // Load available pages from the comic file
   useEffect(() => {
@@ -132,35 +104,6 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
     }
   };
 
-  const handleUseCustomUrl = async () => {
-    if (!customUrl.trim()) {
-      showError("Please enter a valid image URL.");
-      return;
-    }
-
-    try {
-      console.log('[FIX-COVER] Original URL:', customUrl.trim());
-      
-      // Convert Google Drive URLs to direct links
-      const processedUrl = convertGoogleDriveUrl(customUrl.trim());
-      console.log('[FIX-COVER] Processed URL:', processedUrl);
-      
-      // Warn if URL doesn't look like a direct image URL
-      if (!isDirectImageUrl(processedUrl)) {
-        showError("This doesn't appear to be a direct image URL. Please use a direct link to an image file (ending in .jpg, .png, etc.) or a Google Drive direct link.");
-        return;
-      }
-      
-      const updatedComic = { ...comic, coverUrl: processedUrl };
-      await updateComic(updatedComic);
-      showSuccess("Custom cover image set successfully!");
-      onClose();
-    } catch (error) {
-      console.error('[FIX-COVER] Error setting custom URL:', error);
-      showError("Failed to set custom cover URL.");
-    }
-  };
-
   const handleUsePageAsCover = async (pageName: string) => {
     if (!isElectron || !electronAPI || !comic.filePath) return;
 
@@ -180,39 +123,6 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
     }
   };
 
-  const handlePreviewUrl = () => {
-    if (!customUrl.trim()) {
-      setPreviewError("Please enter a URL first");
-      return;
-    }
-
-    const processedUrl = convertGoogleDriveUrl(customUrl.trim());
-    console.log('[FIX-COVER] Testing preview URL:', processedUrl);
-    setPreviewError("");
-    setPreviewUrl("");
-
-    // Test if the URL is a valid image
-    const img = new Image();
-    img.crossOrigin = "anonymous"; // Try to handle CORS
-    img.onload = () => {
-      console.log('[FIX-COVER] Preview image loaded successfully');
-      setPreviewUrl(processedUrl);
-      setPreviewError("");
-    };
-    img.onerror = (error) => {
-      console.error('[FIX-COVER] Preview image failed to load:', error);
-      setPreviewError("Could not load image from URL. This might be due to CORS restrictions or an invalid URL.");
-      setPreviewUrl("");
-    };
-    img.src = processedUrl;
-  };
-
-  // Clear preview when URL changes
-  useEffect(() => {
-    setPreviewUrl("");
-    setPreviewError("");
-  }, [customUrl]);
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-2xl">
@@ -227,9 +137,8 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
         </DialogHeader>
 
         <Tabs defaultValue="re-extract" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="re-extract">Re-extract</TabsTrigger>
-            <TabsTrigger value="custom-url">Custom URL</TabsTrigger>
             <TabsTrigger value="select-page">Select Page</TabsTrigger>
           </TabsList>
 
@@ -272,61 +181,6 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
                   This feature is only available in the desktop app.
                 </p>
               )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="custom-url" className="space-y-4">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="cover-url">Image URL</Label>
-                <div className="flex gap-2 mt-1">
-                  <Input
-                    id="cover-url"
-                    placeholder="https://example.com/cover.jpg"
-                    value={customUrl}
-                    onChange={(e) => setCustomUrl(e.target.value)}
-                  />
-                  <Button variant="outline" onClick={handlePreviewUrl}>
-                    Preview
-                  </Button>
-                </div>
-                {previewError && (
-                  <p className="text-sm text-red-500 mt-1">{previewError}</p>
-                )}
-              </div>
-              
-              {previewUrl && (
-                <div className="text-center">
-                  <div className="w-32 h-48 bg-muted rounded-lg overflow-hidden mx-auto">
-                    <img 
-                      src={previewUrl} 
-                      alt="Preview" 
-                      className="w-full h-full object-cover"
-                      onError={() => {
-                        setPreviewUrl("");
-                        setPreviewError("Failed to load preview image");
-                      }}
-                    />
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">Preview</p>
-                </div>
-              )}
-
-              <div>
-                <h4 className="font-medium">Use Custom Image URL</h4>
-                <p className="text-sm text-muted-foreground">
-                  Enter a direct link to an image file. The URL should end with .jpg, .png, .gif, etc.
-                </p>
-                <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                  <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">Google Drive Tip:</p>
-                  <p className="text-xs text-blue-600 dark:text-blue-400">
-                    For Google Drive images, use sharing links like: <br/>
-                    <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">
-                      https://drive.google.com/file/d/FILE_ID/view?usp=sharing
-                    </code>
-                  </p>
-                </div>
-              </div>
             </div>
           </TabsContent>
 
@@ -404,12 +258,6 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          {customUrl && (
-            <Button onClick={handleUseCustomUrl}>
-              <Link className="mr-2 h-4 w-4" />
-              Use Custom URL
-            </Button>
-          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
