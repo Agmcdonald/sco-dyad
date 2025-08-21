@@ -52,8 +52,8 @@ const Sidebar = () => {
   return (
     <aside className="h-full flex flex-col bg-muted/40 border-r">
       <div className="p-4 space-y-4 border-b">
-        <div className="flex justify-center px-4">
-          <img src="/logo.png" alt="Super Comic Organizer Logo" className="h-auto w-full max-w-[200px]" />
+        <div className="flex justify-center">
+          <img src="/logo.png" alt="Super Comic Organizer Logo" className="h-auto w-full" />
         </div>
         <form onSubmit={handleSearch} className="relative">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
