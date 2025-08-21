@@ -43,6 +43,7 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
   const [availablePages, setAvailablePages] = useState<string[]>([]);
   const [isLoadingPages, setIsLoadingPages] = useState(false);
   const [pageImages, setPageImages] = useState<Record<string, string>>({});
+  const [pageLoadError, setPageLoadError] = useState("");
 
   // Load available pages from the comic file
   useEffect(() => {
@@ -50,18 +51,28 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
       if (!isElectron || !electronAPI || !comic.filePath) return;
       
       setIsLoadingPages(true);
+      setPageLoadError("");
       try {
         console.log('[FIX-COVER] Loading pages for:', comic.filePath);
         const pages = await electronAPI.getComicPages(comic.filePath);
         console.log('[FIX-COVER] Found pages:', pages);
+        
+        if (!pages || pages.length === 0) {
+          setPageLoadError("No pages found in comic file. The file might be corrupted or in an unsupported format.");
+          setAvailablePages([]);
+          return;
+        }
+        
         setAvailablePages(pages.slice(0, 10)); // Show first 10 pages
         
         // Load thumbnails for the first few pages
         const thumbnails: Record<string, string> = {};
         for (let i = 0; i < Math.min(pages.length, 5); i++) {
           try {
+            console.log(`[FIX-COVER] Loading thumbnail for page: ${pages[i]}`);
             const pageDataUrl = await electronAPI.getComicPageDataUrl(comic.filePath!, pages[i]);
             thumbnails[pages[i]] = pageDataUrl;
+            console.log(`[FIX-COVER] Successfully loaded thumbnail for page: ${pages[i]}`);
           } catch (error) {
             console.warn(`[FIX-COVER] Could not load thumbnail for page ${pages[i]}:`, error);
           }
@@ -69,7 +80,8 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
         setPageImages(thumbnails);
       } catch (error) {
         console.error('[FIX-COVER] Error loading comic pages:', error);
-        showError("Could not load pages from comic file. The file might be corrupted or in an unsupported format.");
+        setPageLoadError(`Error loading pages: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        setAvailablePages([]);
       } finally {
         setIsLoadingPages(false);
       }
@@ -108,12 +120,13 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
     }
 
     try {
+      console.log('[FIX-COVER] Setting custom URL:', customUrl.trim());
       const updatedComic = { ...comic, coverUrl: customUrl.trim() };
       await updateComic(updatedComic);
       showSuccess("Custom cover image set successfully!");
       onClose();
     } catch (error) {
-      console.error('Error setting custom URL:', error);
+      console.error('[FIX-COVER] Error setting custom URL:', error);
       showError("Failed to set custom cover URL.");
     }
   };
@@ -122,6 +135,7 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
     if (!isElectron || !electronAPI || !comic.filePath) return;
 
     try {
+      console.log('[FIX-COVER] Using page as cover:', pageName);
       // Get the page as a data URL
       const pageDataUrl = await electronAPI.getComicPageDataUrl(comic.filePath, pageName);
       
@@ -131,7 +145,7 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
       showSuccess(`Set page "${pageName}" as the cover!`);
       onClose();
     } catch (error) {
-      console.error('Error using page as cover:', error);
+      console.error('[FIX-COVER] Error using page as cover:', error);
       showError("Failed to use page as cover.");
     }
   };
@@ -142,6 +156,7 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
       return;
     }
 
+    console.log('[FIX-COVER] Testing preview URL:', customUrl.trim());
     setPreviewError("");
     setPreviewUrl("");
 
@@ -149,10 +164,12 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
     const img = new Image();
     img.crossOrigin = "anonymous"; // Try to handle CORS
     img.onload = () => {
+      console.log('[FIX-COVER] Preview image loaded successfully');
       setPreviewUrl(customUrl.trim());
       setPreviewError("");
     };
-    img.onerror = () => {
+    img.onerror = (error) => {
+      console.error('[FIX-COVER] Preview image failed to load:', error);
       setPreviewError("Could not load image from URL. This might be due to CORS restrictions or an invalid URL.");
       setPreviewUrl("");
     };
@@ -269,6 +286,9 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
                 <p className="text-sm text-muted-foreground">
                   Enter a direct link to an image file to use as the cover. Note: Some websites block external access to their images (CORS policy).
                 </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  <strong>Tip:</strong> Even if the preview doesn't work, you can still try using the URL - it might work as a cover even if preview fails.
+                </p>
               </div>
             </div>
           </TabsContent>
@@ -290,6 +310,15 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
                 <div className="text-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">Loading pages...</p>
+                </div>
+              ) : pageLoadError ? (
+                <div className="text-center py-8">
+                  <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+                  <p className="text-sm text-red-500 font-medium">Page Loading Failed</p>
+                  <p className="text-xs text-muted-foreground mt-2">{pageLoadError}</p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    This comic file format might not support page extraction, or the file could be corrupted.
+                  </p>
                 </div>
               ) : availablePages.length === 0 ? (
                 <div className="text-center py-8">
