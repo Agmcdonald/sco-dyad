@@ -116,3 +116,15 @@ export interface ComicKnowledge {
     year: number;
   }>;
 }
+
+export interface CreatorKnowledge {
+  id: string;
+  name: string;
+  roles: string[];
+  notes?: string;
+}
+
+export interface KnowledgeBase {
+  series: ComicKnowledge[];
+  creators: CreatorKnowledge[];
+}
