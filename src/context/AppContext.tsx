@@ -38,6 +38,7 @@ interface AppContextType {
   addToReadingList: (comic: Comic) => void;
   removeFromReadingList: (itemId: string) => void;
   toggleReadingItemCompleted: (itemId: string) => void;
+  toggleComicReadStatus: (comic: Comic) => void;
   setReadingItemPriority: (itemId: string, priority: 'low' | 'medium' | 'high') => void;
   setReadingItemRating: (itemId: string, rating: number) => void;
   recentlyRead: any[];
@@ -70,7 +71,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     removeFromReadingList, 
     toggleReadingItemCompleted, 
     setReadingItemPriority, 
-    setReadingItemRating
+    setReadingItemRating,
+    toggleComicReadStatus
   } = useReadingList();
   const { 
     recentlyRead, 
@@ -157,21 +159,20 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const comicToSave = { 
           ...comicData, 
           filePath: organizeResult.newPath || originalFile.path, 
-          fileSize 
+          fileSize,
+          coverUrl
         };
         
         console.log(`[ADD-COMIC] Saving comic to database:`, comicToSave);
         const savedComic = await databaseService.saveComic(comicToSave);
-        const finalComic = { ...savedComic, coverUrl };
-
-        await databaseService.updateComic(finalComic);
+        
         await refreshComics();
         
-        logAction('success', `Organized '${originalFile.name}' as '${finalComic.series} #${finalComic.issue}'`, {
+        logAction('success', `Organized '${originalFile.name}' as '${savedComic.series} #${savedComic.issue}'`, {
           type: 'ADD_COMIC',
-          payload: { comicId: finalComic.id, originalFile }
+          payload: { comicId: savedComic.id, originalFile }
         });
-        showSuccess(`Added '${finalComic.series} #${finalComic.issue}' to library`);
+        showSuccess(`Added '${savedComic.series} #${savedComic.issue}' to library`);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`[ADD-COMIC] Error organizing ${originalFile.name}:`, error);
@@ -493,7 +494,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       actions, logAction, lastUndoableAction, undoLastAction,
       addMockFiles, triggerSelectFiles, triggerScanFolder, addFilesFromDrop,
       addFilesFromPaths,
-      readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted, setReadingItemPriority, setReadingItemRating,
+      readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted,
+      toggleComicReadStatus,
+      setReadingItemPriority, setReadingItemRating,
       recentlyRead, addToRecentlyRead, updateRecentRating,
       refreshComics,
       importComics,

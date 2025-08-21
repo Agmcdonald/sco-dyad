@@ -34,6 +34,10 @@ export const useReadingList = () => {
   };
 
   const toggleReadingItemCompleted = (itemId: string) => {
+    const item = readingList.find(i => i.id === itemId);
+    if (item && !item.completed) {
+      showSuccess(`Marked "${item.title}" as read!`);
+    }
     setReadingList(prev => prev.map(item => 
       item.id === itemId ? { 
         ...item, 
@@ -41,9 +45,32 @@ export const useReadingList = () => {
         dateCompleted: !item.completed ? new Date() : undefined
       } : item
     ));
-    const item = readingList.find(i => i.id === itemId);
-    if (item && !item.completed) {
-      showSuccess(`Marked "${item.title}" as read!`);
+  };
+
+  const toggleComicReadStatus = (comic: Comic) => {
+    const existingItem = readingList.find(item => item.comicId === comic.id);
+
+    if (existingItem) {
+      // Already in list, just toggle
+      toggleReadingItemCompleted(existingItem.id);
+    } else {
+      // Not in list, add it and mark as read
+      const newItem: ReadingListItem = {
+        id: `rl-${Date.now()}`,
+        comicId: comic.id,
+        title: `${comic.series} #${comic.issue}`,
+        series: comic.series,
+        issue: comic.issue,
+        publisher: comic.publisher,
+        year: comic.year,
+        priority: 'medium',
+        completed: true,
+        dateAdded: new Date(),
+        dateCompleted: new Date(),
+        rating: comic.rating
+      };
+      setReadingList(prev => [newItem, ...prev]);
+      showSuccess(`Marked "${newItem.title}" as read!`);
     }
   };
 
@@ -77,6 +104,7 @@ export const useReadingList = () => {
     toggleReadingItemCompleted, 
     setReadingItemPriority,
     setReadingItemRating,
-    syncReadingListWithComics
+    syncReadingListWithComics,
+    toggleComicReadStatus
   };
 };

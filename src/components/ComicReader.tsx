@@ -41,12 +41,11 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
   } = useElectron();
   const { 
     comics,
-    addToReadingList, 
     readingList, 
-    toggleReadingItemCompleted, 
     logAction, 
     addToRecentlyRead,
-    updateComicRating
+    updateComicRating,
+    toggleComicReadStatus
   } = useAppContext();
   const [pages, setPages] = useState<string[]>([]);
   const [pageImageUrls, setPageImageUrls] = useState<Record<number, string>>({});
@@ -71,7 +70,6 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
 
   const readingListItem = readingList.find(item => item.comicId === comic.id);
   const rating = comic.rating;
-  const isInReadingList = !!readingListItem;
   const isMarkedAsRead = readingListItem?.completed || false;
 
   useEffect(() => {
@@ -172,19 +170,7 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
   }, [currentPage, goToPage, viewMode]);
 
   const handleMarkAsRead = () => {
-    if (!isInReadingList) {
-      addToReadingList(comic);
-      setTimeout(() => {
-        const newItem = readingList.find(item => item.comicId === comic.id);
-        if (newItem) toggleReadingItemCompleted(newItem.id);
-      }, 100);
-    } else if (readingListItem) {
-      toggleReadingItemCompleted(readingListItem.id);
-    }
-    
-    const action = isMarkedAsRead ? 'unmarked' : 'marked';
-    logAction('info', `${action} "${comic.series} #${comic.issue}" as read`);
-    showSuccess(`${action === 'marked' ? 'Marked' : 'Unmarked'} as read: ${comic.series} #${comic.issue}`);
+    toggleComicReadStatus(comic);
   };
 
   const handleRateComic = async (newRating: number) => {
@@ -192,7 +178,7 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
     try {
       await updateComicRating(comic.id, newRating);
       if (readingListItem && !readingListItem.completed) {
-        toggleReadingItemCompleted(readingListItem.id);
+        toggleComicReadStatus(comic);
       }
       console.log(`[COMIC-READER] Rating updated successfully`);
     } catch (error) {

@@ -27,7 +27,8 @@ import {
   Globe,
   MapPin,
   Image,
-  ImageIcon
+  ImageIcon,
+  CheckCircle
 } from "lucide-react";
 import EditComicModal from "./EditComicModal";
 import ComicReader from "./ComicReader";
@@ -47,7 +48,7 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReaderOpen, setIsReaderOpen] = useState(false);
   const [isFixCoverOpen, setIsFixCoverOpen] = useState(false);
-  const { comics, readingList, addToReadingList, removeComic, updateComicRating, updateComic } = useAppContext();
+  const { comics, readingList, addToReadingList, removeComic, updateComicRating, updateComic, toggleComicReadStatus } = useAppContext();
   const { setSelectedItem } = useSelection();
   const { isElectron } = useElectron();
 
@@ -55,7 +56,9 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
     return comics.find(c => c.id === initialComic.id) || initialComic;
   }, [comics, initialComic]);
 
-  const isInReadingList = readingList.some(item => item.comicId === comic.id);
+  const readingListItem = readingList.find(item => item.comicId === comic.id);
+  const isInReadingList = !!readingListItem;
+  const isMarkedAsRead = readingListItem?.completed || false;
   const rating = comic.rating;
 
   // Check if this comic is currently the series cover
@@ -91,6 +94,10 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
     } catch (error) {
       console.error(`[COMIC-INSPECTOR] Failed to update rating:`, error);
     }
+  };
+
+  const handleMarkAsRead = () => {
+    toggleComicReadStatus(comic);
   };
 
   const handleSetAsSeriesCover = async () => {
@@ -279,15 +286,24 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
           <Button className="w-full" onClick={() => setIsReaderOpen(true)}>
             <BookOpen className="mr-2 h-4 w-4" /> Read Comic
           </Button>
-          <Button 
-            className="w-full" 
-            variant="secondary" 
-            onClick={() => addToReadingList(comic)}
-            disabled={isInReadingList}
-          >
-            <PlusCircle className="mr-2 h-4 w-4" /> 
-            {isInReadingList ? 'In Reading List' : 'Add to Reading List'}
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button 
+              variant="secondary" 
+              onClick={() => addToReadingList(comic)}
+              disabled={isInReadingList}
+            >
+              <PlusCircle className="mr-2 h-4 w-4" /> 
+              {isInReadingList ? 'In List' : 'Add to List'}
+            </Button>
+            <Button
+              variant={isMarkedAsRead ? "default" : "secondary"}
+              onClick={handleMarkAsRead}
+              className={isMarkedAsRead ? "bg-green-600 hover:bg-green-700" : ""}
+            >
+              <CheckCircle className="mr-2 h-4 w-4" />
+              {isMarkedAsRead ? 'Mark Unread' : 'Mark Read'}
+            </Button>
+          </div>
           
           {/* Cover Management */}
           <Button 
