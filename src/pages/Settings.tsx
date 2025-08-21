@@ -155,21 +155,28 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="scrapers">
-          <Card>
-            <CardHeader>
-              <CardTitle>Comic Vine API</CardTitle>
-              <CardDescription>Enter your API key to fetch metadata from Comic Vine.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Input type="password" value={settings.comicVineApiKey} onChange={(e) => setSettings({ ...settings, comicVineApiKey: e.target.value })} />
-            </CardContent>
-            <CardFooter className="border-t px-6 py-4 flex justify-between">
-              <Button onClick={handleSave}>Save</Button>
-              <Button variant="secondary" onClick={handleTestConnection} disabled={isTesting}>
-                {isTesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Test
-              </Button>
-            </CardFooter>
-          </Card>
+          <div className="relative opacity-50 pointer-events-none">
+            <div className="absolute inset-0 z-10 flex items-center justify-center">
+              <div className="bg-background/80 backdrop-blur-sm px-4 py-2 rounded-lg border shadow-lg">
+                <p className="font-semibold text-foreground">Coming Soon</p>
+              </div>
+            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Comic Vine API</CardTitle>
+                <CardDescription>Enter your API key to fetch metadata from Comic Vine.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Input type="password" value={settings.comicVineApiKey} onChange={(e) => setSettings({ ...settings, comicVineApiKey: e.target.value })} />
+              </CardContent>
+              <CardFooter className="border-t px-6 py-4 flex justify-between">
+                <Button onClick={handleSave}>Save</Button>
+                <Button variant="secondary" onClick={handleTestConnection} disabled={isTesting}>
+                  {isTesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Test
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
