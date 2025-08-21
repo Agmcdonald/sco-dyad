@@ -1,7 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,33 +10,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Comic } from "@/types";
+import { Comic, Creator } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess, showError } from "@/utils/toast";
 import { useElectron } from "@/hooks/useElectron";
 import { useGcdDatabaseService } from "@/services/gcdDatabaseService";
 import { RefreshCw, Loader2, Plus, Trash2 } from "lucide-react";
 import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
-
-const formSchema = z.object({
-  series: z.string().min(1, "Series is required"),
-  issue: z.string().min(1, "Issue is required"),
-  year: z.coerce.number().min(1900, "Invalid year"),
-  publisher: z.string().min(1, "Publisher is required"),
-  volume: z.string(),
-  summary: z.string().optional(),
-  title: z.string().optional(),
-  price: z.string().optional(),
-  genre: z.string().optional(),
-  publicationDate: z.string().optional(),
-  creators: z.array(z.object({
-    name: z.string().min(1, "Name is required"),
-    role: z.string().min(1, "Role is required"),
-  })).optional(),
-});
 
 const creatorRoles = ["Writer", "Pencils", "Inks", "Colors", "Letters", "Editor", "Cover Artist", "Artist"];
 
@@ -53,63 +33,77 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
   const { updateComic, comics } = useAppContext();
   const { isElectron } = useElectron();
   const gcdDbService = useGcdDatabaseService();
+  const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      series: "",
-      issue: "",
-      year: new Date().getFullYear(),
-      publisher: "",
-      volume: "",
-      summary: "",
-      title: "",
-      price: "",
-      genre: "",
-      publicationDate: "",
-      creators: [],
-    },
+  // Form state
+  const [formData, setFormData] = useState({
+    title: "",
+    series: "",
+    issue: "",
+    year: new Date().getFullYear(),
+    publisher: "",
+    volume: "",
+    genre: "",
+    price: "",
+    publicationDate: "",
+    summary: "",
+    creators: [] as Creator[]
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: "creators",
-  });
-
-  // Reset form when comic changes or modal opens
+  // Initialize form data when modal opens
   useEffect(() => {
     if (comic && isOpen) {
-      console.log('[EDIT-COMIC] Resetting form with comic data:', comic);
-      form.reset({
+      console.log('[EDIT-COMIC] Initializing form with comic:', comic);
+      setFormData({
+        title: comic.title || "",
         series: comic.series || "",
         issue: comic.issue || "",
         year: comic.year || new Date().getFullYear(),
         publisher: comic.publisher || "",
         volume: comic.volume || "",
-        summary: comic.summary || "",
-        title: comic.title || "",
-        price: comic.price || "",
         genre: comic.genre || "",
+        price: comic.price || "",
         publicationDate: comic.publicationDate || "",
-        creators: comic.creators || [],
+        summary: comic.summary || "",
+        creators: comic.creators || []
       });
     }
-  }, [comic, isOpen, form]);
+  }, [comic, isOpen]);
 
-  const publisherOptions = useMemo(() => {
-    const publishersFromComics = [...new Set(comics.map(c => c.publisher))].filter(Boolean) as string[];
-    const publishersFromKb = [...new Set(knowledgeBase.map(k => k.publisher))].filter(Boolean) as string[];
-    return [...new Set([...publishersFromComics, ...publishersFromKb, 'Unknown Publisher'])].sort();
-  }, [comics, knowledgeBase]);
+  const handleInputChange = (field: string, value: any) => {
+    console.log(`[EDIT-COMIC] Updating field ${field} with value:`, value);
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
-  const seriesOptions = useMemo(() => {
-    const seriesFromComics = [...new Set(comics.map(c => c.series))].filter(Boolean) as string[];
-    const seriesFromKb = [...new Set(knowledgeBase.map(k => k.series))].filter(Boolean) as string[];
-    return [...new Set([...seriesFromComics, ...seriesFromKb])].sort();
-  }, [comics, knowledgeBase]);
+  const handleAddCreator = () => {
+    console.log('[EDIT-COMIC] Adding new creator');
+    setFormData(prev => ({
+      ...prev,
+      creators: [...prev.creators, { name: "", role: "Writer" }]
+    }));
+  };
+
+  const handleRemoveCreator = (index: number) => {
+    console.log('[EDIT-COMIC] Removing creator at index:', index);
+    setFormData(prev => ({
+      ...prev,
+      creators: prev.creators.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleCreatorChange = (index: number, field: 'name' | 'role', value: string) => {
+    console.log(`[EDIT-COMIC] Updating creator ${index} field ${field} with:`, value);
+    setFormData(prev => ({
+      ...prev,
+      creators: prev.creators.map((creator, i) => 
+        i === index ? { ...creator, [field]: value } : creator
+      )
+    }));
+  };
 
   const handleRefreshFromDb = async () => {
     if (!gcdDbService) {
@@ -133,18 +127,18 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
 
       const creators = await gcdDbService.getIssueCreators(issueDetails.id);
 
-      form.reset({
+      setFormData({
+        title: issueDetails.title || comic.title || "",
         series: seriesMatch.name,
         issue: comic.issue,
         year: parseInt(issueDetails.publication_date?.substring(0, 4), 10) || comic.year,
         publisher: seriesMatch.publisher,
         volume: String(seriesMatch.year_began),
-        summary: issueDetails.synopsis || comic.summary,
-        title: issueDetails.title || comic.title,
-        publicationDate: issueDetails.publication_date || comic.publicationDate,
-        price: issueDetails.price || comic.price,
-        genre: issueDetails.genre || comic.genre,
-        creators: creators.length > 0 ? creators : comic.creators,
+        genre: issueDetails.genre || comic.genre || "",
+        price: issueDetails.price || comic.price || "",
+        publicationDate: issueDetails.publication_date || comic.publicationDate || "",
+        summary: issueDetails.synopsis || comic.summary || "",
+        creators: creators.length > 0 ? creators : comic.creators || []
       });
 
       showSuccess("Form data refreshed from local database.");
@@ -157,33 +151,41 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
     }
   };
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    console.log('[EDIT-COMIC] Submitting form with values:', values);
-    const updated = { ...comic, ...values };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('[EDIT-COMIC] Submitting form with data:', formData);
+
+    // Basic validation
+    if (!formData.series.trim()) {
+      showError("Series is required");
+      return;
+    }
+    if (!formData.issue.trim()) {
+      showError("Issue is required");
+      return;
+    }
+    if (!formData.publisher.trim()) {
+      showError("Publisher is required");
+      return;
+    }
+
     try {
+      const updated = { ...comic, ...formData };
       await updateComic(updated);
+      
       addToKnowledgeBase({
-        series: values.series,
-        publisher: values.publisher,
-        startYear: values.year,
-        volumes: values.volume ? [{ volume: values.volume, year: values.year }] : []
+        series: formData.series,
+        publisher: formData.publisher,
+        startYear: formData.year,
+        volumes: formData.volume ? [{ volume: formData.volume, year: formData.year }] : []
       });
+      
       showSuccess("Comic details updated.");
       onClose();
     } catch (err) {
       console.error("Failed to update comic:", err);
       showError("Failed to save changes.");
     }
-  };
-
-  const handleAddCreator = () => {
-    console.log('[EDIT-COMIC] Adding new creator');
-    append({ name: "", role: "Writer" });
-  };
-
-  const handleRemoveCreator = (index: number) => {
-    console.log('[EDIT-COMIC] Removing creator at index:', index);
-    remove(index);
   };
 
   return (
@@ -211,221 +213,161 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
             Make changes to the comic details here. Click save when you're done.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <ScrollArea className="h-[60vh] p-4">
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Story Title</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="e.g., The Dark Knight Returns" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+        
+        <form onSubmit={handleSubmit}>
+          <ScrollArea className="h-[60vh] p-4">
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="title">Story Title</Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) => handleInputChange('title', e.target.value)}
+                  placeholder="e.g., The Dark Knight Returns"
                 />
-                <FormField
-                  control={form.control}
-                  name="series"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Series</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          list="series-options-edit" 
-                          placeholder="Type or select series..." 
-                        />
-                      </FormControl>
-                      <datalist id="series-options-edit">
-                        {seriesOptions.map((option) => (
-                          <option key={option} value={option} />
-                        ))}
-                      </datalist>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              </div>
+
+              <div>
+                <Label htmlFor="series">Series *</Label>
+                <Input
+                  id="series"
+                  value={formData.series}
+                  onChange={(e) => handleInputChange('series', e.target.value)}
+                  placeholder="Type series name..."
+                  required
                 />
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="issue"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Issue</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="e.g., 001" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="year"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Year</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} placeholder="e.g., 2025" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="publisher"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Publisher</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          list="publisher-options-edit" 
-                          placeholder="Type or select publisher..." 
-                        />
-                      </FormControl>
-                      <datalist id="publisher-options-edit">
-                        {publisherOptions.map((option) => (
-                          <option key={option} value={option} />
-                        ))}
-                      </datalist>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="genre"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Genre</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="e.g., Superhero" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="price"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Price</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="e.g., $3.99" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="publicationDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Publication Date</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="e.g., 2023-10-25" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="summary"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Summary</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Enter a brief summary..."
-                          className="resize-none"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <FormLabel>Creators</FormLabel>
-                    <Button type="button" variant="outline" size="sm" onClick={handleAddCreator}>
-                      <Plus className="h-4 w-4 mr-2" /> Add Creator
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    {fields.map((field, index) => (
-                      <div key={field.id} className="flex items-center gap-2">
-                        <FormField
-                          control={form.control}
-                          name={`creators.${index}.name`}
-                          render={({ field }) => (
-                            <FormItem className="flex-1">
-                              <FormControl>
-                                <Input placeholder="Creator Name" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`creators.${index}.role`}
-                          render={({ field }) => (
-                            <FormItem className="flex-1">
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Role" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {creatorRoles.map(role => (
-                                    <SelectItem key={role} value={role}>{role}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleRemoveCreator(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                    {fields.length === 0 && (
-                      <p className="text-sm text-muted-foreground">No creators added yet.</p>
-                    )}
-                  </div>
+                  <Label htmlFor="issue">Issue *</Label>
+                  <Input
+                    id="issue"
+                    value={formData.issue}
+                    onChange={(e) => handleInputChange('issue', e.target.value)}
+                    placeholder="e.g., 001"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="year">Year</Label>
+                  <Input
+                    id="year"
+                    type="number"
+                    value={formData.year}
+                    onChange={(e) => handleInputChange('year', parseInt(e.target.value) || new Date().getFullYear())}
+                    placeholder="e.g., 2025"
+                  />
                 </div>
               </div>
-            </ScrollArea>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit">Save Changes</Button>
-            </DialogFooter>
-          </form>
-        </Form>
+
+              <div>
+                <Label htmlFor="publisher">Publisher *</Label>
+                <Input
+                  id="publisher"
+                  value={formData.publisher}
+                  onChange={(e) => handleInputChange('publisher', e.target.value)}
+                  placeholder="Type publisher name..."
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="genre">Genre</Label>
+                  <Input
+                    id="genre"
+                    value={formData.genre}
+                    onChange={(e) => handleInputChange('genre', e.target.value)}
+                    placeholder="e.g., Superhero"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="price">Price</Label>
+                  <Input
+                    id="price"
+                    value={formData.price}
+                    onChange={(e) => handleInputChange('price', e.target.value)}
+                    placeholder="e.g., $3.99"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="publicationDate">Publication Date</Label>
+                <Input
+                  id="publicationDate"
+                  value={formData.publicationDate}
+                  onChange={(e) => handleInputChange('publicationDate', e.target.value)}
+                  placeholder="e.g., 2023-10-25"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="summary">Summary</Label>
+                <Textarea
+                  id="summary"
+                  value={formData.summary}
+                  onChange={(e) => handleInputChange('summary', e.target.value)}
+                  placeholder="Enter a brief summary..."
+                  className="resize-none"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>Creators</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddCreator}>
+                    <Plus className="h-4 w-4 mr-2" /> Add Creator
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {formData.creators.map((creator, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Input
+                        placeholder="Creator Name"
+                        value={creator.name}
+                        onChange={(e) => handleCreatorChange(index, 'name', e.target.value)}
+                        className="flex-1"
+                      />
+                      <Select 
+                        value={creator.role} 
+                        onValueChange={(value) => handleCreatorChange(index, 'role', value)}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {creatorRoles.map(role => (
+                            <SelectItem key={role} value={role}>{role}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleRemoveCreator(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  {formData.creators.length === 0 && (
+                    <p className="text-sm text-muted-foreground">No creators added yet.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+          
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit">Save Changes</Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
