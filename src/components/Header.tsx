@@ -9,7 +9,6 @@ import {
 import {
   Plus,
   FolderPlus,
-  Eye,
   ArrowUpRightFromSquare,
   SidebarClose,
   SidebarOpen,
@@ -37,12 +36,6 @@ const Header = ({ isInspectorOpen, toggleInspector }: HeaderProps) => {
     navigate('/app/organize');
   };
 
-  const handlePreviewMode = () => {
-    // Toggle between cover view and list view in library
-    // This could be implemented as a global view state
-    console.log('Preview mode toggle - could switch between cover/list views');
-  };
-
   const handleOpenInNewWindow = () => {
     // Open selected comic in a new reader window (future feature)
     if (selectedItem?.type === 'comic') {
@@ -64,17 +57,6 @@ const Header = ({ isInspectorOpen, toggleInspector }: HeaderProps) => {
         </div>
         <div className="flex-1">{/* Center content like filters will go here */}</div>
         <div className="flex items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={handlePreviewMode}>
-                <Eye className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Toggle Preview Mode</p>
-            </TooltipContent>
-          </Tooltip>
-
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 

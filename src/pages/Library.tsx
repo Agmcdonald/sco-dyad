@@ -22,10 +22,8 @@ import SeriesView from "@/components/SeriesView";
 import PublisherView from "@/components/PublisherView";
 import { useAppContext } from "@/context/AppContext";
 import useLocalStorage from "@/hooks/useLocalStorage";
-import { Comic } from "@/types";
+import { Comic, LibraryViewMode } from "@/types";
 import { RATING_EMOJIS } from "@/lib/ratings";
-
-type ViewMode = "grid" | "series" | "publisher";
 
 interface LibraryProps {
   onToggleInspector?: () => void;
@@ -37,7 +35,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOption, setSortOption] = useState("series-asc");
   const [secondarySort, setSecondarySort] = useState("series-asc");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<LibraryViewMode>("grid");
   const [coverSize, setCoverSize] = useLocalStorage("library-cover-size", 3);
   const [isDrilledDown, setIsDrilledDown] = useState(false);
   const [ratingFilter, setRatingFilter] = useState<string>("all");
