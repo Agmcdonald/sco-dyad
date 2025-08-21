@@ -21,6 +21,7 @@ import { Comic } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess } from "@/utils/toast";
 import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
+import { creatorRoles } from "@/lib/constants";
 
 const creatorSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -37,8 +38,6 @@ const formSchema = z.object({
   summary: z.string().optional(),
   creators: z.array(creatorSchema).optional(),
 });
-
-const creatorRoles = ["Writer", "Pencils", "Inks", "Colors", "Letters", "Editor", "Cover Artist", "Artist"];
 
 interface EditComicModalProps {
   comic: Comic;
@@ -95,6 +94,11 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
     const seriesFromKnowledge = [...new Set(knowledgeBase.series.map(entry => entry.series))].filter(Boolean) as string[];
     return [...new Set([...seriesFromComics, ...seriesFromKnowledge])].sort();
   }, [comics, knowledgeBase.series]);
+
+  const creatorNameOptions = useMemo(() => {
+    const namesFromKB = [...new Set(knowledgeBase.creators.map(c => c.name))];
+    return namesFromKB.sort();
+  }, [knowledgeBase.creators]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const updatedComicData = { 
@@ -247,7 +251,14 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                           render={({ field }) => (
                             <FormItem className="flex-1">
                               <FormControl>
-                                <Input {...field} placeholder="Creator Name" />
+                                <>
+                                  <Input {...field} placeholder="Creator Name" list="creator-name-options" />
+                                  <datalist id="creator-name-options">
+                                    {creatorNameOptions.map(name => (
+                                      <option key={name} value={name} />
+                                    ))}
+                                  </datalist>
+                                </>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
