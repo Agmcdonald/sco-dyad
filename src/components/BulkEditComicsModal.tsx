@@ -208,7 +208,6 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                     onChange={(e) => setPublisher(e.target.value)}
                     list="publisher-options-bulk"
                     placeholder="Type or select publisher..."
-                    disabled={!updatePublisher}
                   />
                   <datalist id="publisher-options-bulk">
                     {publisherOptions.map((option) => (
@@ -233,7 +232,6 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                     value={genre}
                     onChange={(e) => setGenre(e.target.value)}
                     placeholder="e.g., Superhero, Horror, Sci-Fi"
-                    disabled={!updateGenre}
                   />
                 </div>
               </div>
@@ -253,7 +251,6 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                     value={volume}
                     onChange={(e) => setVolume(e.target.value)}
                     placeholder="e.g., 2016"
-                    disabled={!updateVolume}
                   />
                 </div>
               </div>
@@ -275,7 +272,6 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                         variant="outline" 
                         size="sm" 
                         onClick={addCreator}
-                        disabled={!updateCreators}
                       >
                         <Plus className="h-4 w-4 mr-2" /> Add Creator
                       </Button>
@@ -288,12 +284,10 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                             value={creator.name}
                             onChange={(e) => updateCreatorName(index, e.target.value)}
                             className="flex-1"
-                            disabled={!updateCreators}
                           />
                           <Select 
                             value={creator.role} 
                             onValueChange={(value) => updateCreatorRole(index, value)}
-                            disabled={!updateCreators}
                           >
                             <SelectTrigger className="flex-1">
                               <SelectValue placeholder="Role" />
@@ -309,7 +303,6 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                             variant="ghost" 
                             size="icon" 
                             onClick={() => removeCreator(index)}
-                            disabled={!updateCreators}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
