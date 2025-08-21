@@ -60,15 +60,15 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
 
   const publisherOptions = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))].filter(Boolean) as string[];
-    const publishersFromKnowledge = [...new Set(knowledgeBase.map(entry => entry.publisher))].filter(Boolean) as string[];
+    const publishersFromKnowledge = [...new Set(knowledgeBase.series.map(entry => entry.publisher))].filter(Boolean) as string[];
     return [...new Set([...publishersFromComics, ...publishersFromKnowledge])].sort();
-  }, [comics, knowledgeBase]);
+  }, [comics, knowledgeBase.series]);
 
   const seriesOptions = useMemo(() => {
     const seriesFromComics = [...new Set(comics.map(c => c.series))].filter(Boolean) as string[];
-    const seriesFromKnowledge = [...new Set(knowledgeBase.map(entry => entry.series))].filter(Boolean) as string[];
+    const seriesFromKnowledge = [...new Set(knowledgeBase.series.map(entry => entry.series))].filter(Boolean) as string[];
     return [...new Set([...seriesFromComics, ...seriesFromKnowledge])].sort();
-  }, [comics, knowledgeBase]);
+  }, [comics, knowledgeBase.series]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const updatedFileData = { 
