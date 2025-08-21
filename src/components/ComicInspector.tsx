@@ -26,8 +26,6 @@ import {
   Barcode,
   Globe,
   MapPin,
-  RefreshCw,
-  Loader2,
   Image,
   ImageIcon
 } from "lucide-react";
@@ -39,7 +37,6 @@ import { useAppContext } from "@/context/AppContext";
 import { useSelection } from "@/context/SelectionContext";
 import { useElectron } from "@/hooks/useElectron";
 import { RATING_EMOJIS } from "@/lib/ratings";
-import { useGcdDatabaseService } from "@/services/gcdDatabaseService";
 import { showError, showSuccess } from "@/utils/toast";
 
 interface ComicInspectorProps {
@@ -49,12 +46,10 @@ interface ComicInspectorProps {
 const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReaderOpen, setIsReaderOpen] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFixCoverOpen, setIsFixCoverOpen] = useState(false);
   const { comics, readingList, addToReadingList, removeComic, updateComicRating, updateComic } = useAppContext();
   const { setSelectedItem } = useSelection();
   const { isElectron } = useElectron();
-  const gcdDbService = useGcdDatabaseService();
 
   const comic = useMemo(() => {
     return comics.find(c => c.id === initialComic.id) || initialComic;
@@ -123,66 +118,6 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
     } catch (error) {
       console.error('Error removing series cover:', error);
       showError('Failed to remove series cover');
-    }
-  };
-
-  const handleRefreshFromDb = async () => {
-    if (!gcdDbService) {
-      showError("Local database is not connected.");
-      return;
-    }
-    setIsRefreshing(true);
-    try {
-      console.log(`[COMIC-INSPECTOR] Starting refresh for series: "${comic.series}"`);
-      
-      const seriesResults = await gcdDbService.searchSeries(comic.series);
-      console.log(`[COMIC-INSPECTOR] Search results:`, seriesResults);
-      
-      if (seriesResults.length === 0) {
-        showError(`Could not find series "${comic.series}" in the local database.`);
-        return;
-      }
-      
-      const seriesMatch = seriesResults[0];
-      console.log(`[COMIC-INSPECTOR] Using series match:`, seriesMatch);
-      
-      const issueDetails = await gcdDbService.getIssueDetails(seriesMatch.id, comic.issue);
-      console.log(`[COMIC-INSPECTOR] Issue details:`, issueDetails);
-      
-      if (!issueDetails) {
-        showError(`Could not find issue #${comic.issue} for "${comic.series}" in the database.`);
-        return;
-      }
-
-      const creators = await gcdDbService.getIssueCreators(issueDetails.id);
-      console.log(`[COMIC-INSPECTOR] Creators:`, creators);
-
-      const updatedData = {
-        ...comic,
-        publisher: seriesMatch.publisher,
-        year: parseInt(issueDetails.publication_date?.substring(0, 4), 10) || comic.year,
-        volume: String(seriesMatch.year_began),
-        summary: issueDetails.synopsis || comic.summary,
-        title: issueDetails.title || comic.title,
-        publicationDate: issueDetails.publication_date,
-        creators: creators.length > 0 ? creators : comic.creators,
-        genre: issueDetails.genre || comic.genre,
-        characters: issueDetails.characters || comic.characters,
-        price: issueDetails.price || comic.price,
-        barcode: issueDetails.barcode || comic.barcode,
-        languageCode: issueDetails.languageCode || comic.languageCode,
-        countryCode: issueDetails.countryCode || comic.countryCode,
-      };
-
-      console.log(`[COMIC-INSPECTOR] Updating comic with data:`, updatedData);
-      await updateComic(updatedData);
-      showSuccess("Comic metadata updated from local database.");
-
-    } catch (error) {
-      console.error("[COMIC-INSPECTOR] Error refreshing from DB:", error);
-      showError(`An error occurred while refreshing data: ${error.message}`);
-    } finally {
-      setIsRefreshing(false);
     }
   };
 
@@ -379,23 +314,9 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
             </div>
           )}
           
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" onClick={() => setIsModalOpen(true)}>
-              <Tag className="mr-2 h-4 w-4" /> Edit
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleRefreshFromDb} 
-              disabled={!isElectron || isRefreshing}
-            >
-              {isRefreshing ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
-              )}
-              Refresh
-            </Button>
-          </div>
+          <Button variant="outline" className="w-full" onClick={() => setIsModalOpen(true)}>
+            <Tag className="mr-2 h-4 w-4" /> Edit
+          </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" className="w-full">

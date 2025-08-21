@@ -13,12 +13,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Plus, Trash2 } from "lucide-react";
 import { Comic, Creator } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess, showError } from "@/utils/toast";
-import { useElectron } from "@/hooks/useElectron";
-import { useGcdDatabaseService } from "@/services/gcdDatabaseService";
-import { RefreshCw, Loader2, Plus, Trash2 } from "lucide-react";
 import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 
 const creatorRoles = ["Writer", "Pencils", "Inks", "Colors", "Letters", "Editor", "Cover Artist", "Artist"];
@@ -31,10 +29,7 @@ interface EditComicModalProps {
 
 const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
   const { updateComic, comics } = useAppContext();
-  const { isElectron } = useElectron();
-  const gcdDbService = useGcdDatabaseService();
   const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const initializedRef = useRef<string | null>(null);
 
   // Form state
@@ -127,52 +122,6 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
     }));
   };
 
-  const handleRefreshFromDb = async () => {
-    if (!gcdDbService) {
-      showError("Local database is not connected.");
-      return;
-    }
-    setIsRefreshing(true);
-    try {
-      const seriesResults = await gcdDbService.searchSeries(comic.series);
-      if (seriesResults.length === 0) {
-        showError(`Could not find series "${comic.series}" in the local database.`);
-        return;
-      }
-      
-      const seriesMatch = seriesResults[0];
-      const issueDetails = await gcdDbService.getIssueDetails(seriesMatch.id, comic.issue);
-      if (!issueDetails) {
-        showError(`Could not find issue #${comic.issue} for "${comic.series}" in the database.`);
-        return;
-      }
-
-      const creators = await gcdDbService.getIssueCreators(issueDetails.id);
-
-      setFormData({
-        title: issueDetails.title || comic.title || "",
-        series: seriesMatch.name,
-        issue: comic.issue,
-        year: parseInt(issueDetails.publication_date?.substring(0, 4), 10) || comic.year,
-        publisher: seriesMatch.publisher,
-        volume: String(seriesMatch.year_began),
-        genre: issueDetails.genre || comic.genre || "",
-        price: issueDetails.price || comic.price || "",
-        publicationDate: issueDetails.publication_date || comic.publicationDate || "",
-        summary: issueDetails.synopsis || comic.summary || "",
-        creators: creators.length > 0 ? creators : comic.creators || []
-      });
-
-      showSuccess("Form data refreshed from local database.");
-
-    } catch (error) {
-      console.error("Error refreshing from DB:", error);
-      showError("An error occurred while refreshing data.");
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('[EDIT-COMIC] Submitting form with data:', formData);
@@ -214,23 +163,7 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <div className="flex justify-between items-center">
-            <DialogTitle>Edit Metadata</DialogTitle>
-            <Button 
-              type="button" 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleRefreshFromDb} 
-              disabled={!isElectron || isRefreshing}
-            >
-              {isRefreshing ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="mr-2 h-4 w-4" />
-              )}
-              Refresh
-            </Button>
-          </div>
+          <DialogTitle>Edit Metadata</DialogTitle>
           <DialogDescription>
             Make changes to the comic details here. Click save when you're done.
           </DialogDescription>
@@ -322,7 +255,7 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                     id="genre"
                     value={formData.genre}
                     onChange={(e) => handleInputChange('genre', e.target.value)}
-                    placeholder="e.g., Superhero"
+                    placeholder="e.g., Superhero, Horror, Sci-Fi"
                   />
                 </div>
               </div>
