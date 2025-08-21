@@ -37,8 +37,8 @@ const KBEditor = () => {
   const [currentJumpIndex, setCurrentJumpIndex] = useState<number>(-1);
 
   useEffect(() => {
-    setLocalKB(knowledgeBase.map(k => ({ ...k, volumes: k.volumes ? [...k.volumes] : [] })));
-  }, [knowledgeBase]);
+    setLocalKB(knowledgeBase.series.map(k => ({ ...k, volumes: k.volumes ? [...k.volumes] : [] })));
+  }, [knowledgeBase.series]);
 
   const updateEntry = (index: number, patch: Partial<ComicKnowledge>) => {
     setLocalKB(prev => {
