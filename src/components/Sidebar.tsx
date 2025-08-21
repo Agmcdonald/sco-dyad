@@ -51,7 +51,10 @@ const Sidebar = () => {
 
   return (
     <aside className="h-full flex flex-col bg-muted/40 border-r">
-      <div className="p-4">
+      <div className="p-4 space-y-4 border-b">
+        <div className="flex justify-center px-4">
+          <img src="/logo.png" alt="Super Comic Organizer Logo" className="h-auto w-full max-w-[200px]" />
+        </div>
         <form onSubmit={handleSearch} className="relative">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input 
@@ -87,7 +90,7 @@ const Sidebar = () => {
         )}
       </div>
       
-      <nav className="flex-1 px-2 space-y-1">
+      <nav className="flex-1 px-2 py-4 space-y-1">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
@@ -104,7 +107,7 @@ const Sidebar = () => {
         ))}
       </nav>
 
-      <div className="mt-auto p-4">
+      <div className="mt-auto p-4 border-t">
         <Button
           variant="outline"
           className="w-full justify-start"
