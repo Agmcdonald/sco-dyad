@@ -48,7 +48,7 @@ interface EditComicModalProps {
 
 const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
   const { updateComic, comics } = useAppContext();
-  const { knowledgeBase } = useKnowledgeBase();
+  const { knowledgeBase, addCreatorsToKnowledgeBase } = useKnowledgeBase();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -102,6 +102,11 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
         ...values, 
     };
     updateComic(updatedComicData);
+
+    if (values.creators && values.creators.length > 0) {
+      addCreatorsToKnowledgeBase(values.creators);
+    }
+
     showSuccess("Comic details updated.");
     onClose();
   };

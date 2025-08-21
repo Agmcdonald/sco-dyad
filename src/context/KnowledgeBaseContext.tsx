@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { ComicKnowledge, CreatorKnowledge, KnowledgeBase } from '@/types';
+import { ComicKnowledge, CreatorKnowledge, KnowledgeBase, Creator } from '@/types';
 import { useElectron } from '@/hooks/useElectron';
 import defaultKnowledgeBase from '@/data/comicsKnowledge.json';
 
@@ -9,6 +9,7 @@ interface KnowledgeBaseContextType {
   replaceKnowledgeBase: (entries: ComicKnowledge[]) => Promise<void>;
   saveKnowledgeBase: () => Promise<void>;
   replaceCreators: (creators: CreatorKnowledge[]) => Promise<void>;
+  addCreatorsToKnowledgeBase: (creators: Creator[]) => void;
 }
 
 const emptyKB: KnowledgeBase = { series: [], creators: [] };
@@ -33,7 +34,6 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
         data = defaultKnowledgeBase;
       }
 
-      // Handle old format (array of series) vs new format (object with series and creators)
       if (Array.isArray(data)) {
         setKnowledgeBase({ series: data, creators: [] });
       } else if (data && typeof data === 'object' && (data.series || data.creators)) {
@@ -139,6 +139,38 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
     });
   }, [persistKnowledgeBase]);
 
+  const addCreatorsToKnowledgeBase = useCallback((newCreators: Creator[]) => {
+    if (!newCreators || newCreators.length === 0) return;
+
+    setKnowledgeBase(prev => {
+      const updatedCreators = [...prev.creators];
+      const existingCreatorNames = new Set(updatedCreators.map(c => normalizeStr(c.name)));
+      let wasChanged = false;
+
+      for (const creator of newCreators) {
+        const normalizedName = normalizeStr(creator.name);
+        if (normalizedName && !existingCreatorNames.has(normalizedName)) {
+          updatedCreators.push({
+            id: `creator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            name: creator.name.trim(),
+            roles: [creator.role.trim()],
+            notes: "",
+          });
+          existingCreatorNames.add(normalizedName);
+          wasChanged = true;
+        }
+      }
+
+      if (wasChanged) {
+        const newKb = { ...prev, creators: updatedCreators };
+        persistKnowledgeBase(newKb);
+        return newKb;
+      }
+      
+      return prev;
+    });
+  }, [persistKnowledgeBase]);
+
   const replaceCreators = useCallback(async (creators: CreatorKnowledge[]) => {
     const map = new Map<string, CreatorKnowledge>();
     for (const creator of creators) {
@@ -156,7 +188,7 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
   }, [knowledgeBase, persistKnowledgeBase]);
 
   return (
-    <KnowledgeBaseContext.Provider value={{ knowledgeBase, addToKnowledgeBase, replaceKnowledgeBase, saveKnowledgeBase, replaceCreators }}>
+    <KnowledgeBaseContext.Provider value={{ knowledgeBase, addToKnowledgeBase, replaceKnowledgeBase, saveKnowledgeBase, replaceCreators, addCreatorsToKnowledgeBase }}>
       {children}
     </KnowledgeBaseContext.Provider>
   );
