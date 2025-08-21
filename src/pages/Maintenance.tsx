@@ -183,46 +183,6 @@ const Maintenance = () => {
       {/* Duplicate Detection */}
       <DuplicateDetector />
 
-      {/* Metadata Enrichment */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5" />
-            Metadata Enrichment
-          </CardTitle>
-          <CardDescription>
-            Scan your library to find and fill in missing details like summaries, creators, and cover dates using online databases.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isScanningMetadata ? (
-            <div className="space-y-3">
-              <Progress value={(metadataScanProgress.processed / metadataScanProgress.total) * 100} />
-              <div className="text-sm text-muted-foreground">
-                Scanning {metadataScanProgress.processed} of {metadataScanProgress.total} comics... 
-                ({metadataScanProgress.updated} updated)
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              This tool will scan comics with incomplete information and attempt to fetch richer data from online sources.
-            </p>
-          )}
-        </CardContent>
-        <CardFooter>
-          <Button onClick={startMetadataScan} disabled={isScanningMetadata}>
-            {isScanningMetadata ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Scanning...
-              </>
-            ) : (
-              "Start Scan for Missing Details"
-            )}
-          </Button>
-        </CardFooter>
-      </Card>
-
       {/* Work in Progress Section */}
       <div>
         <h2 className="text-2xl font-semibold tracking-tight mb-4">Work in Progress</h2>
@@ -232,6 +192,45 @@ const Maintenance = () => {
               <p className="font-semibold text-foreground">Coming Soon</p>
             </div>
           </div>
+          {/* Metadata Enrichment */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                Metadata Enrichment
+              </CardTitle>
+              <CardDescription>
+                Scan your library to find and fill in missing details like summaries, creators, and cover dates using online databases.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isScanningMetadata ? (
+                <div className="space-y-3">
+                  <Progress value={(metadataScanProgress.processed / metadataScanProgress.total) * 100} />
+                  <div className="text-sm text-muted-foreground">
+                    Scanning {metadataScanProgress.processed} of {metadataScanProgress.total} comics... 
+                    ({metadataScanProgress.updated} updated)
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  This tool will scan comics with incomplete information and attempt to fetch richer data from online sources.
+                </p>
+              )}
+            </CardContent>
+            <CardFooter>
+              <Button onClick={startMetadataScan} disabled={isScanningMetadata}>
+                {isScanningMetadata ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Scanning...
+                  </>
+                ) : (
+                  "Start Scan for Missing Details"
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
           <GcdDatabaseManager />
           <GcdImporter />
         </div>
