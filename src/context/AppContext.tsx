@@ -36,6 +36,7 @@ interface AppContextType {
   triggerSelectFiles: () => void;
   triggerScanFolder: () => void;
   addFilesFromDrop: (droppedFiles: File[]) => void;
+  addFilesFromPaths: (paths: string[]) => Promise<void>;
   readingList: any[];
   addToReadingList: (comic: Comic) => void;
   removeFromReadingList: (itemId: string) => void;
@@ -482,6 +483,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       isProcessing, startProcessing: () => setIsProcessing(true), pauseProcessing: () => setIsProcessing(false),
       actions, logAction, lastUndoableAction, undoLastAction,
       addMockFiles, triggerSelectFiles, triggerScanFolder, addFilesFromDrop,
+      addFilesFromPaths,
       readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted, setReadingItemPriority, setReadingItemRating,
       recentlyRead, addToRecentlyRead, updateRecentRating,
       refreshComics,
