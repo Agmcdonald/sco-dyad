@@ -25,9 +25,6 @@ interface AppContextType {
   addComic: (comicData: NewComic, originalFile: QueuedFile) => Promise<void>;
   updateComic: (comic: Comic) => Promise<void>;
   removeComic: (id: string, deleteFile?: boolean) => Promise<void>;
-  isProcessing: boolean;
-  startProcessing: () => void;
-  pauseProcessing: () => void;
   actions: any[];
   logAction: (type: any, message: string, undo?: any) => void;
   lastUndoableAction: any | null;
@@ -82,7 +79,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     updateRecentRating
   } = useRecentlyRead();
   
-  const [isProcessing, setIsProcessing] = useState(false);
   const [isScanningMetadata, setIsScanningMetadata] = useState(false);
   const [metadataScanProgress, setMetadataScanProgress] = useState({ processed: 0, total: 0, updated: 0 });
   const databaseService = useElectronDatabaseService();
@@ -480,7 +476,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     <AppContext.Provider value={{ 
       files, addFile, addFiles, removeFile, updateFile, skipFile,
       comics, addComic, updateComic, removeComic, updateComicRating,
-      isProcessing, startProcessing: () => setIsProcessing(true), pauseProcessing: () => setIsProcessing(false),
       actions, logAction, lastUndoableAction, undoLastAction,
       addMockFiles, triggerSelectFiles, triggerScanFolder, addFilesFromDrop,
       addFilesFromPaths,
