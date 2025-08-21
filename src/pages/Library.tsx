@@ -69,9 +69,21 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
     if (sortOption.startsWith('series-')) {
       const seriesGroups = new Map<string, Comic>();
       comicsToSort.forEach(comic => {
-        const existing = seriesGroups.get(comic.series);
-        if (!existing || comic.dateAdded > existing.dateAdded) {
-          seriesGroups.set(comic.series, comic);
+        const seriesKey = `${comic.series.toLowerCase()}-${comic.publisher.toLowerCase()}`;
+        const existing = seriesGroups.get(seriesKey);
+        
+        // Prioritize series cover, then most recent, then first issue
+        if (!existing) {
+          seriesGroups.set(seriesKey, comic);
+        } else {
+          // If this comic is marked as series cover, use it
+          if (comic.isSeriesCover) {
+            seriesGroups.set(seriesKey, comic);
+          }
+          // If existing isn't series cover and this one is newer, use this one
+          else if (!existing.isSeriesCover && comic.dateAdded > existing.dateAdded) {
+            seriesGroups.set(seriesKey, comic);
+          }
         }
       });
       const latestComics = Array.from(seriesGroups.values());
