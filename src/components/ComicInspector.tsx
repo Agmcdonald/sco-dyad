@@ -28,11 +28,13 @@ import {
   MapPin,
   RefreshCw,
   Loader2,
-  Image
+  Image,
+  ImageIcon
 } from "lucide-react";
 import EditComicModal from "./EditComicModal";
 import ComicReader from "./ComicReader";
 import RatingSelector from "./RatingSelector";
+import FixCoverModal from "./FixCoverModal";
 import { useAppContext } from "@/context/AppContext";
 import { useSelection } from "@/context/SelectionContext";
 import { useElectron } from "@/hooks/useElectron";
@@ -48,6 +50,7 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReaderOpen, setIsReaderOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isFixCoverOpen, setIsFixCoverOpen] = useState(false);
   const { comics, readingList, addToReadingList, removeComic, updateComicRating, updateComic } = useAppContext();
   const { setSelectedItem } = useSelection();
   const { isElectron } = useElectron();
@@ -69,6 +72,11 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
     c.publisher.toLowerCase() === comic.publisher.toLowerCase()
   );
   const hasMultipleIssues = seriesComics.length > 1;
+
+  // Check if cover might be corrupted (placeholder or failed to load)
+  const hasPotentialCoverIssue = comic.coverUrl === '/placeholder.svg' || 
+    comic.coverUrl.includes('placeholder') || 
+    !comic.coverUrl;
 
   const handleRemoveFromLibrary = () => {
     removeComic(comic.id, false);
@@ -199,8 +207,15 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
           )}
         </div>
         <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-          <div className="aspect-w-2 aspect-h-3 rounded-lg bg-muted overflow-hidden">
+          <div className="aspect-w-2 aspect-h-3 rounded-lg bg-muted overflow-hidden relative">
             <img src={comic.coverUrl} alt="Cover" className="object-cover w-full h-full" />
+            {hasPotentialCoverIssue && (
+              <div className="absolute top-2 right-2">
+                <Badge variant="destructive" className="text-xs">
+                  No Cover
+                </Badge>
+              </div>
+            )}
           </div>
           
           {/* Basic Details */}
@@ -339,6 +354,16 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
             {isInReadingList ? 'In Reading List' : 'Add to Reading List'}
           </Button>
           
+          {/* Cover Management */}
+          <Button 
+            className="w-full" 
+            variant="outline" 
+            onClick={() => setIsFixCoverOpen(true)}
+          >
+            <ImageIcon className="mr-2 h-4 w-4" /> 
+            Fix Cover
+          </Button>
+          
           {/* Series Cover Controls */}
           {hasMultipleIssues && (
             <div className="grid grid-cols-1 gap-2">
@@ -412,6 +437,14 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
           comic={comic}
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
+        />
+      )}
+
+      {isFixCoverOpen && (
+        <FixCoverModal
+          comic={comic}
+          isOpen={isFixCoverOpen}
+          onClose={() => setIsFixCoverOpen(false)}
         />
       )}
     </>
