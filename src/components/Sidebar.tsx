@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { useTheme } from "next-themes";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   LayoutDashboard,
   ArrowDownToLine,
   GraduationCap,
   Library,
-  History,
   Settings,
   Search,
   Wrench,
-  BookOpen,
   Tag,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 
@@ -29,6 +31,7 @@ const Sidebar = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const { comics } = useAppContext();
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,6 +103,20 @@ const Sidebar = () => {
           </NavLink>
         ))}
       </nav>
+
+      <div className="mt-auto p-4">
+        <Button
+          variant="outline"
+          className="w-full justify-start"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+        >
+          <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <span className="ml-2">
+            {theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          </span>
+        </Button>
+      </div>
     </aside>
   );
 };
