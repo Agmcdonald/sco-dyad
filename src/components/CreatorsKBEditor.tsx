@@ -11,6 +11,8 @@ import { Trash2, Plus, Save, Search as SearchIcon } from "lucide-react";
 import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 import type { CreatorKnowledge } from "@/types";
 import { showSuccess, showError } from "@/utils/toast";
+import { MultiSelect } from "./ui/multi-select";
+import { creatorRoles } from "@/lib/constants";
 
 const emptyCreator = (): CreatorKnowledge => ({
   id: `creator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -20,6 +22,8 @@ const emptyCreator = (): CreatorKnowledge => ({
 });
 
 const normalize = (s: string | undefined | null) => (s || "").trim().toLowerCase();
+
+const roleOptions = creatorRoles.map(role => ({ value: role, label: role }));
 
 const CreatorsKBEditor = () => {
   const { knowledgeBase, replaceCreators } = useKnowledgeBase();
@@ -45,11 +49,6 @@ const CreatorsKBEditor = () => {
 
   const removeCreator = (index: number) => {
     setLocalCreators(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleRolesChange = (index: number, rolesString: string) => {
-    const roles = rolesString.split(',').map(r => r.trim()).filter(Boolean);
-    updateCreator(index, { roles });
   };
 
   const filtered = localCreators.filter(creator => {
@@ -119,8 +118,13 @@ const CreatorsKBEditor = () => {
                         <Input value={creator.name} onChange={(e) => updateCreator(originalIndex, { name: e.target.value })} />
                       </div>
                       <div>
-                        <label className="text-xs text-muted-foreground">Roles (comma-separated)</label>
-                        <Input value={creator.roles.join(', ')} onChange={(e) => handleRolesChange(originalIndex, e.target.value)} />
+                        <label className="text-xs text-muted-foreground">Roles</label>
+                        <MultiSelect
+                          options={roleOptions}
+                          selected={creator.roles}
+                          onChange={(newRoles) => updateCreator(originalIndex, { roles: newRoles })}
+                          placeholder="Select roles..."
+                        />
                       </div>
                       <div className="md:col-span-2">
                         <label className="text-xs text-muted-foreground">Notes</label>
