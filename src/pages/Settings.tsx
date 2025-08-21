@@ -91,7 +91,6 @@ const Settings = () => {
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="library">Library</TabsTrigger>
-          <TabsTrigger value="file-handling">File Handling</TabsTrigger>
           <TabsTrigger value="scrapers">Scrapers</TabsTrigger>
         </TabsList>
 
@@ -120,7 +119,7 @@ const Settings = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="library">
+        <TabsContent value="library" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Library Path</CardTitle>
@@ -134,19 +133,13 @@ const Settings = () => {
                 </Button>
               </div>
             </CardContent>
-            <CardFooter className="border-t px-6 py-4">
-              <Button onClick={handleSave}>Save</Button>
-            </CardFooter>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="file-handling">
           <Card>
             <CardHeader>
               <CardTitle>File Operations</CardTitle>
               <CardDescription>Configure how original files are handled after processing.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
                   <Label>Keep Original Files</Label>
@@ -155,10 +148,10 @@ const Settings = () => {
                 <Switch checked={settings.keepOriginalFiles} onCheckedChange={(c) => setSettings({ ...settings, keepOriginalFiles: c })} />
               </div>
             </CardContent>
-            <CardFooter className="border-t px-6 py-4">
-              <Button onClick={handleSave}>Save</Button>
-            </CardFooter>
           </Card>
+          <div>
+            <Button onClick={handleSave}>Save Library Settings</Button>
+          </div>
         </TabsContent>
 
         <TabsContent value="scrapers">
