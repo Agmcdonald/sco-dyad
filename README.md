@@ -1,8 +1,8 @@
-# Comic Organizer
+# Super Comic Organizer
 
 A comprehensive comic book collection management application that automatically organizes digital comic files by parsing filenames, detecting metadata, and cataloging them into a structured library.
 
-![Comic Organizer Dashboard](public/placeholder.svg)
+![Super Comic Organizer Dashboard](public/placeholder.svg)
 
 ## Features
 
@@ -52,14 +52,14 @@ Before you begin, ensure you have the following installed on your system:
 ### Step 1: Download the Project
 
 1. **From Dyad**: Export/download the project as a ZIP file
-2. **Extract** the ZIP file to your desired location (e.g., `C:\Projects\comic-organizer` or `~/Projects/comic-organizer`)
+2. **Extract** the ZIP file to your desired location (e.g., `C:\Projects\super-comic-organizer` or `~/Projects/super-comic-organizer`)
 
 ### Step 2: Install Dependencies
 
 1. Open a terminal/command prompt
 2. Navigate to the project directory:
    ```bash
-   cd path/to/comic-organizer
+   cd path/to/super-comic-organizer
    ```
 3. Install the required dependencies:
    ```bash

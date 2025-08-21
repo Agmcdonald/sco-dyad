@@ -130,12 +130,12 @@ function createMenu(mainWindow) {
           click: () => mainWindow.webContents.send('open-manual')
         },
         {
-          label: 'About Comic Organizer',
+          label: 'About Super Comic Organizer',
           click: () => {
             dialog.showMessageBox(mainWindow, {
               type: 'info',
-              title: 'About Comic Organizer',
-              message: 'Comic Organizer',
+              title: 'About Super Comic Organizer',
+              message: 'Super Comic Organizer',
               detail: 'A comprehensive comic book collection management application.\n\nVersion 1.0.0'
             });
           }
@@ -146,7 +146,7 @@ function createMenu(mainWindow) {
 
   if (process.platform === 'darwin') {
     template.unshift({
-      label: 'Comic Organizer',
+      label: 'Super Comic Organizer',
       submenu: [
         { role: 'about' },
         { type: 'separator' },

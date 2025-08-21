@@ -1,8 +1,8 @@
 {
-  "name": "comic-organizer",
+  "name": "super-comic-organizer",
   "version": "1.0.0",
   "description": "A desktop app to organize your digital comic collection.",
-  "author": "Comic Organizer",
+  "author": "Super Comic Organizer",
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
@@ -96,7 +96,7 @@
   },
   "build": {
     "appId": "com.comic-organizer.app",
-    "productName": "Comic Organizer",
+    "productName": "Super Comic Organizer",
     "files": [
       "dist/**/*",
       "electron/**/*"

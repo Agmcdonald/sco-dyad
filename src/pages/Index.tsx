@@ -21,7 +21,7 @@ const Index = () => {
       <div className="max-w-4xl w-full space-y-8">
         <div className="text-center space-y-4">
           <BookOpen className="h-16 w-16 mx-auto text-primary" />
-          <h1 className="text-4xl font-bold tracking-tight">Comic Organizer</h1>
+          <h1 className="text-4xl font-bold tracking-tight">Super Comic Organizer</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Automatically organize and catalog your digital comic collection with intelligent metadata detection.
           </p>
