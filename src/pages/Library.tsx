@@ -312,7 +312,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
             </div>
           </div>
         </div>
-        <div className="flex-1 overflow-auto pb-4">
+        <div className="flex-1 overflow-auto pb-4 pr-4">
           {viewMode === "grid" ? (
             <LibraryGrid 
               comics={sortedAndGroupedComics} 
