@@ -32,12 +32,11 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
   const { updateComic } = useAppContext();
   const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
   
-  // Form state
-  const [formData, setFormData] = useState({
-    publisher: "",
-    genre: "",
-    volume: "",
-  });
+  // Simple form state - no react-hook-form
+  const [publisher, setPublisher] = useState("");
+  const [genre, setGenre] = useState("");
+  const [volume, setVolume] = useState("");
+  const [creators, setCreators] = useState<Creator[]>([]);
   
   const [enabledFields, setEnabledFields] = useState({
     publisher: false,
@@ -45,12 +44,10 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
     volume: false,
     creators: false,
   });
-  
-  const [creators, setCreators] = useState<Creator[]>([]);
 
   const selectedComicObjects = comics.filter(c => selectedComics.includes(c.id));
 
-  // Generate publisher options from existing comics and knowledge base
+  // Generate publisher options
   const publisherOptions = (() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))];
     const publishersFromKnowledge = [...new Set(knowledgeBase.map(entry => entry.publisher))];
@@ -58,14 +55,14 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
     const allPublishers = [...new Set([...publishersFromComics, ...publishersFromKnowledge, ...commonPublishers])];
     
     return allPublishers
-      .filter(publisher => publisher && publisher.trim() !== '')
+      .filter(pub => pub && pub.trim() !== '')
       .sort();
   })();
 
   // Initialize form values when modal opens
   useEffect(() => {
     if (isOpen && selectedComicObjects.length > 0) {
-      // Find most common values
+      // Find most common publisher
       const publishers = selectedComicObjects.map(c => c.publisher).filter(Boolean);
       const publisherCounts = publishers.reduce((acc, pub) => {
         acc[pub!] = (acc[pub!] || 0) + 1;
@@ -74,39 +71,30 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
       const mostCommonPublisher = Object.entries(publisherCounts)
         .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
 
+      // Find most common genre
       const genres = selectedComicObjects.map(c => c.genre).filter(Boolean);
-      const genreCounts = genres.reduce((acc, genre) => {
-        acc[genre!] = (acc[genre!] || 0) + 1;
+      const genreCounts = genres.reduce((acc, g) => {
+        acc[g!] = (acc[g!] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
       const mostCommonGenre = Object.entries(genreCounts)
         .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
 
+      // Find most common volume
       const volumes = selectedComicObjects.map(c => c.volume).filter(Boolean);
-      const volumeCounts = volumes.reduce((acc, vol) => {
-        acc[vol!] = (acc[vol!] || 0) + 1;
+      const volumeCounts = volumes.reduce((acc, v) => {
+        acc[v!] = (acc[v!] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
       const mostCommonVolume = Object.entries(volumeCounts)
         .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
 
-      setFormData({
-        publisher: mostCommonPublisher,
-        genre: mostCommonGenre,
-        volume: mostCommonVolume,
-      });
-
-      // Reset creators to empty
+      setPublisher(mostCommonPublisher);
+      setGenre(mostCommonGenre);
+      setVolume(mostCommonVolume);
       setCreators([]);
     }
   }, [isOpen, selectedComics, comics]);
-
-  const handleInputChange = (field: keyof typeof formData, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
 
   const toggleField = (fieldName: keyof typeof enabledFields) => {
     setEnabledFields(prev => ({
@@ -138,23 +126,22 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
       const updates: Partial<Comic> = {};
       let hasUpdates = false;
 
-      if (enabledFields.publisher && formData.publisher.trim()) {
-        updates.publisher = formData.publisher.trim();
+      if (enabledFields.publisher && publisher.trim()) {
+        updates.publisher = publisher.trim();
         hasUpdates = true;
       }
 
-      if (enabledFields.genre && formData.genre.trim()) {
-        updates.genre = formData.genre.trim();
+      if (enabledFields.genre && genre.trim()) {
+        updates.genre = genre.trim();
         hasUpdates = true;
       }
 
-      if (enabledFields.volume && formData.volume.trim()) {
-        updates.volume = formData.volume.trim();
+      if (enabledFields.volume && volume.trim()) {
+        updates.volume = volume.trim();
         hasUpdates = true;
       }
 
       if (enabledFields.creators && creators.length > 0) {
-        // Filter out empty creators
         const validCreators = creators.filter(c => c.name.trim() !== '');
         if (validCreators.length > 0) {
           updates.creators = validCreators;
@@ -166,7 +153,6 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
         await updateComic({ ...comic, ...updates });
         updatedCount++;
 
-        // Add to knowledge base if publisher was updated
         if (updates.publisher) {
           addToKnowledgeBase({
             series: comic.series,
@@ -190,11 +176,9 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
       creators: false,
     });
     setCreators([]);
-    setFormData({
-      publisher: "",
-      genre: "",
-      volume: "",
-    });
+    setPublisher("");
+    setGenre("");
+    setVolume("");
     onClose();
   };
 
@@ -224,8 +208,8 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                   <Label htmlFor="publisher-input">Publisher</Label>
                   <Input
                     id="publisher-input"
-                    value={formData.publisher}
-                    onChange={(e) => handleInputChange('publisher', e.target.value)}
+                    value={publisher}
+                    onChange={(e) => setPublisher(e.target.value)}
                     list="publisher-options-bulk"
                     placeholder="Type or select publisher..."
                   />
@@ -249,8 +233,8 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                   <Label htmlFor="genre-input">Genre</Label>
                   <Input
                     id="genre-input"
-                    value={formData.genre}
-                    onChange={(e) => handleInputChange('genre', e.target.value)}
+                    value={genre}
+                    onChange={(e) => setGenre(e.target.value)}
                     placeholder="e.g., Superhero, Horror, Sci-Fi"
                   />
                 </div>
@@ -268,8 +252,8 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
                   <Label htmlFor="volume-input">Volume</Label>
                   <Input
                     id="volume-input"
-                    value={formData.volume}
-                    onChange={(e) => handleInputChange('volume', e.target.value)}
+                    value={volume}
+                    onChange={(e) => setVolume(e.target.value)}
                     placeholder="e.g., 2016"
                   />
                 </div>
@@ -340,14 +324,14 @@ const BulkEditComicsModal = ({ isOpen, onClose, selectedComics, comics }: BulkEd
               <div className="mt-4 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-sm font-medium">Preview of changes:</Label>
                 <div className="text-sm text-muted-foreground mt-1">
-                  {enabledFields.publisher && formData.publisher && (
-                    <div>• Publisher: {formData.publisher}</div>
+                  {enabledFields.publisher && publisher && (
+                    <div>• Publisher: {publisher}</div>
                   )}
-                  {enabledFields.genre && formData.genre && (
-                    <div>• Genre: {formData.genre}</div>
+                  {enabledFields.genre && genre && (
+                    <div>• Genre: {genre}</div>
                   )}
-                  {enabledFields.volume && formData.volume && (
-                    <div>• Volume: {formData.volume}</div>
+                  {enabledFields.volume && volume && (
+                    <div>• Volume: {volume}</div>
                   )}
                   {enabledFields.creators && creators.length > 0 && (
                     <div>• Creators: {creators.filter(c => c.name.trim()).length} creator(s)</div>
