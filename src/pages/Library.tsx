@@ -10,6 +10,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Search, Grid3X3, List, ZoomIn, ArrowLeft, Building } from "lucide-react";
 import LibraryGrid from "@/components/LibraryGrid";
 import SeriesView from "@/components/SeriesView";
@@ -131,120 +137,143 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
   };
 
   return (
-    <div className="h-full flex flex-col space-y-4">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Library</h1>
-          <p className="text-muted-foreground mt-1">
-            Browse your collection of {comics.length} comics
-            {searchTerm && ` (${sortedAndGroupedComics.length} matching "${searchTerm}")`}.
-          </p>
+    <TooltipProvider>
+      <div className="h-full flex flex-col space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Library</h1>
+            <p className="text-muted-foreground mt-1">
+              Browse your collection of {comics.length} comics
+              {searchTerm && ` (${sortedAndGroupedComics.length} matching "${searchTerm}")`}.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {isDrilledDown && (
+              <Button variant="outline" onClick={handleBackToSeriesView}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Series
+              </Button>
+            )}
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by series or publisher..."
+                className="pl-8 w-full md:w-64"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setIsDrilledDown(false);
+                }}
+              />
+            </div>
+            <Select value={ratingFilter} onValueChange={setRatingFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Rating" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Ratings</SelectItem>
+                <SelectItem value="unrated">Unrated</SelectItem>
+                {Object.entries(RATING_EMOJIS).map(([rating, { emoji }]) => (
+                  <SelectItem key={rating} value={rating}>
+                    {emoji} {rating}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sortOption} onValueChange={(value) => {
+              setSortOption(value);
+              setIsDrilledDown(false);
+            }}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="series-asc">Series (A-Z)</SelectItem>
+                <SelectItem value="series-desc">Series (Z-A)</SelectItem>
+                <SelectItem value="issue-asc">Issue (A-Z)</SelectItem>
+                <SelectItem value="issue-desc">Issue (Z-A)</SelectItem>
+                <SelectItem value="publisher-asc">Publisher (A-Z)</SelectItem>
+                <SelectItem value="publisher-desc">Publisher (Z-A)</SelectItem>
+                <SelectItem value="year-desc">Year (Newest)</SelectItem>
+                <SelectItem value="year-asc">Year (Oldest)</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-2">
+              <ZoomIn className="h-4 w-4 text-muted-foreground" />
+              <Slider
+                value={[coverSize]}
+                onValueChange={([value]) => setCoverSize(value)}
+                min={1}
+                max={5}
+                step={1}
+                className="w-32"
+              />
+            </div>
+            <div className="flex border rounded-md">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={viewMode === "grid" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("grid")}
+                    className="rounded-r-none"
+                  >
+                    <Grid3X3 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Grid View</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={viewMode === "series" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("series")}
+                    className="rounded-none"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Series View</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={viewMode === "publisher" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("publisher")}
+                    className="rounded-l-none"
+                  >
+                    <Building className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Publisher View</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {isDrilledDown && (
-            <Button variant="outline" onClick={handleBackToSeriesView}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Series
-            </Button>
+        <div className="flex-1 overflow-auto pb-4">
+          {viewMode === "grid" ? (
+            <LibraryGrid 
+              comics={sortedAndGroupedComics} 
+              coverSize={coverSize}
+              onSeriesDoubleClick={sortOption.startsWith('series-') ? handleSeriesDoubleClick : undefined}
+              onToggleInspector={onToggleInspector}
+            />
+          ) : viewMode === "series" ? (
+            <SeriesView comics={sortedAndGroupedComics} />
+          ) : (
+            <PublisherView comics={filteredComics} />
           )}
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by series or publisher..."
-              className="pl-8 w-full md:w-64"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setIsDrilledDown(false);
-              }}
-            />
-          </div>
-          <Select value={ratingFilter} onValueChange={setRatingFilter}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Rating" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Ratings</SelectItem>
-              <SelectItem value="unrated">Unrated</SelectItem>
-              {Object.entries(RATING_EMOJIS).map(([rating, { emoji }]) => (
-                <SelectItem key={rating} value={rating}>
-                  {emoji} {rating}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={sortOption} onValueChange={(value) => {
-            setSortOption(value);
-            setIsDrilledDown(false);
-          }}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="series-asc">Series (A-Z)</SelectItem>
-              <SelectItem value="series-desc">Series (Z-A)</SelectItem>
-              <SelectItem value="issue-asc">Issue (A-Z)</SelectItem>
-              <SelectItem value="issue-desc">Issue (Z-A)</SelectItem>
-              <SelectItem value="publisher-asc">Publisher (A-Z)</SelectItem>
-              <SelectItem value="publisher-desc">Publisher (Z-A)</SelectItem>
-              <SelectItem value="year-desc">Year (Newest)</SelectItem>
-              <SelectItem value="year-asc">Year (Oldest)</SelectItem>
-            </SelectContent>
-          </Select>
-          <div className="flex items-center gap-2">
-            <ZoomIn className="h-4 w-4 text-muted-foreground" />
-            <Slider
-              value={[coverSize]}
-              onValueChange={([value]) => setCoverSize(value)}
-              min={1}
-              max={5}
-              step={1}
-              className="w-32"
-            />
-          </div>
-          <div className="flex border rounded-md">
-            <Button
-              variant={viewMode === "grid" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("grid")}
-              className="rounded-r-none"
-            >
-              <Grid3X3 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "series" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("series")}
-              className="rounded-none"
-            >
-              <List className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "publisher" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("publisher")}
-              className="rounded-l-none"
-            >
-              <Building className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
       </div>
-      <div className="flex-1 overflow-auto pb-4">
-        {viewMode === "grid" ? (
-          <LibraryGrid 
-            comics={sortedAndGroupedComics} 
-            coverSize={coverSize}
-            onSeriesDoubleClick={sortOption.startsWith('series-') ? handleSeriesDoubleClick : undefined}
-            onToggleInspector={onToggleInspector}
-          />
-        ) : viewMode === "series" ? (
-          <SeriesView comics={sortedAndGroupedComics} />
-        ) : (
-          <PublisherView comics={filteredComics} />
-        )}
-      </div>
-    </div>
+    </TooltipProvider>
   );
 };
 
