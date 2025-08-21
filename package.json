@@ -1,16 +1,16 @@
 {
   "name": "comic-organizer",
   "version": "1.0.0",
-  "description": "A comic book collection management application.",
-  "author": "Dyad",
+  "description": "A desktop app to organize your digital comic collection.",
+  "author": "Comic Organizer",
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "electron": "concurrently \"npm run dev\" \"wait-on http-get://localhost:5173 && electron .\"",
-    "postinstall": "electron-rebuild"
+    "electron": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
+    "package": "npm run build && electron-builder"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -93,5 +93,29 @@
     "typescript-eslint": "^8.0.1",
     "vite": "^6.3.4",
     "wait-on": "^7.0.0"
+  },
+  "build": {
+    "appId": "com.comic-organizer.app",
+    "productName": "Comic Organizer",
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "build/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "build/icon.png"
+    }
   }
 }
