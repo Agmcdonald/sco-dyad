@@ -1,66 +1,64 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { ComicKnowledge } from '@/types';
+import { ComicKnowledge, CreatorKnowledge, KnowledgeBase } from '@/types';
 import { useElectron } from '@/hooks/useElectron';
 import defaultKnowledgeBase from '@/data/comicsKnowledge.json';
 
 interface KnowledgeBaseContextType {
-  knowledgeBase: ComicKnowledge[];
+  knowledgeBase: KnowledgeBase;
   addToKnowledgeBase: (entry: ComicKnowledge) => void;
   replaceKnowledgeBase: (entries: ComicKnowledge[]) => Promise<void>;
   saveKnowledgeBase: () => Promise<void>;
+  replaceCreators: (creators: CreatorKnowledge[]) => Promise<void>;
 }
+
+const emptyKB: KnowledgeBase = { series: [], creators: [] };
 
 const KnowledgeBaseContext = createContext<KnowledgeBaseContextType | undefined>(undefined);
 
 export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => {
-  const [knowledgeBase, setKnowledgeBase] = useState<ComicKnowledge[]>([]);
+  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeBase>(emptyKB);
   const { isElectron, electronAPI } = useElectron();
 
   useEffect(() => {
     const loadKnowledgeBase = async () => {
+      let data: any;
       if (isElectron && electronAPI) {
         try {
-          const data = await electronAPI.getKnowledgeBase();
-          setKnowledgeBase(data);
+          data = await electronAPI.getKnowledgeBase();
         } catch (error) {
           console.error("Failed to load knowledge base from Electron:", error);
-          setKnowledgeBase(defaultKnowledgeBase);
+          data = defaultKnowledgeBase;
         }
       } else {
-        // Web mode fallback
-        setKnowledgeBase(defaultKnowledgeBase);
+        data = defaultKnowledgeBase;
+      }
+
+      // Handle old format (array of series) vs new format (object with series and creators)
+      if (Array.isArray(data)) {
+        setKnowledgeBase({ series: data, creators: [] });
+      } else if (data && typeof data === 'object' && (data.series || data.creators)) {
+        setKnowledgeBase({ series: data.series || [], creators: data.creators || [] });
+      } else {
+        setKnowledgeBase(emptyKB);
       }
     };
     loadKnowledgeBase();
   }, [isElectron, electronAPI]);
 
-  // Helper to normalize strings for comparison
-  const normalizeStr = (s?: string | null) => (s || "").trim().toLowerCase();
-
-  // Persist helper that writes the provided KB to disk (or via Electron)
-  const persistKnowledgeBase = useCallback(async (kb: ComicKnowledge[]) => {
-    const normalized = kb.map(entry => ({
-      series: (entry.series || "").trim(),
-      publisher: (entry.publisher || "Unknown Publisher").trim(),
-      startYear: Number(entry.startYear) || new Date().getFullYear(),
-      volumes: (entry.volumes || []).map(v => ({
-        volume: String((v as any).volume || "").trim(),
-        year: Number((v as any).year) || Number(entry.startYear) || new Date().getFullYear()
-      }))
-    }));
-    setKnowledgeBase(normalized);
+  const persistKnowledgeBase = useCallback(async (kb: KnowledgeBase) => {
+    setKnowledgeBase(kb);
     if (isElectron && electronAPI) {
       try {
-        await electronAPI.saveKnowledgeBase(normalized);
+        await electronAPI.saveKnowledgeBase(kb);
       } catch (err) {
         console.error("Failed to save knowledge base via Electron:", err);
       }
     }
   }, [isElectron, electronAPI]);
 
-  // Replace entire knowledge base (used when saving editor state). This supports deletions.
+  const normalizeStr = (s?: string | null) => (s || "").trim().toLowerCase();
+
   const replaceKnowledgeBase = useCallback(async (entries: ComicKnowledge[]) => {
-    // Deduplicate by normalized series and merge volumes for the same series
     const map = new Map<string, ComicKnowledge>();
     for (const rawEntry of entries) {
       const seriesKey = normalizeStr(rawEntry.series);
@@ -76,14 +74,10 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
 
       if (map.has(seriesKey)) {
         const existing = map.get(seriesKey)!;
-        // choose earliest startYear
         if (normalizedEntry.startYear < (existing.startYear || Number.MAX_SAFE_INTEGER)) {
           existing.startYear = normalizedEntry.startYear;
         }
-        // overwrite publisher if provided (trimmed)
         if (normalizedEntry.publisher) existing.publisher = normalizedEntry.publisher;
-
-        // merge volumes deduped by normalized volume string
         const existingSet = new Set(existing.volumes.map(v => normalizeStr(v.volume)));
         for (const vol of normalizedEntry.volumes) {
           const volKey = normalizeStr(vol.volume);
@@ -96,20 +90,15 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
         map.set(seriesKey, normalizedEntry);
       }
     }
+    const finalSeries = Array.from(map.values());
+    await persistKnowledgeBase({ ...knowledgeBase, series: finalSeries });
+  }, [knowledgeBase, persistKnowledgeBase]);
 
-    const finalKb = Array.from(map.values());
-    await persistKnowledgeBase(finalKb);
-  }, [persistKnowledgeBase]);
-
-  // Add or merge a single entry (keeps previous incremental behavior)
   const addToKnowledgeBase = useCallback((newEntry: ComicKnowledge) => {
     setKnowledgeBase(prev => {
-      const updatedKb = [...prev];
-
-      // Normalize series for matching (trim + case-insensitive)
+      const updatedSeries = [...prev.series];
       const normalizedNewSeries = normalizeStr(newEntry.series);
-
-      const existingEntryIndex = updatedKb.findIndex(entry => normalizeStr(entry.series) === normalizedNewSeries);
+      const existingEntryIndex = updatedSeries.findIndex(entry => normalizeStr(entry.series) === normalizedNewSeries);
 
       const normalizedEntry: ComicKnowledge = {
         series: (newEntry.series || "").trim(),
@@ -122,25 +111,13 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
       };
 
       if (existingEntryIndex > -1) {
-        // Merge into existing entry
-        const existingEntry = { ...updatedKb[existingEntryIndex] };
-
-        // Overwrite publisher (but keep trimmed)
+        const existingEntry = { ...updatedSeries[existingEntryIndex] };
         existingEntry.publisher = normalizedEntry.publisher || existingEntry.publisher;
-
-        // Update startYear to the earliest known
         if (normalizedEntry.startYear && (!existingEntry.startYear || normalizedEntry.startYear < existingEntry.startYear)) {
           existingEntry.startYear = normalizedEntry.startYear;
         }
-
-        // Ensure volumes array exists
         existingEntry.volumes = existingEntry.volumes ? [...existingEntry.volumes] : [];
-
-        // Append all volumes from newEntry that don't already exist (compare normalized)
-        const existingVolumeSet = new Set(
-          existingEntry.volumes.map(v => normalizeStr((v as any).volume))
-        );
-
+        const existingVolumeSet = new Set(existingEntry.volumes.map(v => normalizeStr((v as any).volume)));
         (normalizedEntry.volumes || []).forEach(v => {
           const volStr = normalizeStr((v as any).volume);
           if (!existingVolumeSet.has(volStr)) {
@@ -151,26 +128,35 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
             existingVolumeSet.add(volStr);
           }
         });
-
-        // Save back
-        updatedKb[existingEntryIndex] = existingEntry;
+        updatedSeries[existingEntryIndex] = existingEntry;
       } else {
-        // New series: push normalized entry
-        updatedKb.push(normalizedEntry);
+        updatedSeries.push(normalizedEntry);
       }
-
-      // Persist the updated KB
-      persistKnowledgeBase(updatedKb);
-      return updatedKb;
+      
+      const newKb = { ...prev, series: updatedSeries };
+      persistKnowledgeBase(newKb);
+      return newKb;
     });
   }, [persistKnowledgeBase]);
+
+  const replaceCreators = useCallback(async (creators: CreatorKnowledge[]) => {
+    const map = new Map<string, CreatorKnowledge>();
+    for (const creator of creators) {
+      const key = normalizeStr(creator.name);
+      if (!map.has(key)) {
+        map.set(key, creator);
+      }
+    }
+    const finalCreators = Array.from(map.values());
+    await persistKnowledgeBase({ ...knowledgeBase, creators: finalCreators });
+  }, [knowledgeBase, persistKnowledgeBase]);
 
   const saveKnowledgeBase = useCallback(async () => {
     await persistKnowledgeBase(knowledgeBase);
   }, [knowledgeBase, persistKnowledgeBase]);
 
   return (
-    <KnowledgeBaseContext.Provider value={{ knowledgeBase, addToKnowledgeBase, replaceKnowledgeBase, saveKnowledgeBase }}>
+    <KnowledgeBaseContext.Provider value={{ knowledgeBase, addToKnowledgeBase, replaceKnowledgeBase, saveKnowledgeBase, replaceCreators }}>
       {children}
     </KnowledgeBaseContext.Provider>
   );
