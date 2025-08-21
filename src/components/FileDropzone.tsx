@@ -29,6 +29,8 @@ const FileDropzone = () => {
     setIsDragOver(false);
 
     const droppedFiles = Array.from(e.dataTransfer.files);
+    console.log('[DROPZONE] Dropped files:', droppedFiles);
+
     if (droppedFiles.length === 0) {
       showError("No files were dropped");
       return;
@@ -46,9 +48,24 @@ const FileDropzone = () => {
     }
 
     if (isElectron) {
-      // In Electron, the File object has a 'path' property with the real file system path.
-      const filePaths = comicFiles.map(file => (file as any).path);
-      await addFilesFromPaths(filePaths);
+      try {
+        // In Electron, the File object has a 'path' property with the real file system path.
+        const filePaths = comicFiles.map(file => {
+          const filePath = (file as any).path;
+          console.log('[DROPZONE] File path for', file.name, ':', filePath);
+          return filePath;
+        }).filter(path => path); // Filter out any undefined paths
+
+        if (filePaths.length === 0) {
+          showError("Could not access file paths. Please use the 'Add Files' button instead.");
+          return;
+        }
+
+        await addFilesFromPaths(filePaths);
+      } catch (error) {
+        console.error('[DROPZONE] Error processing dropped files:', error);
+        showError("Error processing dropped files. Please try using the 'Add Files' button.");
+      }
     } else {
       // Web mode (demo)
       const queuedFiles = comicFiles.map((file, index) => ({
@@ -59,6 +76,7 @@ const FileDropzone = () => {
         issue: null,
         year: null,
         publisher: null,
+        volume: null,
         confidence: null as any,
         status: 'Pending' as any
       }));
