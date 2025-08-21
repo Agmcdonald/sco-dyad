@@ -45,6 +45,25 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
   const [pageImages, setPageImages] = useState<Record<string, string>>({});
   const [pageLoadError, setPageLoadError] = useState("");
 
+  // Convert Google Drive sharing URL to direct image URL
+  const convertGoogleDriveUrl = (url: string): string => {
+    const googleDriveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (googleDriveMatch) {
+      const fileId = googleDriveMatch[1];
+      return `https://drive.google.com/uc?export=view&id=${fileId}`;
+    }
+    return url;
+  };
+
+  // Check if URL looks like a direct image URL
+  const isDirectImageUrl = (url: string): boolean => {
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+    const lowerUrl = url.toLowerCase();
+    return imageExtensions.some(ext => lowerUrl.includes(ext)) || 
+           lowerUrl.includes('uc?export=view') || // Google Drive direct
+           lowerUrl.includes('amazonaws.com'); // AWS S3
+  };
+
   // Load available pages from the comic file
   useEffect(() => {
     const loadPages = async () => {
@@ -120,8 +139,19 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
     }
 
     try {
-      console.log('[FIX-COVER] Setting custom URL:', customUrl.trim());
-      const updatedComic = { ...comic, coverUrl: customUrl.trim() };
+      console.log('[FIX-COVER] Original URL:', customUrl.trim());
+      
+      // Convert Google Drive URLs to direct links
+      const processedUrl = convertGoogleDriveUrl(customUrl.trim());
+      console.log('[FIX-COVER] Processed URL:', processedUrl);
+      
+      // Warn if URL doesn't look like a direct image URL
+      if (!isDirectImageUrl(processedUrl)) {
+        showError("This doesn't appear to be a direct image URL. Please use a direct link to an image file (ending in .jpg, .png, etc.) or a Google Drive direct link.");
+        return;
+      }
+      
+      const updatedComic = { ...comic, coverUrl: processedUrl };
       await updateComic(updatedComic);
       showSuccess("Custom cover image set successfully!");
       onClose();
@@ -156,7 +186,8 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
       return;
     }
 
-    console.log('[FIX-COVER] Testing preview URL:', customUrl.trim());
+    const processedUrl = convertGoogleDriveUrl(customUrl.trim());
+    console.log('[FIX-COVER] Testing preview URL:', processedUrl);
     setPreviewError("");
     setPreviewUrl("");
 
@@ -165,7 +196,7 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
     img.crossOrigin = "anonymous"; // Try to handle CORS
     img.onload = () => {
       console.log('[FIX-COVER] Preview image loaded successfully');
-      setPreviewUrl(customUrl.trim());
+      setPreviewUrl(processedUrl);
       setPreviewError("");
     };
     img.onerror = (error) => {
@@ -173,7 +204,7 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
       setPreviewError("Could not load image from URL. This might be due to CORS restrictions or an invalid URL.");
       setPreviewUrl("");
     };
-    img.src = customUrl.trim();
+    img.src = processedUrl;
   };
 
   // Clear preview when URL changes
@@ -284,11 +315,17 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
               <div>
                 <h4 className="font-medium">Use Custom Image URL</h4>
                 <p className="text-sm text-muted-foreground">
-                  Enter a direct link to an image file to use as the cover. Note: Some websites block external access to their images (CORS policy).
+                  Enter a direct link to an image file. The URL should end with .jpg, .png, .gif, etc.
                 </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  <strong>Tip:</strong> Even if the preview doesn't work, you can still try using the URL - it might work as a cover even if preview fails.
-                </p>
+                <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                  <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">Google Drive Tip:</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400">
+                    For Google Drive images, use sharing links like: <br/>
+                    <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">
+                      https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+                    </code>
+                  </p>
+                </div>
               </div>
             </div>
           </TabsContent>
