@@ -263,11 +263,12 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
             <LibraryGrid 
               comics={sortedAndGroupedComics} 
               coverSize={coverSize}
+              sortOption={sortOption}
               onSeriesDoubleClick={sortOption.startsWith('series-') ? handleSeriesDoubleClick : undefined}
               onToggleInspector={onToggleInspector}
             />
           ) : viewMode === "series" ? (
-            <SeriesView comics={sortedAndGroupedComics} />
+            <SeriesView comics={sortedAndGroupedComics} sortOption={sortOption} />
           ) : (
             <PublisherView comics={filteredComics} />
           )}

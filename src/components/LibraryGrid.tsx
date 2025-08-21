@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import ComicCard from "./ComicCard";
 import LibraryBulkActions from "./LibraryBulkActions";
@@ -7,13 +7,36 @@ import { Comic } from "@/types";
 interface LibraryGridProps {
   comics: Comic[];
   coverSize: number;
+  sortOption: string; // Add sortOption prop
   onSeriesDoubleClick?: (seriesName: string) => void;
   onToggleInspector?: () => void;
 }
 
-const LibraryGrid = ({ comics, coverSize, onSeriesDoubleClick, onToggleInspector }: LibraryGridProps) => {
+const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onToggleInspector }: LibraryGridProps) => {
   const [selectedComics, setSelectedComics] = useState<string[]>([]);
   const [selectionMode, setSelectionMode] = useState(false);
+
+  // Group comics by publisher when sorting by publisher
+  const groupedComics = useMemo(() => {
+    if (sortOption.startsWith('publisher-')) {
+      const groups = comics.reduce((acc, comic) => {
+        const publisher = comic.publisher;
+        if (!acc[publisher]) {
+          acc[publisher] = [];
+        }
+        acc[publisher].push(comic);
+        return acc;
+      }, {} as Record<string, Comic[]>);
+
+      // Sort publishers and return as array of groups
+      return Object.entries(groups)
+        .sort(([a], [b]) => sortOption === 'publisher-asc' ? a.localeCompare(b) : b.localeCompare(a))
+        .map(([publisher, comics]) => ({ publisher, comics }));
+    }
+    
+    // For non-publisher sorting, return all comics in one group
+    return [{ publisher: null, comics }];
+  }, [comics, sortOption]);
 
   const handleToggleSelectionMode = () => {
     setSelectionMode(!selectionMode);
@@ -81,24 +104,41 @@ const LibraryGrid = ({ comics, coverSize, onSeriesDoubleClick, onToggleInspector
         />
       )}
 
-      {/* Comics Grid */}
-      <div className={`grid ${gridClass} gap-4`}>
-        {comics.map((comic) => (
-          <div key={comic.id} className="relative">
-            {selectionMode && (
-              <div className="absolute top-2 left-2 z-10">
-                <Checkbox
-                  checked={selectedComics.includes(comic.id)}
-                  onCheckedChange={(checked) => handleComicSelection(comic.id, Boolean(checked))}
-                  className="bg-background border-2 shadow-sm"
-                />
+      {/* Comics Grid with Publisher Headers */}
+      <div className="space-y-6">
+        {groupedComics.map(({ publisher, comics: groupComics }, groupIndex) => (
+          <div key={publisher || 'all'} className="space-y-4">
+            {/* Publisher Header - only show when sorting by publisher */}
+            {publisher && sortOption.startsWith('publisher-') && (
+              <div className="border-b pb-2">
+                <h2 className="text-xl font-semibold text-foreground">{publisher}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {groupComics.length} comic{groupComics.length !== 1 ? 's' : ''}
+                </p>
               </div>
             )}
-            <ComicCard 
-              comic={comic} 
-              onDoubleClick={onSeriesDoubleClick}
-              onToggleInspector={onToggleInspector}
-            />
+            
+            {/* Comics Grid */}
+            <div className={`grid ${gridClass} gap-4`}>
+              {groupComics.map((comic) => (
+                <div key={comic.id} className="relative">
+                  {selectionMode && (
+                    <div className="absolute top-2 left-2 z-10">
+                      <Checkbox
+                        checked={selectedComics.includes(comic.id)}
+                        onCheckedChange={(checked) => handleComicSelection(comic.id, Boolean(checked))}
+                        className="bg-background border-2 shadow-sm"
+                      />
+                    </div>
+                  )}
+                  <ComicCard 
+                    comic={comic} 
+                    onDoubleClick={onSeriesDoubleClick}
+                    onToggleInspector={onToggleInspector}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
