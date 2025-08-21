@@ -117,17 +117,27 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         let coverUrl = '/placeholder.svg';
         let fileSize = 25000000;
         
+        // Try to extract cover with better error handling
         try {
+          console.log(`[ADD-COMIC] Attempting to extract cover from: ${originalFile.path}`);
           coverUrl = await electronAPI.extractCover(originalFile.path);
+          console.log(`[ADD-COMIC] Cover extracted successfully: ${coverUrl}`);
         } catch (coverError) {
-          console.warn('[ADD-COMIC] Could not extract cover:', coverError);
+          console.warn(`[ADD-COMIC] Could not extract cover from ${originalFile.name}:`, coverError);
+          logAction('warning', `Could not extract cover from ${originalFile.name} - using placeholder`);
+          // Continue with placeholder cover instead of failing
         }
 
+        // Try to get file info
         try {
           const fileInfo = await electronAPI.readComicFile(originalFile.path);
-          if (fileInfo && fileInfo.size) fileSize = fileInfo.size;
+          if (fileInfo && fileInfo.size) {
+            fileSize = fileInfo.size;
+            console.log(`[ADD-COMIC] File size: ${fileSize} bytes`);
+          }
         } catch (infoError) {
-          console.warn('[ADD-COMIC] Could not read file info:', infoError);
+          console.warn(`[ADD-COMIC] Could not read file info for ${originalFile.name}:`, infoError);
+          // Continue with default file size
         }
 
         const fileExtension = originalFile.name.substring(originalFile.name.lastIndexOf('.'));
@@ -135,6 +145,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const filePart = formatPath(settings.fileNameFormat, comicData) + fileExtension;
         const relativeTargetPath = `${folderPart}/${filePart}`.replace(/\\/g, '/');
 
+        console.log(`[ADD-COMIC] Organizing file to: ${relativeTargetPath}`);
         const organizeResult = await electronAPI.organizeFile(originalFile.path, relativeTargetPath);
 
         if (!organizeResult || typeof organizeResult === 'boolean' || !organizeResult.success) {
@@ -148,6 +159,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           filePath: organizeResult.newPath || originalFile.path, 
           fileSize 
         };
+        
+        console.log(`[ADD-COMIC] Saving comic to database:`, comicToSave);
         const savedComic = await databaseService.saveComic(comicToSave);
         const finalComic = { ...savedComic, coverUrl };
 
@@ -161,7 +174,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         showSuccess(`Added '${finalComic.series} #${finalComic.issue}' to library`);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        showError(`An error occurred while organizing ${originalFile.name}`);
+        console.error(`[ADD-COMIC] Error organizing ${originalFile.name}:`, error);
+        showError(`An error occurred while organizing ${originalFile.name}: ${errorMessage}`);
         logAction('error', `Error organizing ${originalFile.name}: ${errorMessage}`);
       }
     } else {
