@@ -36,7 +36,6 @@ const Sidebar = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchTerm.trim()) {
-      // Navigate to library with search term
       navigate('/app/library', { state: { searchTerm: searchTerm.trim() } });
       setSearchTerm("");
     }
@@ -53,7 +52,11 @@ const Sidebar = () => {
     <aside className="h-full flex flex-col bg-muted/40 border-r">
       <div className="border-b">
         <div className="flex justify-center p-4">
-          <img src="/logo.png" alt="Super Comic Organizer Logo" className="h-auto w-full" />
+          <img
+            src="/logo.png"
+            alt="Super Comic Organizer Logo"
+            className="h-auto w-full scale-110"
+          />
         </div>
         <div className="px-4 pb-4">
           <form onSubmit={handleSearch} className="relative">
@@ -66,7 +69,6 @@ const Sidebar = () => {
             />
           </form>
           
-          {/* Search Results Dropdown */}
           {searchResults.length > 0 && (
             <div className="mt-2 bg-background border rounded-md shadow-lg">
               <div className="p-2 text-xs font-medium text-muted-foreground border-b">
