@@ -55,7 +55,7 @@ const Sidebar = () => {
   return (
     <aside className="h-full flex flex-col bg-muted/40 border-r min-w-0">
       <div className="border-b">
-        <div className="flex justify-center p-4">
+        <div className="flex justify-center px-4 py-2">
           <img
             src="/logo.png"
             alt="Super Comic Organizer Logo"
