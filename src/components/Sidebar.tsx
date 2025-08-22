@@ -55,11 +55,11 @@ const Sidebar = () => {
   return (
     <aside className="h-full flex flex-col bg-muted/40 border-r min-w-0">
       <div className="border-b">
-        <div className="flex justify-center p-4 overflow-hidden">
+        <div className="flex justify-center p-4">
           <img
             src="/logo.png"
             alt="Super Comic Organizer Logo"
-            className="h-auto w-[90%] scale-110 object-contain mx-auto"
+            className="h-auto w-full object-contain"
           />
         </div>
         <div className="px-4 pb-4">
