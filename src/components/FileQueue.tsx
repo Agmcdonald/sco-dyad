@@ -43,11 +43,8 @@ const FileQueue = ({ files, selectedFiles = [], onSelectionChange, onToggleInspe
     } else {
       setSelectedItem({ ...file, type: 'file' });
       
-      // Auto-open inspector if it's not already open and we have the callback
+      // Always trigger inspector opening when selecting a new file
       if (onToggleInspector) {
-        // We need to check if inspector is currently closed
-        // Since we don't have direct access to inspector state, we'll always call it
-        // The parent component should handle whether to actually toggle or not
         onToggleInspector();
       }
     }

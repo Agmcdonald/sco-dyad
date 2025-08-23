@@ -15,18 +15,12 @@ const Layout = () => {
   const { selectedItem } = useSelection();
 
   const toggleInspector = () => {
-    // If inspector is closed and we have a selected item, always open it
-    if (!isInspectorOpen && selectedItem) {
-      setIsInspectorOpen(true);
-    } else {
-      // Otherwise, toggle normally
-      setIsInspectorOpen(!isInspectorOpen);
-    }
+    setIsInspectorOpen(!isInspectorOpen);
   };
 
-  // Auto-open inspector when an item is selected and inspector is closed
-  const handleInspectorAutoOpen = () => {
-    if (!isInspectorOpen && selectedItem) {
+  // Function specifically for auto-opening inspector when items are selected
+  const autoOpenInspector = () => {
+    if (!isInspectorOpen) {
       setIsInspectorOpen(true);
     }
   };
@@ -45,7 +39,11 @@ const Layout = () => {
               toggleInspector={toggleInspector}
             />
             <main className="flex-1 p-6 overflow-auto bg-muted/20">
-              <Outlet context={{ toggleInspector: handleInspectorAutoOpen }} />
+              <Outlet context={{ 
+                toggleInspector: toggleInspector,
+                autoOpenInspector: autoOpenInspector,
+                isInspectorOpen: isInspectorOpen
+              }} />
             </main>
           </div>
         </ResizablePanel>
