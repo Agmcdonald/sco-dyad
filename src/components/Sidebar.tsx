@@ -42,17 +42,31 @@ const Sidebar = () => {
   };
 
   const searchResults =
-    searchTerm.length > 2
+    searchTerm.trim().length > 0
       ? comics
           .filter(
             (comic) => {
-              const lowerSearchTerm = searchTerm.toLowerCase();
+              const lowerSearchTerm = searchTerm.toLowerCase().trim();
+              if (!lowerSearchTerm) return false;
+
               const inSeries = comic.series.toLowerCase().includes(lowerSearchTerm);
               const inPublisher = comic.publisher.toLowerCase().includes(lowerSearchTerm);
               const inCreators = comic.creators?.some(creator => 
                 creator.name.toLowerCase().includes(lowerSearchTerm)
               ) || false;
-              return inSeries || inPublisher || inCreators;
+              
+              let inIssue = false;
+              const searchAsNum = Number(lowerSearchTerm);
+              if (!isNaN(searchAsNum)) {
+                const issueAsNum = Number(comic.issue);
+                if (!isNaN(issueAsNum) && issueAsNum === searchAsNum) {
+                  inIssue = true;
+                }
+              } else {
+                inIssue = comic.issue.toLowerCase().includes(lowerSearchTerm);
+              }
+
+              return inSeries || inPublisher || inCreators || inIssue;
             }
           )
           .slice(0, 5)
