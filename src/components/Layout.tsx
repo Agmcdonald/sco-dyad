@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import Inspector from "./Inspector";
+import { useSelection } from "@/context/SelectionContext";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -11,8 +12,24 @@ import {
 
 const Layout = () => {
   const [isInspectorOpen, setIsInspectorOpen] = useState(true);
+  const { selectedItem } = useSelection();
 
-  const toggleInspector = () => setIsInspectorOpen(!isInspectorOpen);
+  const toggleInspector = () => {
+    // If inspector is closed and we have a selected item, always open it
+    if (!isInspectorOpen && selectedItem) {
+      setIsInspectorOpen(true);
+    } else {
+      // Otherwise, toggle normally
+      setIsInspectorOpen(!isInspectorOpen);
+    }
+  };
+
+  // Auto-open inspector when an item is selected and inspector is closed
+  const handleInspectorAutoOpen = () => {
+    if (!isInspectorOpen && selectedItem) {
+      setIsInspectorOpen(true);
+    }
+  };
 
   return (
     <div className="h-screen w-full">
@@ -28,7 +45,7 @@ const Layout = () => {
               toggleInspector={toggleInspector}
             />
             <main className="flex-1 p-6 overflow-auto bg-muted/20">
-              <Outlet context={{ toggleInspector }} />
+              <Outlet context={{ toggleInspector: handleInspectorAutoOpen }} />
             </main>
           </div>
         </ResizablePanel>

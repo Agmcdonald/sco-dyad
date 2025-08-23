@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useOutletContext } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { SkipForward, Undo } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
@@ -31,6 +32,9 @@ const Organize = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   
   const { isElectron } = useElectron();
+  
+  // Get the toggleInspector function from the Layout context
+  const { toggleInspector } = useOutletContext<{ toggleInspector: () => void }>();
 
   useEffect(() => {
     setFilteredFiles(files);
@@ -85,6 +89,15 @@ const Organize = () => {
       setSelectedItem(null);
     }
   };
+
+  const handleToggleInspector = useCallback(() => {
+    // Only open the inspector, don't close it
+    // We can add logic here to check if inspector is already open
+    // For now, we'll just call toggleInspector which should handle the state
+    if (toggleInspector) {
+      toggleInspector();
+    }
+  }, [toggleInspector]);
 
   return (
     <div 
@@ -157,6 +170,7 @@ const Organize = () => {
               files={filteredFiles} 
               selectedFiles={selectedFiles}
               onSelectionChange={setSelectedFiles}
+              onToggleInspector={handleToggleInspector}
             />
           )}
         </div>
