@@ -186,13 +186,16 @@ class ComicFileHandler {
         }
       }
     } else if (fileType === 'pdf') {
+      console.log(`[GET-PAGE-COUNT] Starting PDF page count for: ${filePath}`);
       try {
         const data = new Uint8Array(await fs.readFile(filePath));
+        console.log(`[GET-PAGE-COUNT] Read PDF file into buffer (${data.length} bytes).`);
         const doc = await pdfjs.getDocument(data).promise;
+        console.log(`[GET-PAGE-COUNT] PDF document loaded. Pages: ${doc.numPages}`);
         return doc.numPages;
       } catch (error) {
-        console.warn(`Could not get page count for PDF ${filePath}:`, error.message);
-        return 0;
+        console.error(`[GET-PAGE-COUNT] Error getting page count for PDF ${filePath}:`, error);
+        throw error; // Re-throw the original error
       }
     }
     return 0;
@@ -200,20 +203,23 @@ class ComicFileHandler {
 
   // Extract cover image from comic file
   async extractCover(filePath, outputDir) {
+    console.log(`[EXTRACT-COVER V2] Starting cover extraction for: ${filePath}`);
+    const ext = path.extname(filePath).toLowerCase();
+    console.log(`[EXTRACT-COVER V2] File extension: ${ext}`);
+
     try {
-      const fileType = this.getFileType(filePath);
-      
-      if (fileType === 'cbz') {
+      if (ext === '.cbz') {
         return await this.extractCoverFromZipArchive(filePath, outputDir);
-      } else if (fileType === 'cbr') {
+      } else if (ext === '.cbr') {
         return await this.extractCoverFromRarArchive(filePath, outputDir);
-      } else if (fileType === 'pdf') {
+      } else if (ext === '.pdf') {
+        console.log(`[EXTRACT-COVER V2] Entering PDF logic.`);
         return await this.extractCoverFromPdf(filePath, outputDir);
       }
       
-      throw new Error(`Unsupported file type: ${fileType}`);
+      throw new Error(`Unsupported file type: ${ext}`);
     } catch (error) {
-      console.error('Error extracting cover:', error);
+      console.error(`[EXTRACT-COVER V2] Error extracting cover:`, error);
       throw error;
     }
   }
@@ -402,9 +408,11 @@ class ComicFileHandler {
 
   // Get list of pages from comic archive
   async getPages(filePath) {
-    const fileType = this.getFileType(filePath);
-    
-    if (fileType === 'cbz') {
+    console.log(`[GET-PAGES V2] Starting page extraction for: ${filePath}`);
+    const ext = path.extname(filePath).toLowerCase();
+    console.log(`[GET-PAGES V2] File extension: ${ext}`);
+
+    if (ext === '.cbz') {
       let zip;
       try {
         zip = new StreamZip.async({ file: filePath });
@@ -422,12 +430,22 @@ class ComicFileHandler {
           }
         }
       }
-    } else if (fileType === 'pdf') {
-      const pageCount = await this.getPageCount(filePath);
-      return Array.from({ length: pageCount }, (_, i) => `page_${i + 1}`);
     }
     
-    throw new Error(`Unsupported file type for page extraction: ${fileType}`);
+    if (ext === '.pdf') {
+      try {
+        console.log(`[GET-PAGES V2] Entering PDF logic.`);
+        const pageCount = await this.getPageCount(filePath);
+        console.log(`[GET-PAGES V2] PDF page count: ${pageCount}`);
+        return Array.from({ length: pageCount }, (_, i) => `page_${i + 1}`);
+      } catch (pdfError) {
+        console.error(`[GET-PAGES V2] Error during PDF processing:`, pdfError);
+        throw new Error(`Failed during PDF processing: ${pdfError.message}`);
+      }
+    }
+    
+    console.error(`[GET-PAGES V2] Unsupported extension: ${ext}. Throwing error.`);
+    throw new Error(`Unsupported file type for page extraction: ${ext}`);
   }
 
   // Extract a specific page from comic archive as a data URL
