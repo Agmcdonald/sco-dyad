@@ -29,16 +29,27 @@ interface FileQueueProps {
   files: QueuedFile[];
   selectedFiles?: string[];
   onSelectionChange?: (fileIds: string[]) => void;
+  onToggleInspector?: () => void;
 }
 
-const FileQueue = ({ files, selectedFiles = [], onSelectionChange }: FileQueueProps) => {
+const FileQueue = ({ files, selectedFiles = [], onSelectionChange, onToggleInspector }: FileQueueProps) => {
   const { selectedItem, setSelectedItem } = useSelection();
 
   const handleSelect = (file: QueuedFile) => {
-    if (selectedItem?.type === 'file' && selectedItem.id === file.id) {
+    const wasAlreadySelected = selectedItem?.type === 'file' && selectedItem.id === file.id;
+    
+    if (wasAlreadySelected) {
       setSelectedItem(null); // Deselect if clicking the same item
     } else {
       setSelectedItem({ ...file, type: 'file' });
+      
+      // Auto-open inspector if it's not already open and we have the callback
+      if (onToggleInspector) {
+        // We need to check if inspector is currently closed
+        // Since we don't have direct access to inspector state, we'll always call it
+        // The parent component should handle whether to actually toggle or not
+        onToggleInspector();
+      }
     }
   };
 
