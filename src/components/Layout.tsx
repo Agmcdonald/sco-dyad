@@ -17,11 +17,11 @@ const Layout = () => {
   return (
     <div className="h-screen w-full">
       <ResizablePanelGroup direction="horizontal" className="h-full w-full">
-        <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
+        <ResizablePanel id="sidebar" order={1} defaultSize={20} minSize={15} maxSize={25}>
           <Sidebar />
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel>
+        <ResizablePanel id="main" order={2}>
           <div className="flex flex-col h-full">
             <Header
               isInspectorOpen={isInspectorOpen}
@@ -35,7 +35,7 @@ const Layout = () => {
         {isInspectorOpen && (
           <>
             <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={25} minSize={20} maxSize={40}>
+            <ResizablePanel id="inspector" order={3} defaultSize={25} minSize={20} maxSize={40}>
               <Inspector />
             </ResizablePanel>
           </>
