@@ -22,6 +22,7 @@ const Organize = () => {
     undoLastAction,
     skipFile,
     addFilesFromDrop,
+    addFiles,
     fileLoadStatus
   } = useAppContext();
   const { selectedItem, setSelectedItem } = useSelection();
@@ -34,6 +35,22 @@ const Organize = () => {
   useEffect(() => {
     setFilteredFiles(files);
   }, [files]);
+
+  // Listen for Electron file events
+  useEffect(() => {
+    const handleElectronFiles = (event: CustomEvent) => {
+      const { files: electronFiles } = event.detail;
+      if (electronFiles && Array.isArray(electronFiles)) {
+        addFiles(electronFiles);
+      }
+    };
+
+    window.addEventListener('electron-files-added', handleElectronFiles as EventListener);
+
+    return () => {
+      window.removeEventListener('electron-files-added', handleElectronFiles as EventListener);
+    };
+  }, [addFiles]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
