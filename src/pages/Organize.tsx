@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { SkipForward, Undo } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
@@ -8,6 +8,7 @@ import ProcessingStats from "@/components/ProcessingStats";
 import SmartSuggestions from "@/components/SmartSuggestions";
 import BatchProcessor from "@/components/BatchProcessor";
 import AdvancedFilters from "@/components/AdvancedFilters";
+import FileLoadProgress from "@/components/FileLoadProgress";
 import { useSelection } from "@/context/SelectionContext";
 import { useAppContext } from "@/context/AppContext";
 import { QueuedFile } from "@/types";
@@ -20,7 +21,8 @@ const Organize = () => {
     lastUndoableAction,
     undoLastAction,
     skipFile,
-    addFilesFromDrop
+    addFilesFromDrop,
+    fileLoadStatus
   } = useAppContext();
   const { selectedItem, setSelectedItem } = useSelection();
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
@@ -103,21 +105,25 @@ const Organize = () => {
         )}
       </div>
 
-      {files.length > 0 && (
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2"><ProcessingStats /></div>
-          <div><SmartSuggestions /></div>
-        </div>
+      {fileLoadStatus.isLoading ? (
+        <FileLoadProgress />
+      ) : (
+        files.length > 0 && (
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="lg:col-span-2"><ProcessingStats /></div>
+            <div><SmartSuggestions /></div>
+          </div>
+        )
       )}
 
-      {files.length > 0 && (
+      {files.length > 0 && !fileLoadStatus.isLoading && (
         <div className="grid gap-4 lg:grid-cols-2">
           <BatchProcessor files={files} selectedFiles={selectedFiles} />
           <AdvancedFilters files={files} onFiltersChange={setFilteredFiles} />
         </div>
       )}
 
-      {files.length > 0 && (
+      {files.length > 0 && !fileLoadStatus.isLoading && (
         <BulkActions 
           files={filteredFiles} 
           selectedFiles={selectedFiles} 
@@ -127,7 +133,7 @@ const Organize = () => {
 
       <div className="flex-1">
         <div className="h-full rounded-lg border bg-card text-card-foreground shadow-sm">
-          {files.length === 0 ? (
+          {files.length === 0 && !fileLoadStatus.isLoading ? (
             <FileDropzone />
           ) : (
             <FileQueue 
