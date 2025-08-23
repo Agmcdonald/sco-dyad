@@ -51,13 +51,27 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
 
   const filteredComics = useMemo(() => {
     let filtered = comics.filter((comic) => {
-      const lowerSearchTerm = searchTerm.toLowerCase();
+      const lowerSearchTerm = searchTerm.toLowerCase().trim();
+      if (!lowerSearchTerm) return true;
+
       const inSeries = comic.series.toLowerCase().includes(lowerSearchTerm);
       const inPublisher = comic.publisher.toLowerCase().includes(lowerSearchTerm);
       const inCreators = comic.creators?.some(creator => 
         creator.name.toLowerCase().includes(lowerSearchTerm)
       ) || false;
-      return inSeries || inPublisher || inCreators;
+      
+      let inIssue = false;
+      const searchAsNum = Number(lowerSearchTerm);
+      if (!isNaN(searchAsNum)) { // If search term is a number
+        const issueAsNum = Number(comic.issue);
+        if (!isNaN(issueAsNum) && issueAsNum === searchAsNum) {
+          inIssue = true;
+        }
+      } else { // If search term is not a number (e.g., "Annual")
+        inIssue = comic.issue.toLowerCase().includes(lowerSearchTerm);
+      }
+
+      return inSeries || inPublisher || inCreators || inIssue;
     });
 
     // Apply rating filter
@@ -198,7 +212,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search series, publisher, creator..."
+                placeholder="Search series, issue, publisher, creator..."
                 className="pl-8 w-full md:w-64"
                 value={searchTerm}
                 onChange={(e) => {
