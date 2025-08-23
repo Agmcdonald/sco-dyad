@@ -14,6 +14,13 @@ import { processComicFile } from '@/lib/smartProcessor';
 import { useGcdDatabaseService } from '@/services/gcdDatabaseService';
 import { useKnowledgeBase } from './KnowledgeBaseContext';
 
+interface FileLoadStatus {
+  isLoading: boolean;
+  progress: number;
+  total: number;
+  currentFile: string;
+}
+
 interface AppContextType {
   files: QueuedFile[];
   addFile: (file: QueuedFile) => void;
@@ -34,6 +41,7 @@ interface AppContextType {
   triggerScanFolder: () => void;
   addFilesFromDrop: (droppedFiles: File[]) => void;
   addFilesFromPaths: (paths: string[]) => Promise<void>;
+  fileLoadStatus: FileLoadStatus;
   readingList: any[];
   addToReadingList: (comic: Comic) => void;
   removeFromReadingList: (itemId: string) => void;
@@ -55,6 +63,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 let comicIdCounter = 0;
+let fileIdCounter = 0;
 
 const isMockFile = (filePath: string): boolean => {
   return filePath.startsWith('mock://');
@@ -62,7 +71,7 @@ const isMockFile = (filePath: string): boolean => {
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { actions, logAction, setActions } = useActionLog();
-  const { files, setFiles, addFile, addFiles, removeFile, updateFile, addFilesFromPaths } = useFileQueue();
+  const { files, setFiles, addFile, addFiles, removeFile, updateFile } = useFileQueue();
   const { comics, setComics, refreshComics } = useComicLibrary(logAction);
   const { 
     readingList, 
@@ -83,14 +92,61 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   
   const [isScanningMetadata, setIsScanningMetadata] = useState(false);
   const [metadataScanProgress, setMetadataScanProgress] = useState({ processed: 0, total: 0, updated: 0 });
+  const [fileLoadStatus, setFileLoadStatus] = useState<FileLoadStatus>({
+    isLoading: false,
+    progress: 0,
+    total: 0,
+    currentFile: "",
+  });
   const databaseService = useElectronDatabaseService();
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
   const gcdDbService = useGcdDatabaseService();
   const { addToKnowledgeBase } = useKnowledgeBase();
 
+  const addFilesFromPaths = useCallback(async (paths: string[]) => {
+    if (paths.length === 0) return;
+
+    setFileLoadStatus({ isLoading: true, progress: 0, total: paths.length, currentFile: "" });
+    
+    const filesToAdd: QueuedFile[] = [];
+    for (let i = 0; i < paths.length; i++) {
+      const filePath = paths[i];
+      const fileName = filePath ? filePath.split(/[\\/]/).pop() || 'Unknown File' : 'Unknown File';
+      
+      setFileLoadStatus(prev => ({ ...prev, progress: i + 1, currentFile: fileName }));
+
+      const newFile: QueuedFile = {
+        id: `file-${fileIdCounter++}`,
+        name: fileName,
+        path: filePath || '',
+        series: null,
+        issue: null,
+        year: null,
+        publisher: null,
+        volume: null,
+        confidence: null,
+        status: 'Pending',
+      };
+
+      if (isElectron && electronAPI && filePath) {
+        try {
+          const fileInfo = await electronAPI.readComicFile(filePath);
+          newFile.pageCount = fileInfo?.pageCount || undefined;
+        } catch (error) {
+          console.warn(`Could not read info for ${newFile.name}:`, error);
+        }
+      }
+      filesToAdd.push(newFile);
+      await new Promise(res => setTimeout(res, 5));
+    }
+
+    addFiles(filesToAdd);
+    showSuccess(`Added ${filesToAdd.length} comic file${filesToAdd.length !== 1 ? 's' : ''} to queue`);
+    setFileLoadStatus({ isLoading: false, progress: 0, total: 0, currentFile: "" });
+  }, [addFiles, isElectron, electronAPI]);
+
   const addComic = useCallback(async (comicData: NewComic, originalFile: QueuedFile) => {
-    // Learn from this new comic
     addToKnowledgeBase({
       series: comicData.series,
       publisher: comicData.publisher,
@@ -119,7 +175,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         let coverUrl = '/placeholder.svg';
         let fileSize = 25000000;
         
-        // Try to extract cover with better error handling
         try {
           console.log(`[ADD-COMIC] Attempting to extract cover from: ${originalFile.path}`);
           coverUrl = await electronAPI.extractCover(originalFile.path);
@@ -127,10 +182,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         } catch (coverError) {
           console.warn(`[ADD-COMIC] Could not extract cover from ${originalFile.name}:`, coverError);
           logAction('warning', `Could not extract cover from ${originalFile.name} - using placeholder`);
-          // Continue with placeholder cover instead of failing
         }
 
-        // Try to get file info
         try {
           const fileInfo = await electronAPI.readComicFile(originalFile.path);
           if (fileInfo && fileInfo.size) {
@@ -139,7 +192,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           }
         } catch (infoError) {
           console.warn(`[ADD-COMIC] Could not read file info for ${originalFile.name}:`, infoError);
-          // Continue with default file size
         }
 
         const fileExtension = originalFile.name.substring(originalFile.name.lastIndexOf('.'));
@@ -210,7 +262,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setComics(prev => prev.map(c => c.id === updatedComic.id ? updatedComic : c));
     logAction('info', `Updated metadata for '${updatedComic.series} #${updatedComic.issue}'`);
     
-    // Learn from manual edits
     addToKnowledgeBase({
       series: updatedComic.series,
       publisher: updatedComic.publisher,
@@ -231,10 +282,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const updatedComic = { ...comicToUpdate, rating };
     console.log('[APP-CONTEXT] Updating comic with new rating:', updatedComic);
     
-    // Update the comic first
     await updateComic(updatedComic);
 
-    // Then manually update reading list and recently read items to avoid circular dependencies
     setReadingList(prev => prev.map(item => 
       item.comicId === comicId ? { ...item, rating } : item
     ));
@@ -264,7 +313,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         showError("Failed to delete comic.");
       }
     } else {
-      // Web mode logic
       setComics(prev => prev.filter(c => c.id !== id));
       logAction('info', `(Web Mode) Removed comic: '${comicToRemove.series} #${comicToRemove.issue}'`);
       showSuccess("Comic removed from library");
@@ -335,7 +383,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [isElectron, electronAPI, addFilesFromPaths]);
 
   const addFilesFromDrop = useCallback(async (droppedFiles: File[]) => {
-    // This function is now only for web-mode (demo)
     const comicExtensions = ['.cbr', '.cbz', '.pdf'];
     const comicFiles = droppedFiles.filter(file => {
       const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
@@ -374,7 +421,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         return null;
       }
     } else {
-      // Web mode logic
       const currentComicIds = new Set(comics.map(c => c.id));
       const newComicsToAdd = comicsToImport.filter(
         newComic => !currentComicIds.has(newComic.id)
@@ -423,7 +469,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       let hasNewData = false;
 
       if (result && result.success && result.data) {
-        // Only update fields if they are empty
         if (result.data.summary && !comic.summary) {
           updatedComic.summary = result.data.summary;
           hasNewData = true;
@@ -475,7 +520,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         updatedCount++;
         logAction('success', `Enriched metadata for '${comic.series} #${comic.issue}'`);
       } else {
-        // Still update the last checked date even if no new data was found
         await updateComic(updatedComic);
       }
       
@@ -493,7 +537,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       comics, addComic, updateComic, removeComic, updateComicRating,
       actions, logAction, lastUndoableAction, undoLastAction,
       addMockFiles, triggerSelectFiles, triggerScanFolder, addFilesFromDrop,
-      addFilesFromPaths,
+      addFilesFromPaths, fileLoadStatus,
       readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted,
       toggleComicReadStatus,
       setReadingItemPriority, setReadingItemRating,
