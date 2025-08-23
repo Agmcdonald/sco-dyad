@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { SkipForward, Undo } from "lucide-react";
+import { SkipForward, Undo, ThumbsUp, Edit } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import FileQueue from "@/components/FileQueue";
 import BulkActions from "@/components/BulkActions";
@@ -10,11 +10,12 @@ import SmartSuggestions from "@/components/SmartSuggestions";
 import BatchProcessor from "@/components/BatchProcessor";
 import AdvancedFilters from "@/components/AdvancedFilters";
 import FileLoadProgress from "@/components/FileLoadProgress";
+import EditFileModal from "@/components/EditFileModal";
 import { useSelection } from "@/context/SelectionContext";
 import { useAppContext } from "@/context/AppContext";
 import { QueuedFile } from "@/types";
 import { useElectron } from "@/hooks/useElectron";
-import { showError } from "@/utils/toast";
+import { showError, showSuccess } from "@/utils/toast";
 
 const Organize = () => {
   const { 
@@ -24,17 +25,23 @@ const Organize = () => {
     skipFile,
     addFilesFromDrop,
     addFiles,
-    fileLoadStatus
+    fileLoadStatus,
+    addComic,
+    removeFile
   } = useAppContext();
   const { selectedItem, setSelectedItem } = useSelection();
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [filteredFiles, setFilteredFiles] = useState<QueuedFile[]>(files);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   const { isElectron } = useElectron();
   
-  // Get the toggleInspector function from the Layout context
-  const { toggleInspector } = useOutletContext<{ toggleInspector: () => void }>();
+  // Get functions from the Layout context
+  const { autoOpenInspector, isInspectorOpen } = useOutletContext<{ 
+    autoOpenInspector: () => void;
+    isInspectorOpen: boolean;
+  }>();
 
   useEffect(() => {
     setFilteredFiles(files);
@@ -90,14 +97,45 @@ const Organize = () => {
     }
   };
 
-  const handleToggleInspector = useCallback(() => {
-    // Only open the inspector, don't close it
-    // We can add logic here to check if inspector is already open
-    // For now, we'll just call toggleInspector which should handle the state
-    if (toggleInspector) {
-      toggleInspector();
+  const handleConfirmMatch = async () => {
+    if (selectedItem?.type !== 'file') return;
+    
+    const file = selectedItem as QueuedFile;
+    
+    if (!file.series || !file.issue || !file.year || !file.publisher) {
+      showError("Cannot confirm match: Missing required information.");
+      return;
     }
-  }, [toggleInspector]);
+    
+    await addComic({
+      series: file.series,
+      issue: file.issue,
+      year: file.year,
+      publisher: file.publisher,
+      volume: file.volume || String(file.year),
+      summary: `Confirmed from file: ${file.name}`
+    }, file);
+
+    removeFile(file.id);
+    showSuccess(`'${file.series} #${file.issue}' added to library.`);
+    setSelectedItem(null);
+  };
+
+  const handleCorrectMatch = () => {
+    if (selectedItem?.type === 'file') {
+      setIsEditModalOpen(true);
+    }
+  };
+
+  const handleToggleInspector = useCallback(() => {
+    // Auto-open inspector when a file is selected
+    if (autoOpenInspector) {
+      autoOpenInspector();
+    }
+  }, [autoOpenInspector]);
+
+  const selectedFile = selectedItem?.type === 'file' ? selectedItem as QueuedFile : null;
+  const canConfirm = selectedFile && selectedFile.series && selectedFile.issue && selectedFile.year && selectedFile.publisher;
 
   return (
     <div 
@@ -125,6 +163,23 @@ const Organize = () => {
         </div>
         {files.length > 0 && (
           <div className="flex items-center gap-2">
+            <Button 
+              variant={canConfirm ? "default" : "outline"} 
+              disabled={!selectedFile}
+              onClick={handleConfirmMatch}
+              className={canConfirm ? "bg-green-600 hover:bg-green-700" : ""}
+            >
+              <ThumbsUp className="h-4 w-4 mr-2" /> 
+              Confirm Match
+            </Button>
+            <Button 
+              variant={selectedFile ? "default" : "outline"} 
+              disabled={!selectedFile}
+              onClick={handleCorrectMatch}
+            >
+              <Edit className="h-4 w-4 mr-2" /> 
+              Correct Match
+            </Button>
             <Button variant="outline" disabled={!selectedItem} onClick={handleSkip}>
               <SkipForward className="h-4 w-4 mr-2" /> Skip
             </Button>
@@ -175,6 +230,14 @@ const Organize = () => {
           )}
         </div>
       </div>
+
+      {selectedFile && (
+        <EditFileModal
+          file={selectedFile}
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+        />
+      )}
     </div>
   );
 };
