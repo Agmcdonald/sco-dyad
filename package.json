@@ -3,14 +3,36 @@
   "private": true,
   "version": "1.0.0",
   "main": "electron/main.js",
+  "homepage": "./",
   "scripts": {
-    "dev": "concurrently \"vite\" \"wait-on http-get://localhost:5173 && electron .\"",
-    "web": "vite",
-    "electron": "npm run dev",
+    "dev": "vite",
+    "electron": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron-dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "package": "vite build && electron-builder"
+    "package": "npm run build && electron-builder"
+  },
+  "build": {
+    "appId": "com.supercomicorganizer.app",
+    "productName": "Super Comic Organizer",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "node_modules/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
