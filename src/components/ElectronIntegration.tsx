@@ -2,13 +2,11 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useElectron, useElectronFileHandlers, useElectronNavigation } from '@/hooks/useElectron';
 import { useElectronFileService } from '@/services/electronFileService';
-import { useAppContext } from '@/context/AppContext';
 import { showSuccess, showError } from '@/utils/toast';
 
 const ElectronIntegration = () => {
   const { isElectron, electronAPI } = useElectron();
   const fileService = useElectronFileService();
-  const { addFiles } = useAppContext();
   const navigate = useNavigate();
 
   // Handle file and folder selection from menu
@@ -25,21 +23,29 @@ const ElectronIntegration = () => {
       try {
         showSuccess(`Processing ${filePaths.length} selected files...`);
         
-        // Convert file paths to QueuedFile objects
-        const queuedFiles = filePaths.map((filePath, index) => ({
-          id: `electron-file-${Date.now()}-${index}`,
-          name: filePath.split(/[\\/]/).pop() || 'Unknown File',
-          path: filePath,
-          series: null,
-          issue: null,
-          year: null,
-          publisher: null,
-          confidence: null as any,
-          status: 'Pending' as any
-        }));
-
-        addFiles(queuedFiles);
+        // Navigate to organize page first
         navigate('/app/organize');
+        
+        // Add a small delay to ensure the page has loaded and context is available
+        setTimeout(() => {
+          // Convert file paths to QueuedFile objects
+          const queuedFiles = filePaths.map((filePath, index) => ({
+            id: `electron-file-${Date.now()}-${index}`,
+            name: filePath.split(/[\\/]/).pop() || 'Unknown File',
+            path: filePath,
+            series: null,
+            issue: null,
+            year: null,
+            publisher: null,
+            confidence: null as any,
+            status: 'Pending' as any
+          }));
+
+          // Dispatch a custom event that the Organize page can listen for
+          window.dispatchEvent(new CustomEvent('electron-files-added', { 
+            detail: { files: queuedFiles } 
+          }));
+        }, 100);
         
       } catch (error) {
         showError('Failed to process selected files');
@@ -54,25 +60,38 @@ const ElectronIntegration = () => {
       try {
         showSuccess(`Scanning folder: ${folderPath}`);
         
-        const fileInfos = await fileService.scanFolder(folderPath);
-        
-        // Convert file infos to QueuedFile objects
-        const queuedFiles = fileInfos.map((fileInfo, index) => ({
-          id: `electron-folder-${Date.now()}-${index}`,
-          name: fileInfo.name,
-          path: fileInfo.path,
-          series: null,
-          issue: null,
-          year: null,
-          publisher: null,
-          confidence: null as any,
-          status: 'Pending' as any
-        }));
-
-        addFiles(queuedFiles);
+        // Navigate to organize page first
         navigate('/app/organize');
         
-        showSuccess(`Found ${fileInfos.length} comic files in folder`);
+        // Add a small delay to ensure the page has loaded and context is available
+        setTimeout(async () => {
+          try {
+            const fileInfos = await fileService.scanFolder(folderPath);
+            
+            // Convert file infos to QueuedFile objects
+            const queuedFiles = fileInfos.map((fileInfo, index) => ({
+              id: `electron-folder-${Date.now()}-${index}`,
+              name: fileInfo.name,
+              path: fileInfo.path,
+              series: null,
+              issue: null,
+              year: null,
+              publisher: null,
+              confidence: null as any,
+              status: 'Pending' as any
+            }));
+
+            // Dispatch a custom event that the Organize page can listen for
+            window.dispatchEvent(new CustomEvent('electron-files-added', { 
+              detail: { files: queuedFiles } 
+            }));
+            
+            showSuccess(`Found ${fileInfos.length} comic files in folder`);
+          } catch (error) {
+            showError('Failed to scan folder');
+            console.error('Error scanning folder:', error);
+          }
+        }, 100);
         
       } catch (error) {
         showError('Failed to scan folder');
@@ -94,7 +113,7 @@ const ElectronIntegration = () => {
       electronAPI.removeAllListeners('folder-selected');
       electronAPI.removeAllListeners('navigate-to');
     };
-  }, [electronAPI, fileService, addFiles, navigate]);
+  }, [electronAPI, fileService, navigate]);
 
   return (
     <>
