@@ -4,6 +4,32 @@ const StreamZip = require('node-stream-zip');
 const sharp = require('sharp');
 const { unrar } = require('unrar-promise');
 const os = require('os');
+const { createCanvas } = require('canvas');
+const pdfjs = require('pdfjs-dist/legacy/build/pdf.js');
+
+// Canvas factory for pdf.js in Node.js environment
+class NodeCanvasFactory {
+  create(width, height) {
+    const canvas = createCanvas(width, height);
+    const context = canvas.getContext("2d");
+    return {
+      canvas,
+      context,
+    };
+  }
+
+  reset(canvasAndContext, width, height) {
+    canvasAndContext.canvas.width = width;
+    canvasAndContext.canvas.height = height;
+  }
+
+  destroy(canvasAndContext) {
+    canvasAndContext.canvas.width = 0;
+    canvasAndContext.canvas.height = 0;
+    canvasAndContext.canvas = null;
+    canvasAndContext.context = null;
+  }
+}
 
 class ComicFileHandler {
   constructor() {
@@ -101,8 +127,8 @@ class ComicFileHandler {
         lastModified: stats.mtime
       };
 
-      // Try to get page count for CBZ/CBR files
-      if (fileInfo.type === 'cbz' || fileInfo.type === 'cbr') {
+      // Try to get page count for CBZ/CBR/PDF files
+      if (fileInfo.type === 'cbz' || fileInfo.type === 'cbr' || fileInfo.type === 'pdf') {
         try {
           const pageCount = await this.getPageCount(filePath);
           fileInfo.pageCount = pageCount;
@@ -118,7 +144,7 @@ class ComicFileHandler {
     }
   }
 
-  // Get page count from comic archive - FIXED VERSION
+  // Get page count from comic archive
   async getPageCount(filePath) {
     const fileType = this.getFileType(filePath);
     
@@ -159,6 +185,15 @@ class ComicFileHandler {
           await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
         }
       }
+    } else if (fileType === 'pdf') {
+      try {
+        const data = new Uint8Array(await fs.readFile(filePath));
+        const doc = await pdfjs.getDocument(data).promise;
+        return doc.numPages;
+      } catch (error) {
+        console.warn(`Could not get page count for PDF ${filePath}:`, error.message);
+        return 0;
+      }
     }
     return 0;
   }
@@ -173,7 +208,7 @@ class ComicFileHandler {
       } else if (fileType === 'cbr') {
         return await this.extractCoverFromRarArchive(filePath, outputDir);
       } else if (fileType === 'pdf') {
-        throw new Error('PDF cover extraction not yet implemented');
+        return await this.extractCoverFromPdf(filePath, outputDir);
       }
       
       throw new Error(`Unsupported file type: ${fileType}`);
@@ -296,6 +331,40 @@ class ComicFileHandler {
     }
   }
 
+  // Extract cover from PDF
+  async extractCoverFromPdf(filePath, outputDir) {
+    const data = new Uint8Array(await fs.readFile(filePath));
+    const doc = await pdfjs.getDocument(data).promise;
+    const page = await doc.getPage(1);
+    const viewport = page.getViewport({ scale: 1.5 });
+
+    const canvasFactory = new NodeCanvasFactory();
+    const canvasAndContext = canvasFactory.create(viewport.width, viewport.height);
+    const renderContext = {
+      canvasContext: canvasAndContext.context,
+      viewport: viewport,
+      canvasFactory: canvasFactory,
+    };
+
+    await page.render(renderContext).promise;
+
+    const imageBuffer = canvasAndContext.canvas.toBuffer('image/jpeg');
+    
+    const baseName = path.basename(filePath, path.extname(filePath));
+    const outputPath = path.join(outputDir, `${baseName}_cover.jpg`);
+    
+    await fs.mkdir(outputDir, { recursive: true });
+    
+    await sharp(imageBuffer)
+      .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85 })
+      .toFile(outputPath);
+      
+    canvasFactory.destroy(canvasAndContext);
+    
+    return outputPath;
+  }
+
   // Organize/move a file to the target location
   async organizeFile(sourcePath, targetPath, keepOriginal = false) {
     try {
@@ -306,12 +375,9 @@ class ComicFileHandler {
         await fs.copyFile(sourcePath, targetPath);
       } else {
         try {
-          // First, try a fast rename operation.
           await fs.rename(sourcePath, targetPath);
         } catch (error) {
-          // If it fails with EXDEV, it's a cross-device move.
           if (error.code === 'EXDEV') {
-            // Fall back to copy and then rename the original.
             await fs.copyFile(sourcePath, targetPath);
             
             const parsedSource = path.parse(sourcePath);
@@ -322,7 +388,6 @@ class ComicFileHandler {
             await fs.rename(sourcePath, newSourcePath);
 
           } else {
-            // For any other error, re-throw it.
             throw error;
           }
         }
@@ -346,7 +411,7 @@ class ComicFileHandler {
         const entries = await zip.entries();
         return Object.values(entries)
           .filter(entry => !entry.isDirectory && this.isImageFile(entry.name))
-          .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
+          .sort((a, b) => a.name.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))
           .map(entry => entry.name);
       } finally {
         if (zip) {
@@ -357,6 +422,9 @@ class ComicFileHandler {
           }
         }
       }
+    } else if (fileType === 'pdf') {
+      const pageCount = await this.getPageCount(filePath);
+      return Array.from({ length: pageCount }, (_, i) => `page_${i + 1}`);
     }
     
     throw new Error(`Unsupported file type for page extraction: ${fileType}`);
@@ -382,9 +450,42 @@ class ComicFileHandler {
           }
         }
       }
+    } else if (fileType === 'pdf') {
+      const pageNumber = parseInt(pageName.replace('page_', ''), 10);
+      if (isNaN(pageNumber)) {
+        throw new Error(`Invalid page name for PDF: ${pageName}`);
+      }
+      return await this.extractPdfPageAsDataUrl(filePath, pageNumber);
     }
     
     throw new Error(`Unsupported file type for page extraction: ${fileType}`);
+  }
+
+  async extractPdfPageAsDataUrl(filePath, pageNumber) {
+    const data = new Uint8Array(await fs.readFile(filePath));
+    const doc = await pdfjs.getDocument(data).promise;
+
+    if (pageNumber < 1 || pageNumber > doc.numPages) {
+        throw new Error(`Page number ${pageNumber} is out of range.`);
+    }
+
+    const page = await doc.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 1.5 });
+
+    const canvasFactory = new NodeCanvasFactory();
+    const canvasAndContext = canvasFactory.create(viewport.width, viewport.height);
+    const renderContext = {
+      canvasContext: canvasAndContext.context,
+      viewport: viewport,
+      canvasFactory: canvasFactory,
+    };
+
+    await page.render(renderContext).promise;
+
+    const dataUrl = canvasAndContext.canvas.toDataURL('image/jpeg');
+    canvasFactory.destroy(canvasAndContext);
+    
+    return dataUrl;
   }
 
   getMimeType(fileName) {
@@ -413,18 +514,14 @@ class ComicFileHandler {
     console.log(`[CBR-READER] Temp directory: ${tempDir}`);
     
     try {
-      // Extract the RAR archive
       await unrar(filePath, tempDir);
       console.log(`[CBR-READER] Successfully extracted RAR to temp directory`);
       
-      // Wait a moment for file system to settle
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Get all files recursively
       const allFiles = await this._walk(tempDir);
       console.log(`[CBR-READER] Found ${allFiles.length} total files in archive`);
       
-      // Filter for image files and sort them
       const imageFiles = allFiles
         .filter(file => {
           const isImage = this.isImageFile(file);
@@ -434,13 +531,11 @@ class ComicFileHandler {
           return isImage;
         })
         .map(file => {
-          // Convert absolute path to relative path from temp directory
           const relativePath = path.relative(tempDir, file).replace(/\\/g, '/');
           console.log(`[CBR-READER] Image file: ${file} -> ${relativePath}`);
           return relativePath;
         })
         .sort((a, b) => {
-          // Natural sort for proper page ordering
           return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
         });
       
@@ -454,7 +549,6 @@ class ComicFileHandler {
       return { tempDir, pages: imageFiles };
     } catch (error) {
       console.error(`[CBR-READER] Failed to prepare CBR for reading: ${filePath}`, error);
-      // Clean up on error
       await fs.rm(tempDir, { recursive: true, force: true }).catch(e => 
         console.error(`[CBR-READER] Failed to clean up temp dir ${tempDir}`, e)
       );
@@ -468,24 +562,20 @@ class ComicFileHandler {
     try {
       const safePagePath = path.join(tempDir, pageName);
       
-      // Security check
       if (!safePagePath.startsWith(tempDir)) {
         throw new Error('Invalid page path - security violation');
       }
       
-      // Check if file exists
       try {
         await fs.access(safePagePath);
       } catch (error) {
         console.error(`[CBR-READER] File does not exist: ${safePagePath}`);
         
-        // Try to find the file with a different case or path
         const allFiles = await this._walk(tempDir);
         const imageFiles = allFiles.filter(file => this.isImageFile(file));
         
         console.log(`[CBR-READER] Available image files:`, imageFiles.map(f => path.relative(tempDir, f)));
         
-        // Try to find a matching file (case-insensitive)
         const matchingFile = imageFiles.find(file => {
           const relativePath = path.relative(tempDir, file).replace(/\\/g, '/');
           return relativePath.toLowerCase() === pageName.toLowerCase();
