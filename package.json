@@ -9,8 +9,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "electron": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron electron/main.js\"",
-    "package": "npm run build && electron-builder",
-    "postinstall": "electron-rebuild"
+    "package": "npm run build && electron-builder"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
