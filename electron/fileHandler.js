@@ -2,13 +2,27 @@ const fs = require('fs').promises;
 const path = require('path');
 const StreamZip = require('node-stream-zip');
 const sharp = require('sharp');
-const { unrar } = require('unrar-promise');
 const os = require('os');
 
 class ComicFileHandler {
   constructor() {
     this.supportedExtensions = ['.cbr', '.cbz']; // Temporarily removed PDF support
     this.imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+    this.unrarPromise = null;
+  }
+
+  // Lazy load unrar-promise using dynamic import
+  async getUnrar() {
+    if (!this.unrarPromise) {
+      try {
+        const unrarModule = await import('unrar-promise');
+        this.unrarPromise = unrarModule.unrar;
+      } catch (error) {
+        console.error('Failed to load unrar-promise:', error);
+        throw new Error('RAR support is not available');
+      }
+    }
+    return this.unrarPromise;
   }
 
   // Helper function to find all files recursively
@@ -146,6 +160,7 @@ class ComicFileHandler {
     } else if (fileType === 'cbr') {
       let tempDir = null;
       try {
+        const unrar = await this.getUnrar();
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-pages-'));
         await unrar(filePath, tempDir);
         const allFiles = await this._walk(tempDir);
@@ -271,6 +286,7 @@ class ComicFileHandler {
   async extractCoverFromRarArchive(filePath, outputDir) {
     let tempDir = null;
     try {
+      const unrar = await this.getUnrar();
       tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-cover-'));
       await unrar(filePath, tempDir);
       
@@ -424,6 +440,7 @@ class ComicFileHandler {
     console.log(`[CBR-READER] Temp directory: ${tempDir}`);
     
     try {
+      const unrar = await this.getUnrar();
       await unrar(filePath, tempDir);
       console.log(`[CBR-READER] Successfully extracted RAR to temp directory`);
       
