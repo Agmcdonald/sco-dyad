@@ -41,6 +41,12 @@ export const processComicFile = async (
     const parsed = parseFilename(file.path);
     console.log(`[SMART-PROCESSOR] Parsed data:`, parsed);
     
+    // If issue is missing, but series is present, assume it's issue #1
+    if (parsed.series && !parsed.issue) {
+      parsed.issue = '1';
+      console.log(`[SMART-PROCESSOR] No issue found, assuming issue #1 for: ${file.name}`);
+    }
+    
     if (!parsed.series || !parsed.issue) {
       console.log(`[SMART-PROCESSOR] Failed to parse series or issue from: ${file.name}`);
       return {
