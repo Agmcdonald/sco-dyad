@@ -50,10 +50,15 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
   }, [location.state]);
 
   const filteredComics = useMemo(() => {
-    let filtered = comics.filter((comic) =>
-      comic.series.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      comic.publisher.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    let filtered = comics.filter((comic) => {
+      const lowerSearchTerm = searchTerm.toLowerCase();
+      const inSeries = comic.series.toLowerCase().includes(lowerSearchTerm);
+      const inPublisher = comic.publisher.toLowerCase().includes(lowerSearchTerm);
+      const inCreators = comic.creators?.some(creator => 
+        creator.name.toLowerCase().includes(lowerSearchTerm)
+      ) || false;
+      return inSeries || inPublisher || inCreators;
+    });
 
     // Apply rating filter
     if (ratingFilter !== "all") {
@@ -193,7 +198,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by series or publisher..."
+                placeholder="Search series, publisher, creator..."
                 className="pl-8 w-full md:w-64"
                 value={searchTerm}
                 onChange={(e) => {

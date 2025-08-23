@@ -45,9 +45,15 @@ const Sidebar = () => {
     searchTerm.length > 2
       ? comics
           .filter(
-            (comic) =>
-              comic.series.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              comic.publisher.toLowerCase().includes(searchTerm.toLowerCase())
+            (comic) => {
+              const lowerSearchTerm = searchTerm.toLowerCase();
+              const inSeries = comic.series.toLowerCase().includes(lowerSearchTerm);
+              const inPublisher = comic.publisher.toLowerCase().includes(lowerSearchTerm);
+              const inCreators = comic.creators?.some(creator => 
+                creator.name.toLowerCase().includes(lowerSearchTerm)
+              ) || false;
+              return inSeries || inPublisher || inCreators;
+            }
           )
           .slice(0, 5)
       : [];
