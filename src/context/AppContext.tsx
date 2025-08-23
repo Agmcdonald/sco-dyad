@@ -383,14 +383,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [isElectron, electronAPI, addFilesFromPaths]);
 
   const addFilesFromDrop = useCallback(async (droppedFiles: File[]) => {
-    const comicExtensions = ['.cbr', '.cbz', '.pdf'];
+    const comicExtensions = ['.cbr', '.cbz'];
     const comicFiles = droppedFiles.filter(file => {
       const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
       return comicExtensions.includes(ext);
     });
 
     if (comicFiles.length === 0) {
-      showError("No comic files found. Supported formats: CBR, CBZ, PDF");
+      showError("No comic files found. Supported formats: CBR, CBZ");
       return;
     }
 

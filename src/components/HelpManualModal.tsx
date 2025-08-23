@@ -74,6 +74,7 @@ const HelpManualModal = ({ isOpen, onClose }: HelpManualModalProps) => {
                     <li><strong>File Queue:</strong> A list of all files waiting to be processed. You can select files to view their details in the Inspector.</li>
                     <li><strong>File Processor:</strong> This tool intelligently analyzes filenames to detect series, issue, year, and publisher. It uses the Knowledge Base and online scrapers to enrich the data.</li>
                     <li><strong>Bulk Actions:</strong> Select multiple files in the queue to perform actions like bulk editing, confirming matches, or removing them.</li>
+                    <li><strong>Supported Formats:</strong> Currently supports CBR and CBZ comic archive formats.</li>
                   </ul>
                 </div>
               </AccordionContent>
