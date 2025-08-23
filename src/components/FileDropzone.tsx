@@ -48,14 +48,14 @@ const FileDropzone = () => {
       return;
     }
 
-    const comicExtensions = ['.cbr', '.cbz', '.pdf'];
+    const comicExtensions = ['.cbr', '.cbz'];
     const comicFiles = droppedFiles.filter(file => {
       const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
       return comicExtensions.includes(ext);
     });
 
     if (comicFiles.length === 0) {
-      showError("No comic files found. Supported formats: CBR, CBZ, PDF");
+      showError("No comic files found. Supported formats: CBR, CBZ");
       return;
     }
 
@@ -104,7 +104,7 @@ const FileDropzone = () => {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-4">
-          Supported formats: CBR, CBZ, PDF
+          Supported formats: CBR, CBZ
         </p>
       </div>
     );

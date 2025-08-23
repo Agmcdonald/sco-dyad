@@ -81,7 +81,7 @@ const Organize = () => {
           <div className="bg-background p-8 rounded-lg shadow-lg text-center">
             <div className="text-4xl mb-4">📚</div>
             <h3 className="text-xl font-semibold mb-2">Drop Comic Files Here</h3>
-            <p className="text-muted-foreground">Supported formats: CBR, CBZ, PDF</p>
+            <p className="text-muted-foreground">Supported formats: CBR, CBZ</p>
           </div>
         </div>
       )}
