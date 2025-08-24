@@ -1,4 +1,8 @@
 {
+  "name": "super-comic-organizer",
+  "version": "1.0.0",
+  "description": "A comprehensive comic book collection management application.",
+  "author": "Super Comic Organizer Team",
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-accordion": "^1.2.0",
@@ -111,7 +115,10 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "identity": "Developer ID Application: Your Name (TEAM_ID)",
@@ -124,19 +131,25 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "certificateFile": "path/to/your/certificate.p12",
       "certificatePassword": "your_certificate_password",
-      "signingHashAlgorithms": ["sha256"],
+      "signingHashAlgorithms": [
+        "sha256"
+      ],
       "signDlls": true
     },
     "linux": {
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
