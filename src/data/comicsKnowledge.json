@@ -2923,5 +2923,1083 @@
         "year": 1994
       }
     ]
+  },
+  {
+    "series": "Star Wars: Republic",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2002,
+    "volumes": [
+      {
+        "volume": "2002",
+        "year": 2002
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Empire",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2002,
+    "volumes": [
+      {
+        "volume": "2002",
+        "year": 2002
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Legacy",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2006,
+    "volumes": [
+      {
+        "volume": "2006",
+        "year": 2006
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Knights of the Old Republic",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2006,
+    "volumes": [
+      {
+        "volume": "2006",
+        "year": 2006
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Tales",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1999,
+    "volumes": [
+      {
+        "volume": "1999",
+        "year": 1999
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Dark Times",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2006,
+    "volumes": [
+      {
+        "volume": "2006",
+        "year": 2006
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Infinities",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2001,
+    "volumes": [
+      {
+        "volume": "2001",
+        "year": 2001
+      }
+    ]
+  },
+  {
+    "series": "Lobster Johnson",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "Abe Sapien",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2008,
+    "volumes": [
+      {
+        "volume": "2008",
+        "year": 2008
+      }
+    ]
+  },
+  {
+    "series": "Witchfinder",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2009,
+    "volumes": [
+      {
+        "volume": "2009",
+        "year": 2009
+      }
+    ]
+  },
+  {
+    "series": "Buffy the Vampire Slayer Season 8",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "Conan",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2003,
+    "volumes": [
+      {
+        "volume": "2003",
+        "year": 2003
+      }
+    ]
+  },
+  {
+    "series": "The Goon (Dark Horse run)",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2003,
+    "volumes": [
+      {
+        "volume": "2003",
+        "year": 2003
+      }
+    ]
+  },
+  {
+    "series": "Serenity",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "Alien vs. Predator: Thrill of the Hunt",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2004,
+    "volumes": [
+      {
+        "volume": "2004",
+        "year": 2004
+      }
+    ]
+  },
+  {
+    "series": "Chronicles of Conan",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2003,
+    "volumes": [
+      {
+        "volume": "2003",
+        "year": 2003
+      }
+    ]
+  },
+  {
+    "series": "Fear Agent",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "Concrete: The Human Dilemma",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2004,
+    "volumes": [
+      {
+        "volume": "2004",
+        "year": 2004
+      }
+    ]
+  },
+  {
+    "series": "The Escapist",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2004,
+    "volumes": [
+      {
+        "volume": "2004",
+        "year": 2004
+      }
+    ]
+  },
+  {
+    "series": "Grendel: Black, White, and Red",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2000,
+    "volumes": [
+      {
+        "volume": "2000",
+        "year": 2000
+      }
+    ]
+  },
+  {
+    "series": "Hellboy: Conqueror Worm",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2001,
+    "volumes": [
+      {
+        "volume": "2001",
+        "year": 2001
+      }
+    ]
+  },
+  {
+    "series": "Hellboy: The Third Wish",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2002,
+    "volumes": [
+      {
+        "volume": "2002",
+        "year": 2002
+      }
+    ]
+  },
+  {
+    "series": "Hellboy: The Island",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "Hellboy: Darkness Calls",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "Hellboy: The Wild Hunt",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2008,
+    "volumes": [
+      {
+        "volume": "2008",
+        "year": 2008
+      }
+    ]
+  },
+  {
+    "series": "Grendel: Devil's Reign",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2002,
+    "volumes": [
+      {
+        "volume": "2002",
+        "year": 2002
+      }
+    ]
+  },
+  {
+    "series": "Grendel: Behold the Devil",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "Conan and the Jewels of Gwahlur",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "Conan: The Blood-Stained Crown",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2006,
+    "volumes": [
+      {
+        "volume": "2006",
+        "year": 2006
+      }
+    ]
+  },
+  {
+    "series": "Conan and the Midnight God",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Clone Wars Adventures",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2004,
+    "volumes": [
+      {
+        "volume": "2004",
+        "year": 2004
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: General Grievous",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Obsession",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2004,
+    "volumes": [
+      {
+        "volume": "2004",
+        "year": 2004
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Purge",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Visionaries",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #38",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2008,
+    "volumes": [
+      {
+        "volume": "2008",
+        "year": 2008
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #39",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2009,
+    "volumes": [
+      {
+        "volume": "2009",
+        "year": 2009
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #40",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2000,
+    "volumes": [
+      {
+        "volume": "2000",
+        "year": 2000
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #41",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2001,
+    "volumes": [
+      {
+        "volume": "2001",
+        "year": 2001
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #42",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2002,
+    "volumes": [
+      {
+        "volume": "2002",
+        "year": 2002
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #43",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2003,
+    "volumes": [
+      {
+        "volume": "2003",
+        "year": 2003
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #44",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2004,
+    "volumes": [
+      {
+        "volume": "2004",
+        "year": 2004
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #45",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #46",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2006,
+    "volumes": [
+      {
+        "volume": "2006",
+        "year": 2006
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #47",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #48",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2008,
+    "volumes": [
+      {
+        "volume": "2008",
+        "year": 2008
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #49",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2009,
+    "volumes": [
+      {
+        "volume": "2009",
+        "year": 2009
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #50",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2000,
+    "volumes": [
+      {
+        "volume": "2000",
+        "year": 2000
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #51",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2001,
+    "volumes": [
+      {
+        "volume": "2001",
+        "year": 2001
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #52",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2002,
+    "volumes": [
+      {
+        "volume": "2002",
+        "year": 2002
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #53",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2003,
+    "volumes": [
+      {
+        "volume": "2003",
+        "year": 2003
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #54",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2004,
+    "volumes": [
+      {
+        "volume": "2004",
+        "year": 2004
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #55",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #56",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2006,
+    "volumes": [
+      {
+        "volume": "2006",
+        "year": 2006
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #57",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #58",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2008,
+    "volumes": [
+      {
+        "volume": "2008",
+        "year": 2008
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #59",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2009,
+    "volumes": [
+      {
+        "volume": "2009",
+        "year": 2009
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #60",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2000,
+    "volumes": [
+      {
+        "volume": "2000",
+        "year": 2000
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #61",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2001,
+    "volumes": [
+      {
+        "volume": "2001",
+        "year": 2001
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #62",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2002,
+    "volumes": [
+      {
+        "volume": "2002",
+        "year": 2002
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #63",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2003,
+    "volumes": [
+      {
+        "volume": "2003",
+        "year": 2003
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #64",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2004,
+    "volumes": [
+      {
+        "volume": "2004",
+        "year": 2004
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #65",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #66",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2006,
+    "volumes": [
+      {
+        "volume": "2006",
+        "year": 2006
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #67",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #68",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2008,
+    "volumes": [
+      {
+        "volume": "2008",
+        "year": 2008
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #69",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2009,
+    "volumes": [
+      {
+        "volume": "2009",
+        "year": 2009
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #70",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2000,
+    "volumes": [
+      {
+        "volume": "2000",
+        "year": 2000
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #71",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2001,
+    "volumes": [
+      {
+        "volume": "2001",
+        "year": 2001
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #72",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2002,
+    "volumes": [
+      {
+        "volume": "2002",
+        "year": 2002
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #73",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2003,
+    "volumes": [
+      {
+        "volume": "2003",
+        "year": 2003
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #74",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2004,
+    "volumes": [
+      {
+        "volume": "2004",
+        "year": 2004
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #75",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #76",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2006,
+    "volumes": [
+      {
+        "volume": "2006",
+        "year": 2006
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #77",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #78",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2008,
+    "volumes": [
+      {
+        "volume": "2008",
+        "year": 2008
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #79",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2009,
+    "volumes": [
+      {
+        "volume": "2009",
+        "year": 2009
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #80",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2000,
+    "volumes": [
+      {
+        "volume": "2000",
+        "year": 2000
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #81",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2001,
+    "volumes": [
+      {
+        "volume": "2001",
+        "year": 2001
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #82",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2002,
+    "volumes": [
+      {
+        "volume": "2002",
+        "year": 2002
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #83",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2003,
+    "volumes": [
+      {
+        "volume": "2003",
+        "year": 2003
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #84",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2004,
+    "volumes": [
+      {
+        "volume": "2004",
+        "year": 2004
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #85",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #86",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2006,
+    "volumes": [
+      {
+        "volume": "2006",
+        "year": 2006
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #87",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #88",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2008,
+    "volumes": [
+      {
+        "volume": "2008",
+        "year": 2008
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #89",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2009,
+    "volumes": [
+      {
+        "volume": "2009",
+        "year": 2009
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #90",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2000,
+    "volumes": [
+      {
+        "volume": "2000",
+        "year": 2000
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #91",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2001,
+    "volumes": [
+      {
+        "volume": "2001",
+        "year": 2001
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #92",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2002,
+    "volumes": [
+      {
+        "volume": "2002",
+        "year": 2002
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #93",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2003,
+    "volumes": [
+      {
+        "volume": "2003",
+        "year": 2003
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #94",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2004,
+    "volumes": [
+      {
+        "volume": "2004",
+        "year": 2004
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #95",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #96",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2006,
+    "volumes": [
+      {
+        "volume": "2006",
+        "year": 2006
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #97",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #98",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2008,
+    "volumes": [
+      {
+        "volume": "2008",
+        "year": 2008
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #99",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2009,
+    "volumes": [
+      {
+        "volume": "2009",
+        "year": 2009
+      }
+    ]
+  },
+  {
+    "series": "2000s Dark Horse Placeholder #100",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2000,
+    "volumes": [
+      {
+        "volume": "2000",
+        "year": 2000
+      }
+    ]
   }
 ]
