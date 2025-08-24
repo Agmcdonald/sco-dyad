@@ -211,7 +211,7 @@ class ComicFileHandler {
     }
   }
 
-  // NEW: Extract cover directly to public directory with web-friendly URL
+  // FIXED: Extract cover directly to public directory and return proper file:/// URL
   async extractCoverToPublic(filePath, publicCoversDir) {
     try {
       console.log('[EXTRACT-COVER-PUBLIC] Starting extraction for:', filePath);
@@ -239,10 +239,11 @@ class ComicFileHandler {
       // Clean up temp directory
       await fs.rm(tempDir, { recursive: true, force: true });
       
-      // Return web-accessible URL
-      const webUrl = `/covers/${publicCoverFilename}`;
-      console.log('[EXTRACT-COVER-PUBLIC] Web URL:', webUrl);
-      return webUrl;
+      // FIXED: Return proper file:/// URL instead of relative path
+      const normalizedPath = path.resolve(publicCoverPath).replace(/\\/g, '/');
+      const fileUrl = 'file:///' + encodeURI(normalizedPath);
+      console.log('[EXTRACT-COVER-PUBLIC] File URL:', fileUrl);
+      return fileUrl;
       
     } catch (error) {
       console.error('[EXTRACT-COVER-PUBLIC] Error:', error);
@@ -363,7 +364,7 @@ class ComicFileHandler {
     }
   }
 
-  // Get list of pages from comic archive - FIXED FOR CBR
+  // IMPROVED: Get list of pages from comic archive with timeout for CBR
   async getPages(filePath) {
     console.log(`[GET-PAGES] Starting page extraction for: ${filePath}`);
     const ext = path.extname(filePath).toLowerCase();
@@ -398,7 +399,14 @@ class ComicFileHandler {
       try {
         console.log(`[GET-PAGES] Extracting CBR to temp directory`);
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-pages-'));
-        await this.unrar(filePath, tempDir);
+        
+        // Add timeout to prevent hanging
+        const extractPromise = this.unrar(filePath, tempDir);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('CBR extraction timeout after 30 seconds')), 30000)
+        );
+        
+        await Promise.race([extractPromise, timeoutPromise]);
         
         const allFiles = await this._walk(tempDir);
         const imageFiles = allFiles
@@ -408,17 +416,22 @@ class ComicFileHandler {
 
         console.log(`[GET-PAGES] Found ${imageFiles.length} image files in CBR`);
         
+        if (imageFiles.length === 0) {
+          throw new Error('No image files found in CBR archive');
+        }
+        
         // Store temp directory for later cleanup - we'll need it for page extraction
         this._cbrTempDirs = this._cbrTempDirs || new Map();
         this._cbrTempDirs.set(filePath, tempDir);
         
         return imageFiles;
       } catch (error) {
+        console.error(`[GET-PAGES] CBR extraction failed:`, error);
         // Clean up on error
         if (tempDir) {
           await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
         }
-        throw error;
+        throw new Error(`Failed to extract CBR file: ${error.message}`);
       }
     }
     
@@ -462,7 +475,14 @@ class ComicFileHandler {
       if (!tempDir) {
         // Extract if we don't have it yet
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-page-'));
-        await this.unrar(filePath, tempDir);
+        
+        // Add timeout for extraction
+        const extractPromise = this.unrar(filePath, tempDir);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('CBR extraction timeout')), 30000)
+        );
+        
+        await Promise.race([extractPromise, timeoutPromise]);
         this._cbrTempDirs.set(filePath, tempDir);
       }
 
@@ -518,7 +538,13 @@ class ComicFileHandler {
     console.log(`[CBR-READER] Temp directory: ${tempDir}`);
     
     try {
-      await this.unrar(filePath, tempDir);
+      // Add timeout for extraction
+      const extractPromise = this.unrar(filePath, tempDir);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('CBR extraction timeout after 60 seconds')), 60000)
+      );
+      
+      await Promise.race([extractPromise, timeoutPromise]);
       console.log(`[CBR-READER] Successfully extracted RAR to temp directory`);
       
       await new Promise(resolve => setTimeout(resolve, 100));
