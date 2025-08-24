@@ -169,7 +169,15 @@ class ComicFileHandler {
       let tempDir = null;
       try {
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-pages-'));
-        await this.unrar(filePath, tempDir);
+        
+        // Add timeout for page count extraction
+        const extractPromise = this.unrar(filePath, tempDir);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('CBR page count timeout')), 15000)
+        );
+        
+        await Promise.race([extractPromise, timeoutPromise]);
+        
         const allFiles = await this._walk(tempDir);
         const imageFiles = allFiles.filter(file => this.isImageFile(file));
         return imageFiles.length;
@@ -211,16 +219,21 @@ class ComicFileHandler {
     }
   }
 
-  // FIXED: Extract cover directly to public directory and return proper file:/// URL
+  // FIXED: Extract cover to public directory and return absolute path with existence verification
   async extractCoverToPublic(filePath, publicCoversDir) {
     try {
       console.log('[EXTRACT-COVER-PUBLIC] Starting extraction for:', filePath);
       console.log('[EXTRACT-COVER-PUBLIC] Public covers dir:', publicCoversDir);
       
+      // Ensure covers directory exists
+      await fs.mkdir(publicCoversDir, { recursive: true });
+      console.log('[EXTRACT-COVER-PUBLIC] Covers directory ensured');
+      
       // Extract to temporary location first
       const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-cover-'));
-      const tempCoverPath = await this.extractCover(filePath, tempDir);
+      console.log('[EXTRACT-COVER-PUBLIC] Created temp dir:', tempDir);
       
+      const tempCoverPath = await this.extractCover(filePath, tempDir);
       console.log('[EXTRACT-COVER-PUBLIC] Temp cover extracted to:', tempCoverPath);
       
       // Generate unique filename
@@ -229,21 +242,32 @@ class ComicFileHandler {
       const publicCoverFilename = `comic-${timestamp}-${randomId}-cover.jpg`;
       const publicCoverPath = path.join(publicCoversDir, publicCoverFilename);
       
-      // Ensure public directory exists
-      await fs.mkdir(publicCoversDir, { recursive: true });
+      console.log('[EXTRACT-COVER-PUBLIC] Target public path:', publicCoverPath);
       
       // Copy to public directory
       await fs.copyFile(tempCoverPath, publicCoverPath);
-      console.log('[EXTRACT-COVER-PUBLIC] Cover copied to:', publicCoverPath);
+      console.log('[EXTRACT-COVER-PUBLIC] Cover copied to public directory');
+      
+      // CRITICAL: Verify the file actually exists and is readable
+      try {
+        const stats = await fs.stat(publicCoverPath);
+        console.log('[EXTRACT-COVER-PUBLIC] Cover file verified, size:', stats.size, 'bytes');
+        
+        if (stats.size === 0) {
+          throw new Error('Cover file is empty');
+        }
+      } catch (verifyError) {
+        console.error('[EXTRACT-COVER-PUBLIC] Cover file verification failed:', verifyError);
+        throw new Error(`Cover extraction failed - file verification error: ${verifyError.message}`);
+      }
       
       // Clean up temp directory
       await fs.rm(tempDir, { recursive: true, force: true });
+      console.log('[EXTRACT-COVER-PUBLIC] Temp directory cleaned up');
       
-      // FIXED: Return proper file:/// URL instead of relative path
-      const normalizedPath = path.resolve(publicCoverPath).replace(/\\/g, '/');
-      const fileUrl = 'file:///' + encodeURI(normalizedPath);
-      console.log('[EXTRACT-COVER-PUBLIC] File URL:', fileUrl);
-      return fileUrl;
+      // Return absolute path (IPC handler will convert to file URL)
+      console.log('[EXTRACT-COVER-PUBLIC] Returning absolute path:', publicCoverPath);
+      return publicCoverPath;
       
     } catch (error) {
       console.error('[EXTRACT-COVER-PUBLIC] Error:', error);
@@ -255,28 +279,41 @@ class ComicFileHandler {
   async extractCoverFromZipArchive(filePath, outputDir) {
     let zip;
     try {
+      console.log('[CBZ-COVER] Opening ZIP file:', filePath);
       zip = new StreamZip.async({ file: filePath });
       const entries = await zip.entries();
       const imageFiles = Object.values(entries)
         .filter(entry => !entry.isDirectory && this.isImageFile(entry.name))
         .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
+      console.log('[CBZ-COVER] Found', imageFiles.length, 'image files');
+      
       if (imageFiles.length === 0) {
         throw new Error('No images found in CBZ archive');
       }
 
       const coverEntry = imageFiles[0];
+      console.log('[CBZ-COVER] Using first image as cover:', coverEntry.name);
+      
       const coverData = await zip.entryData(coverEntry);
+      console.log('[CBZ-COVER] Extracted cover data, size:', coverData.length, 'bytes');
       
       const baseName = path.basename(filePath, path.extname(filePath));
       const outputPath = path.join(outputDir, `${baseName}_cover.jpg`);
       
       await fs.mkdir(outputDir, { recursive: true });
       
+      // Process with Sharp and ensure file is written
       await sharp(coverData)
         .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 85 })
         .toFile(outputPath);
+      
+      console.log('[CBZ-COVER] Cover processed and saved to:', outputPath);
+      
+      // Verify the output file exists
+      const stats = await fs.stat(outputPath);
+      console.log('[CBZ-COVER] Output file verified, size:', stats.size, 'bytes');
       
       return outputPath;
     } finally {
@@ -290,7 +327,7 @@ class ComicFileHandler {
     }
   }
 
-  // Extract cover from CBR (RAR) archive
+  // Extract cover from CBR (RAR) archive with timeout protection
   async extractCoverFromRarArchive(filePath, outputDir) {
     if (!this.unrarAvailable || !this.unrar) {
       throw new Error('RAR support is not available');
@@ -298,28 +335,49 @@ class ComicFileHandler {
 
     let tempDir = null;
     try {
+      console.log('[CBR-COVER] Starting CBR cover extraction for:', filePath);
       tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-cover-'));
-      await this.unrar(filePath, tempDir);
+      console.log('[CBR-COVER] Created temp directory:', tempDir);
+      
+      // Add timeout for extraction
+      const extractPromise = this.unrar(filePath, tempDir);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('CBR cover extraction timeout after 30 seconds')), 30000)
+      );
+      
+      await Promise.race([extractPromise, timeoutPromise]);
+      console.log('[CBR-COVER] RAR extraction completed');
       
       const allFiles = await this._walk(tempDir);
       const imageFiles = allFiles
         .filter(file => this.isImageFile(file))
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
+      console.log('[CBR-COVER] Found', imageFiles.length, 'image files');
+      
       if (imageFiles.length === 0) {
         throw new Error('No images found in CBR archive');
       }
 
       const coverPathInTemp = imageFiles[0];
+      console.log('[CBR-COVER] Using first image as cover:', coverPathInTemp);
+      
       const baseName = path.basename(filePath, path.extname(filePath));
       const outputPath = path.join(outputDir, `${baseName}_cover.jpg`);
       
       await fs.mkdir(outputDir, { recursive: true });
       
+      // Process with Sharp and ensure file is written
       await sharp(coverPathInTemp)
         .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 85 })
         .toFile(outputPath);
+      
+      console.log('[CBR-COVER] Cover processed and saved to:', outputPath);
+      
+      // Verify the output file exists
+      const stats = await fs.stat(outputPath);
+      console.log('[CBR-COVER] Output file verified, size:', stats.size, 'bytes');
         
       return outputPath;
     } finally {
@@ -364,7 +422,7 @@ class ComicFileHandler {
     }
   }
 
-  // IMPROVED: Get list of pages from comic archive with timeout for CBR
+  // Get list of pages from comic archive with improved timeout handling
   async getPages(filePath) {
     console.log(`[GET-PAGES] Starting page extraction for: ${filePath}`);
     const ext = path.extname(filePath).toLowerCase();
@@ -375,10 +433,13 @@ class ComicFileHandler {
       try {
         zip = new StreamZip.async({ file: filePath });
         const entries = await zip.entries();
-        return Object.values(entries)
+        const pages = Object.values(entries)
           .filter(entry => !entry.isDirectory && this.isImageFile(entry.name))
           .sort((a, b) => a.name.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))
           .map(entry => entry.name);
+        
+        console.log(`[GET-PAGES] Found ${pages.length} pages in CBZ`);
+        return pages;
       } finally {
         if (zip) {
           try {
@@ -400,10 +461,10 @@ class ComicFileHandler {
         console.log(`[GET-PAGES] Extracting CBR to temp directory`);
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-pages-'));
         
-        // Add timeout to prevent hanging
+        // Shorter timeout for page listing (20 seconds)
         const extractPromise = this.unrar(filePath, tempDir);
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('CBR extraction timeout after 30 seconds')), 30000)
+          setTimeout(() => reject(new Error('CBR page extraction timeout after 20 seconds')), 20000)
         );
         
         await Promise.race([extractPromise, timeoutPromise]);
@@ -479,7 +540,7 @@ class ComicFileHandler {
         // Add timeout for extraction
         const extractPromise = this.unrar(filePath, tempDir);
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('CBR extraction timeout')), 30000)
+          setTimeout(() => reject(new Error('CBR page extraction timeout')), 20000)
         );
         
         await Promise.race([extractPromise, timeoutPromise]);
