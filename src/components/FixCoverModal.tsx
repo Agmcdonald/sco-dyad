@@ -20,6 +20,7 @@ import { Comic } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { useElectron } from "@/hooks/useElectron";
 import { showSuccess, showError } from "@/utils/toast";
+import { getCoverUrl } from "@/lib/cover";
 
 interface FixCoverModalProps {
   comic: Comic;
@@ -123,6 +124,8 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
     }
   };
 
+  const coverSrc = getCoverUrl(comic.coverUrl);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-2xl">
@@ -147,7 +150,7 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
               <div className="flex items-center justify-center">
                 <div className="w-32 h-48 bg-muted rounded-lg overflow-hidden">
                   <img 
-                    src={comic.coverUrl} 
+                    src={coverSrc} 
                     alt="Current cover" 
                     className="w-full h-full object-cover"
                   />

@@ -39,6 +39,7 @@ import { useSelection } from "@/context/SelectionContext";
 import { useElectron } from "@/hooks/useElectron";
 import { RATING_EMOJIS } from "@/lib/ratings";
 import { showError, showSuccess } from "@/utils/toast";
+import { getCoverUrl } from "@/lib/cover";
 
 interface ComicInspectorProps {
   comic: Comic;
@@ -73,7 +74,7 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
 
   // Check if cover might be corrupted (placeholder or failed to load)
   const hasPotentialCoverIssue = comic.coverUrl === '/placeholder.svg' || 
-    comic.coverUrl.includes('placeholder') || 
+    comic.coverUrl?.includes('placeholder') || 
     !comic.coverUrl;
 
   const handleRemoveFromLibrary = () => {
@@ -128,6 +129,8 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
     }
   };
 
+  const coverSrc = getCoverUrl(comic.coverUrl);
+
   return (
     <>
       <div className="flex flex-col h-full bg-background border-l">
@@ -150,10 +153,11 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
         </div>
         <div className="flex-1 p-4 space-y-4 overflow-y-auto">
           <div className="aspect-w-2 aspect-h-3 rounded-lg bg-muted overflow-hidden relative">
-            <img src={comic.coverUrl} alt="Cover" className="object-cover w-full h-full" />
+            <img src={coverSrc} alt="Cover" className="object-cover w-full h-full" />
             {hasPotentialCoverIssue && (
               <div className="absolute top-2 right-2">
                 <Badge variant="destructive" className="text-xs">
+                  <Image className="h-3 w-3 mr-1.5" />
                   No Cover
                 </Badge>
               </div>

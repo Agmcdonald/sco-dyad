@@ -4,6 +4,7 @@ import { useSelection } from "@/context/SelectionContext";
 import { Comic } from "@/types";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { getCoverUrl } from "@/lib/cover";
 
 interface ComicCardProps {
   comic: Comic;
@@ -43,6 +44,8 @@ const ComicCard = ({ comic, onDoubleClick, onToggleInspector }: ComicCardProps) 
     console.log('[COMIC-CARD] Image loaded successfully for comic:', comic.series, 'URL:', comic.coverUrl);
   };
 
+  const coverSrc = getCoverUrl(comic.coverUrl);
+
   return (
     <Card 
       className={cn(
@@ -55,7 +58,7 @@ const ComicCard = ({ comic, onDoubleClick, onToggleInspector }: ComicCardProps) 
       <AspectRatio ratio={2 / 3}>
         {!imageError ? (
           <img
-            src={comic.coverUrl}
+            src={coverSrc}
             alt={`${comic.series} #${comic.issue}`}
             className="object-cover w-full h-full"
             onError={handleImageError}

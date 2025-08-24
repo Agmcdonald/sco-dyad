@@ -9,6 +9,7 @@ import { useAppContext } from "@/context/AppContext";
 import AddToReadingListModal from "./AddToReadingListModal";
 import RatingSelector from "./RatingSelector";
 import { RATING_EMOJIS } from "@/lib/ratings";
+import { getCoverUrl } from "@/lib/cover";
 
 const ReadingList = () => {
   const { 
@@ -61,7 +62,8 @@ const ReadingList = () => {
       const comic = comics.find(c => c.id === item.comicId);
       return {
         ...item,
-        currentRating: comic?.rating // Get current rating from comic
+        currentRating: comic?.rating, // Get current rating from comic
+        coverUrlResolved: getCoverUrl(item.coverUrl)
       };
     });
   }, [recentlyRead, comics]);
@@ -224,7 +226,7 @@ const ReadingList = () => {
                       <div key={item.id} className="flex items-center gap-4 p-4 border rounded-lg">
                         <div className="w-12 h-16 bg-muted rounded flex-shrink-0 overflow-hidden">
                           <img 
-                            src={item.coverUrl} 
+                            src={item.coverUrlResolved} 
                             alt={item.title}
                             className="w-full h-full object-cover"
                           />
