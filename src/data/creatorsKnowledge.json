@@ -2,121 +2,335 @@
   {
     "id": "creator-1755991000001-a",
     "name": "James Tynion IV",
-    "roles": ["Writer"],
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000002-b",
     "name": "Chip Zdarsky",
-    "roles": ["Writer", "Pencils", "Inks", "Artist", "Cover Artist"],
+    "roles": [
+      "Writer",
+      "Pencils",
+      "Inks",
+      "Artist",
+      "Cover Artist"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000003-c",
     "name": "Jeff Lemire",
-    "roles": ["Writer", "Pencils", "Inks", "Colors", "Artist", "Cover Artist"],
+    "roles": [
+      "Writer",
+      "Pencils",
+      "Inks",
+      "Colors",
+      "Artist",
+      "Cover Artist"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000004-d",
     "name": "Tom King",
-    "roles": ["Writer"],
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000005-e",
     "name": "Kelly Thompson",
-    "roles": ["Writer"],
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000006-f",
     "name": "Al Ewing",
-    "roles": ["Writer"],
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000007-g",
     "name": "Kieron Gillen",
-    "roles": ["Writer"],
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000008-h",
     "name": "Donny Cates",
-    "roles": ["Writer"],
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000009-i",
     "name": "Jason Aaron",
-    "roles": ["Writer"],
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000010-j",
     "name": "Jonathan Hickman",
-    "roles": ["Writer"],
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000011-k",
     "name": "G. Willow Wilson",
-    "roles": ["Writer"],
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000012-l",
     "name": "Saladin Ahmed",
-    "roles": ["Writer"],
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000013-m",
     "name": "Ram V",
-    "roles": ["Writer"],
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000014-n",
     "name": "Tom Taylor",
-    "roles": ["Writer"],
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000015-o",
     "name": "Scott Snyder",
-    "roles": ["Writer"],
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000016-p",
     "name": "Brian Michael Bendis",
-    "roles": ["Writer"],
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000017-q",
     "name": "Ed Brubaker",
-    "roles": ["Writer"],
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000018-r",
     "name": "Greg Rucka",
-    "roles": ["Writer"],
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000019-s",
     "name": "Mark Waid",
-    "roles": ["Writer"],
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   },
   {
     "id": "creator-1755991000020-t",
     "name": "Gene Luen Yang",
-    "roles": ["Writer", "Artist"],
+    "roles": [
+      "Writer",
+      "Artist"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000021-a",
+    "name": "Brian K. Vaughan",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000022-b",
+    "name": "Matt Fraction",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000023-c",
+    "name": "Kelly Sue DeConnick",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000024-d",
+    "name": "Marjorie Liu",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000025-e",
+    "name": "Rainbow Rowell",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000026-f",
+    "name": "Ta-Nehisi Coates",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000027-g",
+    "name": "Grant Morrison",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000028-h",
+    "name": "Neil Gaiman",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000029-i",
+    "name": "Christopher Priest",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000030-j",
+    "name": "Garth Ennis",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000031-k",
+    "name": "Warren Ellis",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000032-l",
+    "name": "Peter J. Tomasi",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000033-m",
+    "name": "Dan Slott",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000034-n",
+    "name": "Cullen Bunn",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000035-o",
+    "name": "Robert Kirkman",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000036-p",
+    "name": "Brian Azzarello",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000037-q",
+    "name": "Mark Millar",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000038-r",
+    "name": "Mike Mignola",
+    "roles": [
+      "Writer",
+      "Pencils",
+      "Inks",
+      "Artist",
+      "Cover Artist"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000039-s",
+    "name": "Geoff Johns",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000040-t",
+    "name": "Charles Soule",
+    "roles": [
+      "Writer"
+    ],
     "notes": ""
   }
 ]
