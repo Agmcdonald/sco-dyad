@@ -80,13 +80,13 @@ async function initializeServices() {
 async function initializeKnowledgeBaseFile() {
   const normalize = (s) => (s || "").trim().toLowerCase();
 
-  const defaultSeriesKBPath = isDev
-    ? path.join(__dirname, '../src/data/comicsKnowledge.json')
-    : path.join(__dirname, '../dist/assets/comicsKnowledge.json');
-  
-  const defaultCreatorsKBPath = isDev
-    ? path.join(__dirname, '../src/data/creatorsKnowledge.json')
-    : path.join(__dirname, '../dist/assets/creatorsKnowledge.json');
+  // Correctly locate the data files in both dev and packaged mode
+  const dataDir = isDev
+    ? path.join(__dirname, '../src/data')
+    : path.join(__dirname, '../src/data'); // After packaging, src/data will be at the root
+
+  const defaultSeriesKBPath = path.join(dataDir, 'comicsKnowledge.json');
+  const defaultCreatorsKBPath = path.join(dataDir, 'creatorsKnowledge.json');
 
   try {
     // Read the master knowledge bases

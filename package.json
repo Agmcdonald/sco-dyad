@@ -45,7 +45,7 @@
     "input-otp": "^1.2.4",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
-    "node-stream-zip": "^1.15.0",
+    "node-stream-zip": "^1.1.5",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
@@ -107,7 +107,8 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "src/data/**/*"
     ],
     "mac": {
       "category": "public.app-category.productivity",
