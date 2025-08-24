@@ -65,15 +65,9 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    if (isDev) {
-      mainWindow.webContents.openDevTools();
-    }
+    // Only open dev tools in development mode when explicitly needed
+    // Remove automatic opening of dev tools
   });
-
-  // Add this for debugging in packaged app
-  if (!isDev) {
-    mainWindow.webContents.openDevTools();
-  }
 
   mainWindow.on('closed', () => {
     mainWindow = null;
