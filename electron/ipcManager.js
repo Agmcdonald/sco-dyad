@@ -3,20 +3,6 @@ const path = require('path');
 const fs = require('fs');
 const fsPromises = fs.promises;
 const readline = require('readline');
-// const Database = require('better-sqlite3'); // Temporarily disabled to fix build issues
-
-// let gcdDb = null; // Temporarily disabled
-
-// Helper to parse a TSV line
-const parseTsvLine = (line) => {
-  return line.split('\t').map(field => {
-    // Unescape quotes
-    if (field.startsWith('"') && field.endsWith('"')) {
-      return field.slice(1, -1).replace(/""/g, '"');
-    }
-    return field;
-  });
-};
 
 function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBasePath, publicCoversDir }) {
   // App info
@@ -57,13 +43,12 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       // Ensure public covers dir exists
       await fsPromises.mkdir(publicCoversDir, { recursive: true });
 
-      // Use fileHandler.extractCoverToPublic to get absolute path to stored cover (we updated fileHandler to return an absolute path)
+      // Use fileHandler.extractCoverToPublic to get absolute path to stored cover
       const absoluteCoverPath = await fileHandler.extractCoverToPublic(filePath, publicCoversDir);
 
-      // If the fileHandler returned already an absolute path, convert it to file:// URL
-      // Normalize and encode spaces, etc.
-      const normalized = path.resolve(absoluteCoverPath);
-      const fileUrl = `file://${encodeURI(normalized)}`;
+      // Normalize to forward-slash path and produce a proper file:/// URL
+      const normalized = path.resolve(absoluteCoverPath).replace(/\\/g, '/');
+      const fileUrl = 'file:///' + encodeURI(normalized);
       return fileUrl;
     } catch (error) {
       console.error('[IPC] Error in extract-cover handler:', error);
@@ -94,8 +79,50 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('reader:cleanup-temp-dir', (event, tempDir) => fileHandler.cleanupTempDir(tempDir));
 
   // Database operations
-  ipcMain.handle('init-database', () => true);
-  ipcMain.handle('get-comics', () => database.getComics());
+  // Normalize cover URLs before returning comics so renderer always gets a file:/// absolute URL if possible
+  ipcMain.handle('get-comics', async () => {
+    try {
+      const comics = await database.getComics();
+
+      const normalized = comics.map((c) => {
+        const copy = { ...c };
+        try {
+          if (copy.coverUrl && typeof copy.coverUrl === 'string') {
+            const url = copy.coverUrl;
+
+            // If already a file:// URL, ensure it uses forward slashes and is encoded
+            if (url.startsWith('file:')) {
+              // Strip file:// and re-normalize
+              let withoutScheme = url.replace(/^file:\/+/, '');
+              withoutScheme = withoutScheme.replace(/\\/g, '/');
+              copy.coverUrl = 'file:///' + encodeURI(withoutScheme);
+            } else if (url.startsWith('/covers/') || url.startsWith('covers/')) {
+              // If stored as a public-relative path, map it to actual publicCoversDir location
+              const filename = path.basename(url);
+              const abs = path.join(publicCoversDir, filename);
+              const normalizedPath = path.resolve(abs).replace(/\\/g, '/');
+              copy.coverUrl = 'file:///' + encodeURI(normalizedPath);
+            } else if (/^[a-zA-Z]:[\\/]/.test(url)) {
+              // Windows absolute path without scheme (e.g., C:\covers\...)
+              const normalizedPath = path.resolve(url).replace(/\\/g, '/');
+              copy.coverUrl = 'file:///' + encodeURI(normalizedPath);
+            } else {
+              // For anything else (e.g., '/placeholder.svg' or relative), leave as-is
+            }
+          }
+        } catch (e) {
+          console.error('Error normalizing coverUrl for comic:', copy.id, e);
+        }
+        return copy;
+      });
+
+      return normalized;
+    } catch (err) {
+      console.error('Error in get-comics handler:', err);
+      return [];
+    }
+  });
+
   ipcMain.handle('update-comic', (event, comic) => database.updateComic(comic));
   ipcMain.handle('db:import-comics', (event, comics) => database.importComics(comics));
   
@@ -118,10 +145,10 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       comic.coverUrl = '/placeholder.svg';
       if (comic.filePath) {
         try {
-          // Use fileHandler.extractCoverToPublic to get the absolute path then convert to file://
+          // Use fileHandler.extractCoverToPublic to get the absolute path then convert to file:///
           const absoluteCoverPath = await fileHandler.extractCoverToPublic(comic.filePath, publicCoversDir);
-          const normalized = path.resolve(absoluteCoverPath);
-          comic.coverUrl = `file://${encodeURI(normalized)}`;
+          const normalized = path.resolve(absoluteCoverPath).replace(/\\/g, '/');
+          comic.coverUrl = 'file:///' + encodeURI(normalized);
         } catch (error) {
           console.error(`Could not extract cover for ${comic.filePath}:`, error && error.message);
         }
