@@ -97,8 +97,9 @@ async function initializeKnowledgeBaseFile() {
     try {
       const masterCreatorsData = await fs.readFile(defaultCreatorsKBPath, 'utf-8');
       masterCreators = JSON.parse(masterCreatorsData);
+      console.log(`Successfully loaded ${masterCreators.length} master creators.`);
     } catch (e) {
-      console.log('No default creators file found. Skipping.');
+      console.error(`Failed to load or parse default creators file from ${defaultCreatorsKBPath}:`, e);
     }
 
     let userKB = { series: [], creators: [] };
