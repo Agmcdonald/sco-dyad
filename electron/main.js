@@ -34,8 +34,8 @@ function createWindow() {
       webSecurity: true
     },
     show: false,
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    icon: path.join(__dirname, '../public/logo.png') // Add app icon
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default'
+    // Removed icon reference for now
   });
 
   const startUrl = isDev 

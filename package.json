@@ -36,10 +36,6 @@
       {
         "from": "src/data",
         "to": "app.asar.unpacked/src/data"
-      },
-      {
-        "from": "public/logo.png",
-        "to": "logo.png"
       }
     ],
     "asarUnpack": [
