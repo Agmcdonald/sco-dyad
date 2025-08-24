@@ -1,4 +1,4 @@
-Library and sets a first-run flag in localStorage">
+Library.">
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 
 const FIRST_LAUNCH_KEY = "sco_first_launch_shown";
 
-const FirstLaunchModal = () => {
+const FirstLaunchModal: React.FC = () => {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 
