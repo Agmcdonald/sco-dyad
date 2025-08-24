@@ -28,10 +28,14 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      // Add these for better compatibility
+      enableRemoteModule: false,
+      webSecurity: true
     },
     show: false,
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default'
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    icon: path.join(__dirname, '../public/logo.png') // Add app icon
   });
 
   const startUrl = isDev 
@@ -40,7 +44,9 @@ function createWindow() {
   
   mainWindow.loadURL(startUrl).catch(err => {
     console.error('ERROR: Failed to load start URL:', startUrl);
-    console.error('Please ensure the Vite development server is running and accessible.');
+    if (isDev) {
+      console.error('Please ensure the Vite development server is running and accessible.');
+    }
     console.error(err);
   });
 
@@ -62,44 +68,60 @@ function createWindow() {
 }
 
 async function initializeServices() {
-  fileHandler = new ComicFileHandler();
-  database = new ComicDatabase();
-  await database.initialize();
+  try {
+    fileHandler = new ComicFileHandler();
+    database = new ComicDatabase();
+    await database.initialize();
 
-  const userDataPath = app.getPath('userData');
-  knowledgeBasePath = path.join(userDataPath, 'userKnowledgeBase.json');
-  
-  publicCoversDir = isDev 
-    ? path.join(__dirname, '../public/covers') 
-    : path.join(__dirname, '../dist/covers');
-  
-  await fs.mkdir(publicCoversDir, { recursive: true });
-  await initializeKnowledgeBaseFile();
+    const userDataPath = app.getPath('userData');
+    knowledgeBasePath = path.join(userDataPath, 'userKnowledgeBase.json');
+    
+    // In packaged app, create covers directory in userData
+    if (isDev) {
+      publicCoversDir = path.join(__dirname, '../public/covers');
+    } else {
+      publicCoversDir = path.join(userDataPath, 'covers');
+    }
+    
+    await fs.mkdir(publicCoversDir, { recursive: true });
+    await initializeKnowledgeBaseFile();
+    
+    console.log('Services initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize services:', error);
+  }
 }
 
 async function initializeKnowledgeBaseFile() {
   const normalize = (s) => (s || "").trim().toLowerCase();
 
-  // Correctly locate the data files in both dev and packaged mode
-  const dataDir = isDev
-    ? path.join(__dirname, '../src/data')
-    : path.join(__dirname, '../src/data'); // After packaging, src/data will be at the root
-
-  const defaultSeriesKBPath = path.join(dataDir, 'comicsKnowledge.json');
-  const defaultCreatorsKBPath = path.join(dataDir, 'creatorsKnowledge.json');
-
   try {
-    // Read the master knowledge bases
-    const masterSeriesData = await fs.readFile(defaultSeriesKBPath, 'utf-8');
-    const masterSeries = JSON.parse(masterSeriesData);
-    
+    // In packaged app, data files are in resources/app.asar/src/data
+    const dataDir = isDev
+      ? path.join(__dirname, '../src/data')
+      : path.join(process.resourcesPath, 'app.asar.unpacked/src/data');
+
+    const defaultSeriesKBPath = path.join(dataDir, 'comicsKnowledge.json');
+    const defaultCreatorsKBPath = path.join(dataDir, 'creatorsKnowledge.json');
+
+    // Check if files exist before reading
+    let masterSeries = [];
     let masterCreators = [];
+
+    try {
+      const masterSeriesData = await fs.readFile(defaultSeriesKBPath, 'utf-8');
+      masterSeries = JSON.parse(masterSeriesData);
+      console.log(`Loaded ${masterSeries.length} master series entries.`);
+    } catch (e) {
+      console.warn(`Could not load default series file from ${defaultSeriesKBPath}:`, e.message);
+    }
+    
     try {
       const masterCreatorsData = await fs.readFile(defaultCreatorsKBPath, 'utf-8');
       masterCreators = JSON.parse(masterCreatorsData);
-      console.log(`Successfully loaded ${masterCreators.length} master creators.`);
+      console.log(`Loaded ${masterCreators.length} master creators entries.`);
     } catch (e) {
-      console.error(`Failed to load or parse default creators file from ${defaultCreatorsKBPath}:`, e);
+      console.warn(`Could not load default creators file from ${defaultCreatorsKBPath}:`, e.message);
     }
 
     let userKB = { series: [], creators: [] };
@@ -114,6 +136,7 @@ async function initializeKnowledgeBaseFile() {
       }
     } catch (userKbError) {
       // User file doesn't exist, will be created.
+      console.log('No existing user knowledge base found, will create new one.');
     }
 
     // Merge Series
@@ -146,6 +169,14 @@ async function initializeKnowledgeBaseFile() {
 
   } catch (error) {
     console.error('Could not initialize or merge knowledge base file:', error);
+    // Create empty knowledge base as fallback
+    const emptyKB = { series: [], creators: [] };
+    try {
+      await fs.writeFile(knowledgeBasePath, JSON.stringify(emptyKB, null, 2), 'utf-8');
+      console.log('Created empty knowledge base as fallback.');
+    } catch (writeError) {
+      console.error('Could not create fallback knowledge base:', writeError);
+    }
   }
 }
 
@@ -175,8 +206,9 @@ app.on('web-contents-created', (event, contents) => {
       event.preventDefault();
     }
   });
-  contents.on('new-window', (event, navigationUrl) => {
-    event.preventDefault();
-    shell.openExternal(navigationUrl);
+  
+  contents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
   });
 });
