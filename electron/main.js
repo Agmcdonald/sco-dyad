@@ -35,17 +35,30 @@ function createWindow() {
     },
     show: false,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default'
-    // Removed icon reference for now
   });
 
+  // Fix the path for packaged app
   const startUrl = isDev 
     ? 'http://localhost:5173' 
     : `file://${path.join(__dirname, '../dist/index.html')}`;
+  
+  console.log('Loading URL:', startUrl);
+  console.log('__dirname:', __dirname);
+  console.log('isDev:', isDev);
   
   mainWindow.loadURL(startUrl).catch(err => {
     console.error('ERROR: Failed to load start URL:', startUrl);
     if (isDev) {
       console.error('Please ensure the Vite development server is running and accessible.');
+    } else {
+      console.error('Failed to load packaged HTML file. Checking if file exists...');
+      const htmlPath = path.join(__dirname, '../dist/index.html');
+      console.log('Looking for HTML at:', htmlPath);
+      fs.access(htmlPath).then(() => {
+        console.log('HTML file exists');
+      }).catch(() => {
+        console.error('HTML file does not exist at expected location');
+      });
     }
     console.error(err);
   });
@@ -57,6 +70,11 @@ function createWindow() {
     }
   });
 
+  // Add this for debugging in packaged app
+  if (!isDev) {
+    mainWindow.webContents.openDevTools();
+  }
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -64,6 +82,15 @@ function createWindow() {
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
+  });
+
+  // Add error handling for the web contents
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error('Failed to load:', validatedURL, 'Error:', errorCode, errorDescription);
+  });
+
+  mainWindow.webContents.on('dom-ready', () => {
+    console.log('DOM is ready');
   });
 }
 
