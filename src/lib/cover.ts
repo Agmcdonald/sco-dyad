@@ -8,14 +8,16 @@
 export const PLACEHOLDER_DATA_URL =
   "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K";
 
-function devWarn(msg: string, ...args: any[]) {
-  // Keep concise but provide stack for debugging
-  try {
-    const stack = new Error().stack;
-    // eslint-disable-next-line no-console
-    console.warn(`[cover-helper] ${msg}`, ...args, stack ? `callstack: ${stack}` : "");
-  } catch {
-    // ignore
+// Cache to prevent repeated warnings for the same paths
+const warnedPaths = new Set<string>();
+
+function devWarn(msg: string, path: string) {
+  // Only warn once per unique path to prevent spam
+  if (!warnedPaths.has(path)) {
+    warnedPaths.add(path);
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`[cover-helper] ${msg}:`, path);
+    }
   }
 }
 
@@ -29,16 +31,25 @@ export function getCoverUrl(raw?: string | null): string {
 
   let s = String(raw).trim();
 
+  // Early return for already processed URLs to prevent loops
+  if (s === PLACEHOLDER_DATA_URL) return s;
+  if (s.startsWith('data:') || s.startsWith('http://') || s.startsWith('https://')) return s;
+
+  // If already a properly formatted file URL, return as-is
+  if (s.startsWith('file://') && !containsSuspiciousPatterns(s)) {
+    return s.replace(/\\/g, '/');
+  }
+
   // If there are multiple 'file:' occurrences, keep the last one (defensive)
   const lastFileIdx = s.lastIndexOf("file:");
   if (lastFileIdx > 0) {
-    devWarn("Detected multiple 'file:' occurrences in cover path, using last occurrence.", raw);
+    devWarn("Detected multiple 'file:' occurrences in cover path, using last occurrence", s);
     s = s.slice(lastFileIdx);
   }
 
   // detect suspicious patterns early for diagnostics
-  if (containsSuspiciousPatterns(raw)) {
-    devWarn("Suspicious cover path pattern detected", raw);
+  if (containsSuspiciousPatterns(s)) {
+    devWarn("Suspicious cover path pattern detected", s);
   }
 
   // Normalize backslashes to forward slashes
@@ -84,17 +95,12 @@ export function getCoverUrl(raw?: string | null): string {
   // otherwise return placeholder and log for later migration.
   // If it looks like 'covers/...' or contains '/covers/', try to extract basename and warn (migration will handle it)
   if (s.includes("/covers/") || s.startsWith("covers/") || /^covers[\/\\]/i.test(s)) {
-    devWarn("Relative or legacy covers path encountered in renderer; migration needed", raw);
+    devWarn("Relative or legacy covers path encountered in renderer; migration needed", s);
     // fallback to placeholder for safety
     return PLACEHOLDER_DATA_URL;
   }
 
-  // If the string looks already like a data URL or HTTP(S), return as-is
-  if (/^data:|^https?:\/\//i.test(s)) {
-    return s;
-  }
-
   // Unknown format — don't try risky concatenations; return placeholder and log
-  devWarn("Unrecognized cover path format; returning placeholder", raw);
+  devWarn("Unrecognized cover path format; returning placeholder", s);
   return PLACEHOLDER_DATA_URL;
 }
