@@ -1,4 +1,4 @@
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { 
@@ -17,6 +17,7 @@ import GcdDatabaseManager from "@/components/GcdDatabaseManager";
 import { useAppContext } from "@/context/AppContext";
 import { useElectron } from "@/hooks/useElectron";
 import { showSuccess, showError } from "@/utils/toast";
+import MigrateCoversButton from "@/components/MigrateCoversButton";
 
 const Maintenance = () => {
   const { comics, files, actions, importComics, isScanningMetadata, metadataScanProgress, startMetadataScan } = useAppContext();
@@ -160,22 +161,29 @@ const Maintenance = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button className="w-full justify-start" onClick={handleExportLibrary}>
-              <Download className="h-4 w-4 mr-2" />
-              Export Library
-            </Button>
-            <Button className="w-full justify-start" variant="outline" onClick={handleImportLibrary}>
-              <Upload className="h-4 w-4 mr-2" />
-              Import Library
-            </Button>
-            <Button className="w-full justify-start" variant="outline" onClick={handleRebuildIndex}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Rebuild Index
-            </Button>
-            <Button className="w-full justify-start" variant="outline" onClick={handleCleanupFiles}>
-              <Trash2 className="h-4 w-4 mr-2" />
-              Cleanup Temp Files
-            </Button>
+            <div className="flex flex-col md:flex-row gap-2">
+              <Button className="w-full md:w-auto justify-start" onClick={handleExportLibrary}>
+                <Download className="h-4 w-4 mr-2" />
+                Export Library
+              </Button>
+              <Button className="w-full md:w-auto justify-start" variant="outline" onClick={handleImportLibrary}>
+                <Upload className="h-4 w-4 mr-2" />
+                Import Library
+              </Button>
+              <Button className="w-full md:w-auto justify-start" variant="outline" onClick={handleRebuildIndex}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Rebuild Index
+              </Button>
+              <Button className="w-full md:w-auto justify-start" variant="outline" onClick={handleCleanupFiles}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Cleanup Temp Files
+              </Button>
+            </div>
+
+            {/* New: Migrate Covers */}
+            <div className="pt-2">
+              <MigrateCoversButton />
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -86,7 +86,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Remove listeners
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);
-  }
+  },
+
+  // New: expose covers directory and migration to renderer
+  getCoversDir: () => ipcRenderer.invoke('app:get-covers-dir'),
+  migrateCovers: () => ipcRenderer.invoke('app:migrate-covers'),
 });
 
 // Security: Remove Node.js globals in renderer process
