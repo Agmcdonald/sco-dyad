@@ -79,7 +79,7 @@ const Sidebar = () => {
           <img
   src="/logo.png"
   alt="Super Comic Organizer Logo"
-  className="h-auto w-full max-w-[300px] object-contain"
+  className="h-48 w-auto object-contain"
 />
         </div>
         <div className="px-4 pb-4">
