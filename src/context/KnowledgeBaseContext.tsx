@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { ComicKnowledge, CreatorKnowledge, KnowledgeBase, Creator } from '@/types';
 import { useElectron } from '@/hooks/useElectron';
-import defaultKnowledgeBase from '@/data/comicsKnowledge.json';
+import defaultSeriesKB from '@/data/comicsKnowledge.json';
+import defaultCreatorsKB from '@/data/creatorsKnowledge.json';
 
 interface KnowledgeBaseContextType {
   knowledgeBase: KnowledgeBase;
@@ -23,20 +24,29 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
   useEffect(() => {
     const loadKnowledgeBase = async () => {
       let data: any;
+
       if (isElectron && electronAPI) {
         try {
           data = await electronAPI.getKnowledgeBase();
         } catch (error) {
           console.error("Failed to load knowledge base from Electron:", error);
-          data = defaultKnowledgeBase;
+          // fall back to bundled defaults below
         }
-      } else {
-        data = defaultKnowledgeBase;
       }
 
+      // If not running in Electron or electron read failed, use bundled defaults
+      if (!data) {
+        // defaultSeriesKB may be an array (legacy) or object. Normalize to { series, creators }.
+        const series = Array.isArray(defaultSeriesKB) ? defaultSeriesKB : defaultSeriesKB.series || [];
+        const creators = Array.isArray(defaultCreatorsKB) ? defaultCreatorsKB : defaultCreatorsKB.creators || defaultCreatorsKB;
+        data = { series, creators };
+      }
+
+      // Normalize different shapes
       if (Array.isArray(data)) {
+        // Legacy single-array format -> assume series only
         setKnowledgeBase({ series: data, creators: [] });
-      } else if (data && typeof data === 'object' && (data.series || data.creators)) {
+      } else if (data && typeof data === 'object') {
         setKnowledgeBase({ series: data.series || [], creators: data.creators || [] });
       } else {
         setKnowledgeBase(emptyKB);
@@ -117,7 +127,7 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
           existingEntry.startYear = normalizedEntry.startYear;
         }
         existingEntry.volumes = existingEntry.volumes ? [...existingEntry.volumes] : [];
-        const existingVolumeSet = new Set(existingEntry.volumes.map(v => normalizeStr((v as any).volume)));
+        const existingVolumeSet = new Set(existingEntry.volumes.map(v => normalizeStr(v.volume)));
         (normalizedEntry.volumes || []).forEach(v => {
           const volStr = normalizeStr((v as any).volume);
           if (!existingVolumeSet.has(volStr)) {
