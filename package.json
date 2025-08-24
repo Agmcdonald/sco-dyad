@@ -113,7 +113,12 @@
           "target": "dmg",
           "arch": ["x64", "arm64"]
         }
-      ]
+      ],
+      "identity": "Developer ID Application: Your Name (TEAM_ID)",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
     },
     "win": {
       "target": [
@@ -121,7 +126,11 @@
           "target": "nsis",
           "arch": ["x64"]
         }
-      ]
+      ],
+      "certificateFile": "path/to/your/certificate.p12",
+      "certificatePassword": "your_certificate_password",
+      "signingHashAlgorithms": ["sha256"],
+      "signDlls": true
     },
     "linux": {
       "target": [
