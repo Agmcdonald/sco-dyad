@@ -80,46 +80,69 @@ async function initializeServices() {
 async function initializeKnowledgeBaseFile() {
   const normalize = (s) => (s || "").trim().toLowerCase();
 
-  const defaultKBPath = isDev
+  const defaultSeriesKBPath = isDev
     ? path.join(__dirname, '../src/data/comicsKnowledge.json')
     : path.join(__dirname, '../dist/assets/comicsKnowledge.json');
+  
+  const defaultCreatorsKBPath = isDev
+    ? path.join(__dirname, '../src/data/creatorsKnowledge.json')
+    : path.join(__dirname, '../dist/assets/creatorsKnowledge.json');
 
   try {
-    // Read the master knowledge base
-    const masterKBData = await fs.readFile(defaultKBPath, 'utf-8');
-    const masterKB = JSON.parse(masterKBData);
+    // Read the master knowledge bases
+    const masterSeriesData = await fs.readFile(defaultSeriesKBPath, 'utf-8');
+    const masterSeries = JSON.parse(masterSeriesData);
+    
+    let masterCreators = [];
+    try {
+      const masterCreatorsData = await fs.readFile(defaultCreatorsKBPath, 'utf-8');
+      masterCreators = JSON.parse(masterCreatorsData);
+    } catch (e) {
+      console.log('No default creators file found. Skipping.');
+    }
 
+    let userKB = { series: [], creators: [] };
     try {
       // Try to read the user's local knowledge base
       const userKBData = await fs.readFile(knowledgeBasePath, 'utf-8');
-      const userKB = JSON.parse(userKBData);
-
-      // Both files exist, so merge them
-      const mergedMap = new Map();
-
-      // Add user's entries first to prioritize them
-      for (const entry of userKB) {
-        if (entry.series) {
-          mergedMap.set(normalize(entry.series), entry);
-        }
+      const parsedUserKB = JSON.parse(userKBData);
+      if (Array.isArray(parsedUserKB)) { // Handle old format
+        userKB.series = parsedUserKB;
+      } else {
+        userKB = { series: parsedUserKB.series || [], creators: parsedUserKB.creators || [] };
       }
-
-      // Add new entries from the master list
-      for (const entry of masterKB) {
-        if (entry.series && !mergedMap.has(normalize(entry.series))) {
-          mergedMap.set(normalize(entry.series), entry);
-        }
-      }
-
-      const mergedKB = Array.from(mergedMap.values());
-      await fs.writeFile(knowledgeBasePath, JSON.stringify(mergedKB, null, 2), 'utf-8');
-      console.log(`Knowledge base merged successfully. Total entries: ${mergedKB.length}`);
-
     } catch (userKbError) {
-      // User's file doesn't exist, so just copy the master file
-      await fs.writeFile(knowledgeBasePath, JSON.stringify(masterKB, null, 2), 'utf-8');
-      console.log(`Initialized user knowledge base from master. Total entries: ${masterKB.length}`);
+      // User file doesn't exist, will be created.
     }
+
+    // Merge Series
+    const seriesMap = new Map();
+    for (const entry of userKB.series) {
+      if (entry.series) seriesMap.set(normalize(entry.series), entry);
+    }
+    for (const entry of masterSeries) {
+      if (entry.series && !seriesMap.has(normalize(entry.series))) {
+        seriesMap.set(normalize(entry.series), entry);
+      }
+    }
+    const mergedSeries = Array.from(seriesMap.values());
+
+    // Merge Creators
+    const creatorsMap = new Map();
+    for (const entry of userKB.creators) {
+      if (entry.name) creatorsMap.set(normalize(entry.name), entry);
+    }
+    for (const entry of masterCreators) {
+      if (entry.name && !creatorsMap.has(normalize(entry.name))) {
+        creatorsMap.set(normalize(entry.name), entry);
+      }
+    }
+    const mergedCreators = Array.from(creatorsMap.values());
+
+    const finalKB = { series: mergedSeries, creators: mergedCreators };
+    await fs.writeFile(knowledgeBasePath, JSON.stringify(finalKB, null, 2), 'utf-8');
+    console.log(`Knowledge base merged. Series: ${mergedSeries.length}, Creators: ${mergedCreators.length}`);
+
   } catch (error) {
     console.error('Could not initialize or merge knowledge base file:', error);
   }
