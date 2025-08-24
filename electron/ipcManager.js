@@ -2,9 +2,9 @@ const { ipcMain, dialog, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const readline = require('readline');
-const Database = require('better-sqlite3');
+// const Database = require('better-sqlite3'); // Temporarily disabled to fix build issues
 
-let gcdDb = null;
+// let gcdDb = null; // Temporarily disabled
 
 // Helper to parse a TSV line
 const parseTsvLine = (line) => {
@@ -161,187 +161,28 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
-  // GCD Importer
-  ipcMain.handle('importer:start', async (event, { issuesPath, sequencesPath }) => {
-    const dbPath = path.join(app.getPath('userData'), 'gcd_local.sqlite');
-    
-    try {
-      if (gcdDb) {
-        gcdDb.close();
-        gcdDb = null;
-      }
-      
-      const localDb = new Database(dbPath);
-      
-      // This is the safer way: create tables if they don't exist, then wipe them clean.
-      localDb.exec(`
-        CREATE TABLE IF NOT EXISTS issue_details (
-          issue_id INTEGER,
-          key TEXT,
-          value TEXT
-        );
-        CREATE TABLE IF NOT EXISTS story_details (
-          issue_id INTEGER,
-          sequence_number INTEGER,
-          key TEXT,
-          value TEXT
-        );
-        DELETE FROM issue_details;
-        DELETE FROM story_details;
-      `);
-      
-      // Create indexes if they don't exist
-      localDb.exec(`
-        CREATE INDEX IF NOT EXISTS idx_issue_details_issue_id_key ON issue_details(issue_id, key);
-        CREATE INDEX IF NOT EXISTS idx_issue_details_key_value ON issue_details(key, value);
-        CREATE INDEX IF NOT EXISTS idx_story_details_issue_id ON story_details(issue_id);
-      `);
-
-      const processFile = (filePath, tableName, isIssuesFile) => new Promise((resolve, reject) => {
-        const fileStream = fs.createReadStream(filePath);
-        const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
-        
-        const insertStmt = isIssuesFile
-          ? localDb.prepare(`INSERT INTO ${tableName} (issue_id, key, value) VALUES (?, ?, ?)`)
-          : localDb.prepare(`INSERT INTO ${tableName} (issue_id, sequence_number, key, value) VALUES (?, ?, ?, ?)`);
-        
-        const transaction = localDb.transaction((rows) => {
-          for (const row of rows) insertStmt.run(row);
-        });
-
-        let buffer = [];
-        let lineCount = 0;
-        
-        rl.on('line', (line) => {
-          lineCount++;
-          const parts = parseTsvLine(line);
-          if (isIssuesFile) {
-            if (parts.length === 3) buffer.push([parseInt(parts[0]), parts[1], parts[2]]);
-          } else {
-            if (parts.length === 4) buffer.push([parseInt(parts[0]), parseInt(parts[1]), parts[2], parts[3]]);
-          }
-
-          if (buffer.length >= 50000) {
-            transaction(buffer);
-            buffer = [];
-            event.sender.send('importer:progress', { percent: 50, message: `Processing ${path.basename(filePath)}: ${lineCount.toLocaleString()} lines...` });
-          }
-        });
-
-        rl.on('close', () => {
-          if (buffer.length > 0) transaction(buffer);
-          resolve(lineCount);
-        });
-        rl.on('error', reject);
-      });
-
-      event.sender.send('importer:progress', { percent: 10, message: 'Processing issues file...' });
-      const issueLines = await processFile(issuesPath, 'issue_details', true);
-      
-      event.sender.send('importer:progress', { percent: 60, message: 'Processing story file...' });
-      const sequenceLines = await processFile(sequencesPath, 'story_details', false);
-
-      localDb.close();
-      
-      gcdDb = new Database(dbPath, { readonly: true, fileMustExist: true });
-
-      database.saveSetting('gcdDbPath', dbPath);
-      database.saveSetting('gcdIssuesPath', issuesPath);
-      database.saveSetting('gcdSequencesPath', sequencesPath);
-
-      return { success: true, message: `Database built successfully with ${issueLines.toLocaleString()} issue records and ${sequenceLines.toLocaleString()} story records.` };
-    } catch (error) {
-      console.error('Importer error:', error);
-      return { success: false, message: error.message };
-    }
+  // GCD Importer - Temporarily Disabled
+  ipcMain.handle('importer:start', async () => {
+    console.warn('GCD Importer is temporarily disabled due to build issues.');
+    return { success: false, message: 'This feature is temporarily disabled.' };
   });
 
-  // GCD Database operations
-  ipcMain.handle('gcd-db:connect', (event, dbPath) => {
-    const localDbPath = dbPath || path.join(app.getPath('userData'), 'gcd_local.sqlite');
-    try {
-      if (gcdDb) gcdDb.close();
-      if (!fs.existsSync(localDbPath)) return false;
-      gcdDb = new Database(localDbPath, { readonly: true, fileMustExist: true });
-      return true;
-    } catch (error) {
-      console.error('Failed to connect to GCD database:', error);
-      gcdDb = null;
-      return false;
-    }
+  // GCD Database operations - Temporarily Disabled
+  ipcMain.handle('gcd-db:connect', () => {
+    console.warn('GCD DB Connect is temporarily disabled.');
+    return false;
   });
-
-  ipcMain.handle('gcd-db:search-series', (event, seriesName) => {
-    if (!gcdDb) return [];
-    try {
-      const stmt = gcdDb.prepare(`
-        SELECT
-          s.issue_id as id,
-          s.value as name,
-          (SELECT value FROM issue_details WHERE issue_id = s.issue_id AND key = 'publisher name') as publisher,
-          (SELECT SUBSTR(value, 1, 4) FROM issue_details WHERE issue_id = s.issue_id AND key = 'publication date') as year_began
-        FROM issue_details s
-        WHERE s.key = 'series name' AND s.value LIKE ? COLLATE NOCASE
-        GROUP BY s.value, publisher
-        ORDER BY CASE WHEN s.value = ? THEN 1 WHEN s.value LIKE ? THEN 2 ELSE 3 END, s.value
-        LIMIT 20
-      `);
-      return stmt.all(`%${seriesName}%`, seriesName, `${seriesName}%`);
-    } catch (error) {
-      console.error('[GCD-SEARCH] Search failed:', error);
-      return [];
-    }
+  ipcMain.handle('gcd-db:search-series', () => {
+    console.warn('GCD DB Search is temporarily disabled.');
+    return [];
   });
-
-  ipcMain.handle('gcd-db:get-issue-details', (event, seriesId, issueNumber) => {
-    if (!gcdDb) return null;
-    try {
-      const seriesNameStmt = gcdDb.prepare(`SELECT value FROM issue_details WHERE issue_id = ? AND key = 'series name'`);
-      const seriesNameResult = seriesNameStmt.get(seriesId);
-      if (!seriesNameResult) return null;
-      const seriesName = seriesNameResult.value;
-
-      const issueIdStmt = gcdDb.prepare(`
-        SELECT s.issue_id FROM issue_details s
-        JOIN issue_details i ON s.issue_id = i.issue_id
-        WHERE s.key = 'series name' AND s.value = ?
-          AND i.key = 'issue number' AND i.value = ?
-      `);
-      const issueIdResult = issueIdStmt.get(seriesName, issueNumber);
-      if (!issueIdResult) return null;
-      const issueId = issueIdResult.issue_id;
-
-      const detailsStmt = gcdDb.prepare(`SELECT key, value FROM issue_details WHERE issue_id = ?`);
-      const details = detailsStmt.all(issueId).reduce((acc, row) => {
-        acc[row.key.replace(/\s/g, '_')] = row.value;
-        return acc;
-      }, { id: issueId });
-
-      return details;
-    } catch (error) {
-      console.error('GCD issue details search failed:', error);
-      return null;
-    }
+  ipcMain.handle('gcd-db:get-issue-details', () => {
+    console.warn('GCD DB Get Issue Details is temporarily disabled.');
+    return null;
   });
-
-  ipcMain.handle('gcd-db:get-issue-creators', (event, issueId) => {
-    if (!gcdDb) return [];
-    try {
-      const stmt = gcdDb.prepare(`
-        SELECT key as role, value as name
-        FROM story_details
-        WHERE issue_id = ? AND key IN ('script', 'pencils', 'inks', 'colors', 'letters', 'editor', 'writer', 'artist', 'cover-artist')
-        GROUP BY key, value
-        ORDER BY sequence_number
-      `);
-      return stmt.all(issueId).map(row => ({
-        ...row,
-        role: row.role.charAt(0).toUpperCase() + row.role.slice(1)
-      }));
-    } catch (error) {
-      console.error('GCD creator search failed:', error);
-      return [];
-    }
+  ipcMain.handle('gcd-db:get-issue-creators', () => {
+    console.warn('GCD DB Get Issue Creators is temporarily disabled.');
+    return [];
   });
 
   // Backup and Restore Dialogs
