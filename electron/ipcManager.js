@@ -8,6 +8,21 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   // App info
   ipcMain.handle('get-app-version', () => app.getVersion());
 
+  // Provide a handler so renderer can initialize DB on demand
+  ipcMain.handle('init-database', async () => {
+    try {
+      if (!database) {
+        throw new Error('Database service not available');
+      }
+      await database.initialize();
+      return { success: true };
+    } catch (err) {
+      console.error('[IPC] init-database error:', err);
+      // Let the renderer receive the error (invoke will reject)
+      throw err;
+    }
+  });
+
   // Dialogs
   ipcMain.handle('show-message-box', async (event, options) => {
     return await dialog.showMessageBox(mainWindow, options);
