@@ -77,10 +77,10 @@ const Sidebar = () => {
       <div className="border-b">
         <div className="flex justify-center px-4 py-2">
           <img
-            src="/logo.png"
-            alt="Super Comic Organizer Logo"
-            className="h-auto w-full object-contain"
-          />
+  src="/logo.png"
+  alt="Super Comic Organizer Logo"
+  className="h-auto w-full max-w-[300px] object-contain"
+/>
         </div>
         <div className="px-4 pb-4">
           <form onSubmit={handleSearch} className="relative">
