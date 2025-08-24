@@ -363,7 +363,7 @@ class ComicFileHandler {
     }
   }
 
-  // Get list of pages from comic archive
+  // Get list of pages from comic archive - FIXED FOR CBR
   async getPages(filePath) {
     console.log(`[GET-PAGES] Starting page extraction for: ${filePath}`);
     const ext = path.extname(filePath).toLowerCase();
@@ -393,8 +393,33 @@ class ComicFileHandler {
       if (!this.unrarAvailable || !this.unrar) {
         throw new Error('RAR support is not available');
       }
-      // CBR page extraction would go here
-      throw new Error('CBR page extraction not yet implemented');
+
+      let tempDir = null;
+      try {
+        console.log(`[GET-PAGES] Extracting CBR to temp directory`);
+        tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-pages-'));
+        await this.unrar(filePath, tempDir);
+        
+        const allFiles = await this._walk(tempDir);
+        const imageFiles = allFiles
+          .filter(file => this.isImageFile(file))
+          .map(file => path.relative(tempDir, file).replace(/\\/g, '/'))
+          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+        console.log(`[GET-PAGES] Found ${imageFiles.length} image files in CBR`);
+        
+        // Store temp directory for later cleanup - we'll need it for page extraction
+        this._cbrTempDirs = this._cbrTempDirs || new Map();
+        this._cbrTempDirs.set(filePath, tempDir);
+        
+        return imageFiles;
+      } catch (error) {
+        // Clean up on error
+        if (tempDir) {
+          await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+        }
+        throw error;
+      }
     }
     
     if (ext === '.pdf') {
@@ -405,7 +430,7 @@ class ComicFileHandler {
     throw new Error(`Unsupported file type for page extraction: ${ext}`);
   }
 
-  // Extract a specific page from comic archive as a data URL
+  // Extract a specific page from comic archive as a data URL - FIXED FOR CBR
   async extractPageAsDataUrl(filePath, pageName) {
     const fileType = this.getFileType(filePath);
     
@@ -426,7 +451,36 @@ class ComicFileHandler {
         }
       }
     } else if (fileType === 'cbr') {
-      throw new Error('CBR page extraction not yet implemented');
+      if (!this.unrarAvailable || !this.unrar) {
+        throw new Error('RAR support is not available');
+      }
+
+      // Check if we have a temp directory for this file
+      this._cbrTempDirs = this._cbrTempDirs || new Map();
+      let tempDir = this._cbrTempDirs.get(filePath);
+      
+      if (!tempDir) {
+        // Extract if we don't have it yet
+        tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-page-'));
+        await this.unrar(filePath, tempDir);
+        this._cbrTempDirs.set(filePath, tempDir);
+      }
+
+      try {
+        const fullPagePath = path.join(tempDir, pageName);
+        
+        // Security check
+        if (!fullPagePath.startsWith(tempDir)) {
+          throw new Error('Invalid page path - security violation');
+        }
+        
+        const pageData = await fs.readFile(fullPagePath);
+        const mimeType = this.getMimeType(pageName);
+        return `data:${mimeType};base64,${pageData.toString('base64')}`;
+      } catch (error) {
+        console.error(`[CBR-PAGE] Error reading page ${pageName}:`, error);
+        throw error;
+      }
     } else if (fileType === 'pdf') {
       throw new Error('PDF support is temporarily disabled');
     }
@@ -561,6 +615,16 @@ class ComicFileHandler {
       } catch (error) {
         console.error(`[CBR-READER] Failed to clean up temp directory:`, error);
       }
+    }
+  }
+
+  // Clean up CBR temp directories when done with page extraction
+  cleanupCbrTempDirs() {
+    if (this._cbrTempDirs) {
+      for (const [filePath, tempDir] of this._cbrTempDirs.entries()) {
+        this.cleanupTempDir(tempDir);
+      }
+      this._cbrTempDirs.clear();
     }
   }
 }
