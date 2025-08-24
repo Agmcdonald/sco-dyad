@@ -8,21 +8,24 @@ class ComicFileHandler {
   constructor() {
     this.supportedExtensions = ['.cbr', '.cbz']; // Temporarily removed PDF support
     this.imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
-    this.unrarPromise = null;
+    this.unrarAvailable = false;
+    this.unrar = null;
+    this.initUnrar();
   }
 
-  // Lazy load unrar-promise using dynamic import
-  async getUnrar() {
-    if (!this.unrarPromise) {
-      try {
-        const unrarModule = await import('unrar-promise');
-        this.unrarPromise = unrarModule.unrar;
-      } catch (error) {
-        console.error('Failed to load unrar-promise:', error);
-        throw new Error('RAR support is not available');
-      }
+  // Initialize unrar with better error handling
+  async initUnrar() {
+    try {
+      // Try to dynamically import unrar-promise
+      const unrarModule = await import('unrar-promise');
+      this.unrar = unrarModule.unrar;
+      this.unrarAvailable = true;
+      console.log('RAR support initialized successfully');
+    } catch (error) {
+      console.warn('RAR support not available:', error.message);
+      this.unrarAvailable = false;
+      this.unrar = null;
     }
-    return this.unrarPromise;
   }
 
   // Helper function to find all files recursively
@@ -158,11 +161,15 @@ class ComicFileHandler {
         }
       }
     } else if (fileType === 'cbr') {
+      if (!this.unrarAvailable || !this.unrar) {
+        console.warn('RAR support not available for page count');
+        return 0;
+      }
+
       let tempDir = null;
       try {
-        const unrar = await this.getUnrar();
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-pages-'));
-        await unrar(filePath, tempDir);
+        await this.unrar(filePath, tempDir);
         const allFiles = await this._walk(tempDir);
         const imageFiles = allFiles.filter(file => this.isImageFile(file));
         return imageFiles.length;
@@ -284,11 +291,14 @@ class ComicFileHandler {
 
   // Extract cover from CBR (RAR) archive
   async extractCoverFromRarArchive(filePath, outputDir) {
+    if (!this.unrarAvailable || !this.unrar) {
+      throw new Error('RAR support is not available');
+    }
+
     let tempDir = null;
     try {
-      const unrar = await this.getUnrar();
       tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-cover-'));
-      await unrar(filePath, tempDir);
+      await this.unrar(filePath, tempDir);
       
       const allFiles = await this._walk(tempDir);
       const imageFiles = allFiles
@@ -379,6 +389,14 @@ class ComicFileHandler {
       }
     }
     
+    if (ext === '.cbr') {
+      if (!this.unrarAvailable || !this.unrar) {
+        throw new Error('RAR support is not available');
+      }
+      // CBR page extraction would go here
+      throw new Error('CBR page extraction not yet implemented');
+    }
+    
     if (ext === '.pdf') {
       throw new Error('PDF support is temporarily disabled');
     }
@@ -407,6 +425,8 @@ class ComicFileHandler {
           }
         }
       }
+    } else if (fileType === 'cbr') {
+      throw new Error('CBR page extraction not yet implemented');
     } else if (fileType === 'pdf') {
       throw new Error('PDF support is temporarily disabled');
     }
@@ -435,13 +455,16 @@ class ComicFileHandler {
 
   // Improved CBR reading with better error handling and retry logic
   async prepareCbrForReading(filePath) {
+    if (!this.unrarAvailable || !this.unrar) {
+      throw new Error('RAR support is not available');
+    }
+
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-reader-'));
     console.log(`[CBR-READER] Preparing CBR for reading: ${filePath}`);
     console.log(`[CBR-READER] Temp directory: ${tempDir}`);
     
     try {
-      const unrar = await this.getUnrar();
-      await unrar(filePath, tempDir);
+      await this.unrar(filePath, tempDir);
       console.log(`[CBR-READER] Successfully extracted RAR to temp directory`);
       
       await new Promise(resolve => setTimeout(resolve, 100));
