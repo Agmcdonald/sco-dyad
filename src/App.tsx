@@ -16,6 +16,7 @@ import Maintenance from "./pages/Maintenance";
 import NotFound from "./pages/NotFound";
 import ElectronIntegration from "./components/ElectronIntegration";
 import HelpManualModal from "./components/HelpManualModal";
+import FirstLaunchModal from "@/components/FirstLaunchModal";
 import { SelectionProvider } from "./context/SelectionContext";
 import { AppProvider } from "./context/AppContext";
 import { ThemeProvider } from "./components/ThemeProvider";
@@ -51,6 +52,7 @@ const Root = () => {
     <>
       <ElectronIntegration />
       <HelpManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
+      <FirstLaunchModal />
       <Outlet />
     </>
   );

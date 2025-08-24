@@ -1,6 +1,7 @@
 const { ipcMain, dialog, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const fsPromises = fs.promises;
 const readline = require('readline');
 // const Database = require('better-sqlite3'); // Temporarily disabled to fix build issues
 
@@ -50,22 +51,22 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('read-comic-file', (event, filePath) => fileHandler.readComicFile(filePath));
   ipcMain.handle('scan-folder', (event, folderPath) => fileHandler.scanFolder(folderPath));
 
+  // Extract cover and return a file:// URL pointing to the copied cover in publicCoversDir
   ipcMain.handle('extract-cover', async (event, filePath) => {
     try {
-      const tempCoversDir = path.join(app.getPath('userData'), 'temp-covers');
-      await fs.promises.mkdir(tempCoversDir, { recursive: true });
-      const tempCoverPath = await fileHandler.extractCover(filePath, tempCoversDir);
-      
-      const comicId = `comic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const publicCoverFilename = `${comicId}-cover.jpg`;
-      const publicCoverPath = path.join(publicCoversDir, publicCoverFilename);
-      
-      await fs.promises.copyFile(tempCoverPath, publicCoverPath);
-      await fs.promises.unlink(tempCoverPath);
-      
-      return `/covers/${publicCoverFilename}`;
+      // Ensure public covers dir exists
+      await fsPromises.mkdir(publicCoversDir, { recursive: true });
+
+      // Use fileHandler.extractCoverToPublic to get absolute path to stored cover (we updated fileHandler to return an absolute path)
+      const absoluteCoverPath = await fileHandler.extractCoverToPublic(filePath, publicCoversDir);
+
+      // If the fileHandler returned already an absolute path, convert it to file:// URL
+      // Normalize and encode spaces, etc.
+      const normalized = path.resolve(absoluteCoverPath);
+      const fileUrl = `file://${encodeURI(normalized)}`;
+      return fileUrl;
     } catch (error) {
-      console.error('[EXTRACT-COVER] Error:', error);
+      console.error('[IPC] Error in extract-cover handler:', error);
       throw error;
     }
   });
@@ -101,7 +102,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('delete-comic', async (event, comicId, filePath) => {
     if (filePath) {
       try {
-        await fs.promises.unlink(filePath);
+        await fsPromises.unlink(filePath);
       } catch (error) {
         console.error(`Failed to delete file: ${filePath}`, error);
       }
@@ -110,18 +111,26 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   });
 
   ipcMain.handle('save-comic', async (event, comic) => {
-    if (!comic.id) {
-      comic.id = `comic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    }
-    comic.coverUrl = '/placeholder.svg';
-    if (comic.filePath) {
-      try {
-        comic.coverUrl = await fileHandler.extractCoverToPublic(comic.filePath, publicCoversDir);
-      } catch (error) {
-        console.error(`Could not extract cover for ${comic.filePath}:`, error.message);
+    try {
+      if (!comic.id) {
+        comic.id = `comic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       }
+      comic.coverUrl = '/placeholder.svg';
+      if (comic.filePath) {
+        try {
+          // Use fileHandler.extractCoverToPublic to get the absolute path then convert to file://
+          const absoluteCoverPath = await fileHandler.extractCoverToPublic(comic.filePath, publicCoversDir);
+          const normalized = path.resolve(absoluteCoverPath);
+          comic.coverUrl = `file://${encodeURI(normalized)}`;
+        } catch (error) {
+          console.error(`Could not extract cover for ${comic.filePath}:`, error && error.message);
+        }
+      }
+      return database.saveComic(comic);
+    } catch (error) {
+      console.error('[IPC] Error in save-comic handler:', error);
+      throw error;
     }
-    return database.saveComic(comic);
   });
 
   // Settings operations
@@ -143,7 +152,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   // Knowledge Base handlers
   ipcMain.handle('get-knowledge-base', async () => {
     try {
-      const data = await fs.promises.readFile(knowledgeBasePath, 'utf-8');
+      const data = await fsPromises.readFile(knowledgeBasePath, 'utf-8');
       return JSON.parse(data);
     } catch (error) {
       console.error('Failed to read knowledge base:', error);
@@ -153,7 +162,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
 
   ipcMain.handle('save-knowledge-base', async (event, data) => {
     try {
-      await fs.promises.writeFile(knowledgeBasePath, JSON.stringify(data, null, 2), 'utf-8');
+      await fsPromises.writeFile(knowledgeBasePath, JSON.stringify(data, null, 2), 'utf-8');
       return true;
     } catch (error) {
       console.error('Failed to save knowledge base:', error);
@@ -194,7 +203,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     });
     if (canceled || !filePath) return { success: false, path: null };
     try {
-      await fs.promises.writeFile(filePath, data, 'utf-8');
+      await fsPromises.writeFile(filePath, data, 'utf-8');
       return { success: true, path: filePath };
     } catch (error) {
       return { success: false, error: error.message };
@@ -209,7 +218,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     });
     if (canceled || filePaths.length === 0) return { success: false, data: null };
     try {
-      const data = await fs.promises.readFile(filePaths[0], 'utf-8');
+      const data = await fsPromises.readFile(filePaths[0], 'utf-8');
       return { success: true, data };
     } catch (error) {
       return { success: false, error: error.message };

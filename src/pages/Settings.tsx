@@ -25,6 +25,7 @@ import { useElectron } from "@/hooks/useElectron";
 import { showError, showSuccess } from "@/utils/toast";
 import { testApiConnection, testMarvelApiConnection } from "@/lib/scraper";
 import { Loader2, FolderOpen, Sun, Moon } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 const Settings = () => {
   const { theme, setTheme } = useTheme();
@@ -33,11 +34,24 @@ const Settings = () => {
   const [isTesting, setIsTesting] = useState(false);
   const [isTestingMarvel, setIsTestingMarvel] = useState(false);
   const [libraryPath, setLibraryPath] = useState("");
+  const location = useLocation();
 
   // Initialize paths from settings
   useEffect(() => {
     setLibraryPath(settings.libraryPath || "");
   }, [settings.libraryPath]);
+
+  // Handle targetTab from navigation state (e.g., first-launch modal)
+  const initialTab = (location.state && (location.state as any).targetTab) || "general";
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
+
+  useEffect(() => {
+    // If navigation state changes while on the page, update tab
+    if (location.state && (location.state as any).targetTab) {
+      setActiveTab((location.state as any).targetTab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const handleSave = async () => {
     const updatedSettings = { ...settings, libraryPath };
@@ -87,7 +101,7 @@ const Settings = () => {
           Manage your application and library preferences.
         </p>
       </div>
-      <Tabs defaultValue="general" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="library">Library</TabsTrigger>

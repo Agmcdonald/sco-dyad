@@ -77,7 +77,7 @@ const Sidebar = () => {
       <div className="border-b">
         <div className="flex justify-center px-4 py-2">
          <img
-  src="/logo.png"
+  src="./logo.png"
   alt="Super Comic Organizer Logo"
   className="scale-125"
   style={{ transformOrigin: "center" }}
