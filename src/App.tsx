@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createBrowserRouter, RouterProvider, Outlet, useOutletContext } from "react-router-dom";
+import { createHashRouter, RouterProvider, Outlet, useOutletContext } from "react-router-dom";
 import Layout from "./components/Layout";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
@@ -56,7 +56,9 @@ const Root = () => {
   );
 };
 
-const router = createBrowserRouter([
+// Use hash router in Electron / packaged app so file:// paths don't become route paths.
+// Hash routing keeps navigation after the '#' which prevents the filesystem path being interpreted.
+const router = createHashRouter([
   {
     element: <Root />,
     children: [
