@@ -22,6 +22,127 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
+  // Expose canonical covers directory to renderer
+  ipcMain.handle('app:get-covers-dir', async () => {
+    try {
+      // Return the absolute path where the app stores cover images
+      return publicCoversDir || '';
+    } catch (err) {
+      console.error('[IPC] app:get-covers-dir error:', err);
+      return '';
+    }
+  });
+
+  // One-time migration: canonicalize cover paths for all comics
+  ipcMain.handle('app:migrate-covers', async () => {
+    // This migrates legacy/stale coverUrl values to canonical file:// URLs inside publicCoversDir
+    const report = {
+      total: 0,
+      updated: 0,
+      skipped: 0,
+      failed: 0,
+      updatedIds: [],
+      failedIds: []
+    };
+
+    if (!database) {
+      throw new Error('Database service not available');
+    }
+
+    try {
+      const allComics = await database.getComics();
+      report.total = Array.isArray(allComics) ? allComics.length : 0;
+
+      for (const comic of allComics) {
+        try {
+          const original = comic.coverUrl || '';
+          let resolved = null;
+
+          // If already a file:// URL, normalize and skip
+          if (original && typeof original === 'string' && original.startsWith('file://')) {
+            resolved = original;
+          } else {
+            // Try to extract a basename in case of legacy /covers or absolute Windows paths embedded
+            const basename = (() => {
+              try {
+                // If it's a data URL or http(s), keep as-is
+                if (/^data:|^https?:\/\//i.test(original)) return original;
+
+                // If contains 'file:' multiple times, prefer last segment after last 'file:'
+                const lastFileIdx = String(original).lastIndexOf('file:');
+                let candidate = String(original);
+                if (lastFileIdx > -1) {
+                  candidate = candidate.slice(lastFileIdx).replace(/^file:\/+/, '');
+                }
+
+                // If candidate is an absolute path, use basename
+                return path.basename(candidate);
+              } catch {
+                return path.basename(String(original || ''));
+              }
+            })();
+
+            // Candidate path under publicCoversDir
+            if (basename) {
+              const candidatePath = path.join(publicCoversDir || '', basename);
+              try {
+                await fsPromises.access(candidatePath);
+                resolved = pathToFileURL(candidatePath).href;
+              } catch {
+                // not found under publicCoversDir; try direct absolute path if original looked absolute
+                try {
+                  if (path.isAbsolute(original)) {
+                    const abs = original;
+                    try {
+                      await fsPromises.access(abs);
+                      resolved = pathToFileURL(abs).href;
+                    } catch {}
+                  }
+                } catch {}
+              }
+            }
+          }
+
+          // If resolved, update database; otherwise set placeholder
+          if (resolved) {
+            // If the stored value already equals resolved, skip
+            if (comic.coverUrl !== resolved) {
+              comic.coverUrl = resolved;
+              await database.updateComic({
+                ...comic,
+                // database.updateComic expects stored date strings for some fields; keep them as-is
+              });
+              report.updated++;
+              report.updatedIds.push(comic.id);
+            } else {
+              report.skipped++;
+            }
+          } else {
+            // No resolved path found; use placeholder path (renderer will map it)
+            const placeholder = '/placeholder.svg';
+            if (comic.coverUrl !== placeholder) {
+              comic.coverUrl = placeholder;
+              await database.updateComic({ ...comic });
+              report.updated++;
+              report.updatedIds.push(comic.id);
+            } else {
+              report.skipped++;
+            }
+          }
+        } catch (err) {
+          console.error('[IPC][migrate-covers] Failed for comic id:', comic.id, err);
+          report.failed++;
+          report.failedIds.push(comic.id);
+        }
+      }
+
+      return report;
+    } catch (err) {
+      console.error('[IPC] app:migrate-covers error:', err);
+      throw err;
+    }
+  });
+
   // Dialogs
   ipcMain.handle('show-message-box', async (event, options) => {
     return await dialog.showMessageBox(mainWindow, options);
