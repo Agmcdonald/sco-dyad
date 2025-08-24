@@ -2,6 +2,7 @@
   "name": "super-comic-organizer",
   "version": "1.0.0",
   "description": "A comprehensive comic book collection management application",
+  "author": "Super Comic Organizer Team",
   "main": "electron/main.js",
   "homepage": "./",
   "scripts": {
@@ -51,12 +52,7 @@
           "target": "dmg",
           "arch": ["x64", "arm64"]
         }
-      ],
-      "identity": "Developer ID Application: Your Name (TEAM_ID)",
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist"
+      ]
     },
     "win": {
       "target": [
@@ -65,10 +61,7 @@
           "arch": ["x64"]
         }
       ],
-      "certificateFile": "path/to/your/certificate.p12",
-      "certificatePassword": "your_certificate_password",
-      "signingHashAlgorithms": ["sha256"],
-      "signDlls": true
+      "publisherName": "Super Comic Organizer Team"
     },
     "linux": {
       "target": [
@@ -80,7 +73,9 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     }
   },
   "dependencies": {
