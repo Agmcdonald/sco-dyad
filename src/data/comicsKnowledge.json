@@ -1390,7 +1390,7 @@
     "startYear": 2016,
     "volumes": [
       {
-        "volume": "2016",
+        "volume": "1",
         "year": 2016
       }
     ]
@@ -1676,7 +1676,7 @@
     "startYear": 2012,
     "volumes": [
       {
-        "volume": "2012",
+        "volume": "1",
         "year": 2012
       }
     ]
@@ -2437,6 +2437,347 @@
       {
         "volume": "2005",
         "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "Lady Killer",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2015,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2015
+      }
+    ]
+  },
+  {
+    "series": "Dept. H",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2016,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2016
+      }
+    ]
+  },
+  {
+    "series": "Resident Alien",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2012,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2012
+      }
+    ]
+  },
+  {
+    "series": "The Massive",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2012,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2012
+      }
+    ]
+  },
+  {
+    "series": "Colder",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2012,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2012
+      }
+    ]
+  },
+  {
+    "series": "B.P.R.D.: Hell on Earth",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2010,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2010
+      }
+    ]
+  },
+  {
+    "series": "Hellboy in Hell",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2012,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2012
+      }
+    ]
+  },
+  {
+    "series": "Baltimore",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2010,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2010
+      }
+    ]
+  },
+  {
+    "series": "Hellboy and the B.P.R.D.",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2014,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2014
+      }
+    ]
+  },
+  {
+    "series": "Witchfinder: Mysteries of Unland",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2014,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2014
+      }
+    ]
+  },
+  {
+    "series": "Frankenstein Underground",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2015,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2015
+      }
+    ]
+  },
+  {
+    "series": "Buffy the Vampire Slayer Season 9",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2011,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2011
+      }
+    ]
+  },
+  {
+    "series": "Buffy the Vampire Slayer Season 10",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2014,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2014
+      }
+    ]
+  },
+  {
+    "series": "Buffy the Vampire Slayer Season 11",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2016,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2016
+      }
+    ]
+  },
+  {
+    "series": "Buffy the Vampire Slayer Season 12",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2018,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2018
+      }
+    ]
+  },
+  {
+    "series": "Angel & Faith",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2011,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2011
+      }
+    ]
+  },
+  {
+    "series": "Conan the Barbarian",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2012,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2012
+      }
+    ]
+  },
+  {
+    "series": "Avatar: The Last Airbender",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2012,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2012
+      }
+    ]
+  },
+  {
+    "series": "The Legend of Korra",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2017,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2017
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Fire and Stone",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2014,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2014
+      }
+    ]
+  },
+  {
+    "series": "Predator: Fire and Stone",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2014,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2014
+      }
+    ]
+  },
+  {
+    "series": "Prometheus: Fire and Stone",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2014,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2014
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Defiance",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2016,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2016
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Dead Orbit",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2017,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2017
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Resistance",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2019,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2019
+      }
+    ]
+  },
+  {
+    "series": "Dark Horse Presents (revival)",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2011,
+    "volumes": [
+      {
+        "volume": "2",
+        "year": 2011
+      }
+    ]
+  },
+  {
+    "series": "Ether",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2016,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2016
+      }
+    ]
+  },
+  {
+    "series": "American Gods",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2017,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2017
+      }
+    ]
+  },
+  {
+    "series": "Fight Club 2",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2015,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2015
+      }
+    ]
+  },
+  {
+    "series": "Fight Club 3",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2019,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2019
+      }
+    ]
+  },
+  {
+    "series": "X (revival)",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2013,
+    "volumes": [
+      {
+        "volume": "2",
+        "year": 2013
       }
     ]
   }
