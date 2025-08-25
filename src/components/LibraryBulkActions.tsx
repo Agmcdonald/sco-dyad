@@ -7,11 +7,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Trash2, Edit, Check, BookOpen } from "lucide-react";
+import { ChevronDown, Trash2, Edit, Check, BookOpen, ImageIcon } from "lucide-react";
 import { Comic } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess, showError } from "@/utils/toast";
 import BulkEditComicsModal from "./BulkEditComicsModal";
+import BulkFixCoversModal from "./BulkFixCoversModal";
 
 interface LibraryBulkActionsProps {
   comics: Comic[];
@@ -22,6 +23,7 @@ interface LibraryBulkActionsProps {
 const LibraryBulkActions = ({ comics, selectedComics, onSelectionChange }: LibraryBulkActionsProps) => {
   const { removeComic, addToReadingList, readingList } = useAppContext();
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
+  const [isBulkFixCoversOpen, setIsBulkFixCoversOpen] = useState(false);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -56,6 +58,10 @@ const LibraryBulkActions = ({ comics, selectedComics, onSelectionChange }: Libra
     setIsBulkEditOpen(true);
   };
 
+  const handleBulkFixCovers = () => {
+    setIsBulkFixCoversOpen(true);
+  };
+
   if (comics.length === 0) return null;
 
   return (
@@ -86,6 +92,10 @@ const LibraryBulkActions = ({ comics, selectedComics, onSelectionChange }: Libra
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
+                <DropdownMenuItem onClick={handleBulkFixCovers}>
+                  <ImageIcon className="h-4 w-4 mr-2" />
+                  Fix Covers
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleBulkAddToReadingList}>
                   <BookOpen className="h-4 w-4 mr-2" />
                   Add to Reading List
@@ -103,6 +113,13 @@ const LibraryBulkActions = ({ comics, selectedComics, onSelectionChange }: Libra
       <BulkEditComicsModal
         isOpen={isBulkEditOpen}
         onClose={() => setIsBulkEditOpen(false)}
+        selectedComics={selectedComics}
+        comics={comics}
+      />
+
+      <BulkFixCoversModal
+        isOpen={isBulkFixCoversOpen}
+        onClose={() => setIsBulkFixCoversOpen(false)}
         selectedComics={selectedComics}
         comics={comics}
       />

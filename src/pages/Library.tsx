@@ -33,7 +33,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
   const { comics } = useAppContext();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortOption, setSortOption] = useState("series-asc");
+  const [sortOption, setSortOption] = useState("issue-asc");
   const [secondarySort, setSecondarySort] = useState("series-asc");
   const [viewMode, setViewMode] = useState<LibraryViewMode>("grid");
   const [coverSize, setCoverSize] = useLocalStorage("library-cover-size", 3);
@@ -243,10 +243,10 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="series-asc">Series (A-Z)</SelectItem>
-                <SelectItem value="series-desc">Series (Z-A)</SelectItem>
                 <SelectItem value="issue-asc">Issue (A-Z)</SelectItem>
                 <SelectItem value="issue-desc">Issue (Z-A)</SelectItem>
+                <SelectItem value="series-asc">Series (A-Z)</SelectItem>
+                <SelectItem value="series-desc">Series (Z-A)</SelectItem>
                 <SelectItem value="publisher-asc">Publisher (A-Z)</SelectItem>
                 <SelectItem value="publisher-desc">Publisher (Z-A)</SelectItem>
                 <SelectItem value="year-desc">Year (Newest)</SelectItem>
