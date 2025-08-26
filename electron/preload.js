@@ -1,44 +1,57 @@
+/**
+ * Electron Preload Script
+ * 
+ * This script runs in a privileged environment with access to both the Node.js APIs
+ * of the main process and the DOM APIs of the renderer process.
+ * 
+ * Its primary purpose is to securely expose a limited set of main process functionalities
+ * to the renderer process (the React app) via the `contextBridge`.
+ * 
+ * This is a critical security feature that prevents the renderer process from having
+ * direct access to powerful Node.js APIs, reducing the attack surface.
+ * 
+ * All functions exposed here are asynchronous and use `ipcRenderer.invoke` to
+ * communicate with the main process, where the actual logic is executed.
+ */
+
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Expose protected methods that allow the renderer process to use
-// the ipcRenderer without exposing the entire object
+// Expose a secure API to the renderer process under `window.electronAPI`
 contextBridge.exposeInMainWorld('electronAPI', {
-  // App info
+  // App Information
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   
-  // Dialogs
+  // Dialogs for file/folder selection
   selectFilesDialog: () => ipcRenderer.invoke('dialog:select-files'),
   selectFolderDialog: () => ipcRenderer.invoke('dialog:select-folder'),
 
-  // Navigation
+  // Navigation events from main process menu
   onNavigateTo: (callback) => {
     ipcRenderer.on('navigate-to', (event, path) => callback(path));
   },
   
-  // File operations
+  // File selection events from main process menu
   onFilesSelected: (callback) => {
     ipcRenderer.on('files-selected', (event, filePaths) => callback(filePaths));
   },
-  
   onFolderSelected: (callback) => {
     ipcRenderer.on('folder-selected', (event, folderPath) => callback(folderPath));
   },
   
-  // File system operations
+  // File System Operations
   readComicFile: (filePath) => ipcRenderer.invoke('read-comic-file', filePath),
   extractCover: (filePath) => ipcRenderer.invoke('extract-cover', filePath),
-  getCoverImage: (coverPath) => ipcRenderer.invoke('get-cover-image', coverPath),
   scanFolder: (folderPath) => ipcRenderer.invoke('scan-folder', folderPath),
   organizeFile: (filePath, targetPath) => ipcRenderer.invoke('organize-file', filePath, targetPath),
   
-  // Comic Reader operations
+  // Comic Reader Operations
   getComicPages: (filePath) => ipcRenderer.invoke('get-comic-pages', filePath),
   getComicPageDataUrl: (filePath, pageName) => ipcRenderer.invoke('get-comic-page-data-url', filePath, pageName),
   prepareCbrForReading: (filePath) => ipcRenderer.invoke('reader:prepare-cbr', filePath),
   getPageDataUrlFromTemp: (tempDir, pageName) => ipcRenderer.invoke('reader:get-page-from-temp', tempDir, pageName),
   cleanupTempDir: (tempDir) => ipcRenderer.invoke('reader:cleanup-temp-dir', tempDir),
 
-  // Database operations
+  // Database Operations
   initDatabase: () => ipcRenderer.invoke('init-database'),
   saveComic: (comic) => ipcRenderer.invoke('save-comic', comic),
   getComics: () => ipcRenderer.invoke('get-comics'),
@@ -50,13 +63,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
 
-  // GCD Importer
+  // GCD Importer (temporarily disabled)
   importerStart: (paths) => ipcRenderer.invoke('importer:start', paths),
   onImporterProgress: (callback) => {
     ipcRenderer.on('importer:progress', (event, data) => callback(data));
   },
 
-  // GCD Database
+  // GCD Database (temporarily disabled)
   gcdDbConnect: (dbPath) => ipcRenderer.invoke('gcd-db:connect', dbPath),
   gcdDbDisconnect: () => ipcRenderer.invoke('gcd-db:disconnect'),
   gcdDbSearchSeries: (seriesName) => ipcRenderer.invoke('gcd-db:search-series', seriesName),
@@ -72,7 +85,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveBackup: (data) => ipcRenderer.invoke('dialog:save-backup', data),
   loadBackup: () => ipcRenderer.invoke('dialog:load-backup'),
 
-  // Dialog
+  // General Dialogs
   showMessageBox: (options) => ipcRenderer.invoke('show-message-box', options),
   
   // Help Manual
@@ -80,20 +93,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('open-manual', () => callback());
   },
 
-  // Platform info
+  // Platform Information
   platform: process.platform,
   
-  // Remove listeners
+  // Event Listener Management
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);
   },
 
-  // New: expose covers directory and migration to renderer
+  // Cover Management
   getCoversDir: () => ipcRenderer.invoke('app:get-covers-dir'),
   migrateCovers: () => ipcRenderer.invoke('app:migrate-covers'),
 });
 
-// Security: Remove Node.js globals in renderer process
-delete window.require;
-delete window.exports;
-delete window.module;
+// Security: Remove Node.js globals from the renderer process
+delete (window as any).require;
+delete (window as any).exports;
+delete (window as any).module;

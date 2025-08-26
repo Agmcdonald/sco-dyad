@@ -1,6 +1,21 @@
+/**
+ * Mock API Scraper
+ * 
+ * This module simulates fetching metadata from external APIs like Comic Vine and Marvel.
+ * In a real application, this would contain actual HTTP requests to these services.
+ * For this project, it uses a hardcoded mock database to simulate API responses.
+ * 
+ * This allows for development and testing of the metadata enrichment features
+ * without requiring real API keys or internet connectivity.
+ */
+
 import { ParsedComicInfo } from "./parser";
 import { Creator } from "@/types";
 
+/**
+ * Scraper Result Interface
+ * Defines the structure of the response from a scraper function
+ */
 interface ScraperResult {
     success: boolean;
     data?: {
@@ -16,7 +31,10 @@ interface ScraperResult {
     error?: string;
 }
 
-// Mock Marvel API Data
+/**
+ * Mock Marvel API Data
+ * Simulates a database of Marvel comics with issue-specific details
+ */
 const mockMarvelApiData: Record<string, any> = {
     "The Amazing Spider-Man": {
         publisher: "Marvel Comics",
@@ -45,7 +63,10 @@ const mockMarvelApiData: Record<string, any> = {
     }
 };
 
-// This is our mock database. A real scraper would query an API.
+/**
+ * Mock Comic Vine API Data
+ * Simulates a general comic database for various publishers
+ */
 const mockApiData: Record<string, any> = {
     "Saga": { 
         publisher: "Image Comics", 
@@ -84,6 +105,15 @@ const mockApiData: Record<string, any> = {
     "East of West": { publisher: "Image Comics", volume: "2013", summary: "The Four Horsemen of the Apocalypse roam an alternate timeline American West.", creators: [{name: "Jonathan Hickman", role: "Writer"}, {name: "Nick Dragotta", role: "Artist"}] },
 };
 
+/**
+ * Fetch Marvel Metadata (Mock)
+ * Simulates fetching data from the Marvel API
+ * 
+ * @param parsed - Parsed comic information from filename
+ * @param publicKey - Marvel API public key (unused in mock)
+ * @param privateKey - Marvel API private key (unused in mock)
+ * @returns ScraperResult with mock Marvel data
+ */
 export const fetchMarvelMetadata = async (
     parsed: ParsedComicInfo,
     publicKey: string,
@@ -118,12 +148,19 @@ export const fetchMarvelMetadata = async (
     return { success: false, error: `No match found for "${parsed.series}" in Marvel API.` };
 };
 
+/**
+ * Fetch Comic Metadata (Mock)
+ * Simulates fetching data from a general comic API like Comic Vine
+ * 
+ * @param parsed - Parsed comic information from filename
+ * @param apiKey - API key (unused in mock)
+ * @returns ScraperResult with mock comic data
+ */
 export const fetchComicMetadata = async (
     parsed: ParsedComicInfo,
     apiKey: string
 ): Promise<ScraperResult> => {
-    // Simulate network delay
-    await new Promise(res => setTimeout(res, 500));
+    await new Promise(res => setTimeout(res, 500)); // Simulate network delay
 
     if (!apiKey || apiKey.length < 10) {
         return { success: false, error: "API Key is missing or invalid. Please set it in Settings." };
@@ -152,16 +189,21 @@ export const fetchComicMetadata = async (
     return { success: false, error: `No match found for "${parsed.series}" in remote database.` };
 };
 
+/**
+ * Test API Connection (Mock)
+ * Simulates testing the connection to the Comic Vine API
+ * 
+ * @param apiKey - API key to test
+ * @returns Object with success status and message
+ */
 export const testApiConnection = async (apiKey: string): Promise<{ success: boolean; message: string }> => {
-    // Simulate network delay
-    await new Promise(res => setTimeout(res, 750));
+    await new Promise(res => setTimeout(res, 750)); // Simulate network delay
 
     if (!apiKey) {
         return { success: false, message: "API Key is missing." };
     }
 
-    // In a real app, you'd make a lightweight API call here to validate the key.
-    // For our mock, we'll just check for a reasonable length.
+    // In a real app, this would make a lightweight API call to validate the key
     if (apiKey.length < 10) {
         return { success: false, message: "Invalid API Key provided." };
     }
@@ -169,8 +211,17 @@ export const testApiConnection = async (apiKey: string): Promise<{ success: bool
     return { success: true, message: "Connection successful!" };
 };
 
+/**
+ * Test Marvel API Connection (Mock)
+ * Simulates testing the connection to the Marvel API
+ * 
+ * @param publicKey - Marvel API public key
+ * @param privateKey - Marvel API private key
+ * @returns Object with success status and message
+ */
 export const testMarvelApiConnection = async (publicKey: string, privateKey: string): Promise<{ success: boolean; message: string }> => {
-    await new Promise(res => setTimeout(res, 750));
+    await new Promise(res => setTimeout(res, 750)); // Simulate network delay
+    
     if (!publicKey || !privateKey) {
         return { success: false, message: "Public or Private Key is missing." };
     }

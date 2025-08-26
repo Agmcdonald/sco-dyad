@@ -1,12 +1,34 @@
+/**
+ * Smart Comic File Processor
+ * 
+ * This module provides intelligent processing of comic files to extract and enrich metadata.
+ * It combines multiple data sources and processing strategies to achieve the best possible
+ * metadata detection and enrichment.
+ * 
+ * Processing Pipeline:
+ * 1. Parse filename using intelligent patterns
+ * 2. Query local GCD database (if available)
+ * 3. Query Marvel API (for Marvel comics)
+ * 4. Query Comic Vine API (for other publishers)
+ * 5. Fall back to parsed data only
+ * 
+ * The processor returns confidence levels to help users understand the reliability
+ * of the detected information.
+ */
+
 import { parseFilename } from "./parser";
 import { QueuedFile, Confidence, Creator } from "@/types";
 import { fetchComicMetadata, fetchMarvelMetadata } from "./scraper";
 import { GcdDatabaseService } from "@/services/gcdDatabaseService";
 
+/**
+ * Processing Result Interface
+ * Structure returned by the smart processor containing detected metadata and confidence
+ */
 export interface ProcessingResult {
-  success: boolean;
-  confidence: Confidence;
-  data?: {
+  success: boolean;           // Whether processing succeeded
+  confidence: Confidence;     // How confident we are about the results
+  data?: {                   // Detected metadata (if successful)
     series: string;
     issue: string;
     year: number;
@@ -15,20 +37,39 @@ export interface ProcessingResult {
     summary: string;
     creators?: Creator[];
     confidence: 'High' | 'Medium' | 'Low';
-    source: 'knowledge' | 'api';
-    title?: string;
-    publicationDate?: string;
-    genre?: string;
-    characters?: string;
-    price?: string;
-    barcode?: string;
-    languageCode?: string;
-    countryCode?: string;
+    source: 'knowledge' | 'api';  // Where the data came from
+    
+    // Extended metadata fields
+    title?: string;           // Specific issue title
+    publicationDate?: string; // Exact publication date
+    genre?: string;           // Genre classification
+    characters?: string;      // Featured characters
+    price?: string;           // Cover price
+    barcode?: string;         // UPC barcode
+    languageCode?: string;    // Language code
+    countryCode?: string;     // Country code
   };
-  error?: string;
+  error?: string;            // Error message (if failed)
 }
 
-// Smart processor that combines parsing with knowledge base matching
+/**
+ * Process Comic File
+ * Main processing function that attempts to extract and enrich metadata for a comic file
+ * 
+ * Processing Strategy:
+ * 1. Parse filename to extract basic information
+ * 2. Try GCD database lookup (highest quality, offline)
+ * 3. Try Marvel API (for Marvel comics)
+ * 4. Try Comic Vine API (for other publishers)
+ * 5. Fall back to parsed data only
+ * 
+ * @param file - QueuedFile to process
+ * @param comicVineApiKey - Comic Vine API key
+ * @param marvelPublicKey - Marvel API public key
+ * @param marvelPrivateKey - Marvel API private key
+ * @param gcdDbService - Grand Comics Database service (optional)
+ * @returns ProcessingResult with detected metadata and confidence
+ */
 export const processComicFile = async (
   file: QueuedFile, 
   comicVineApiKey: string,
@@ -41,12 +82,13 @@ export const processComicFile = async (
     const parsed = parseFilename(file.path);
     console.log(`[SMART-PROCESSOR] Parsed data:`, parsed);
     
-    // If issue is missing, but series is present, assume it's issue #1
+    // If no issue number detected, assume it's issue #1
     if (parsed.series && !parsed.issue) {
       parsed.issue = '1';
       console.log(`[SMART-PROCESSOR] No issue found, assuming issue #1 for: ${file.name}`);
     }
     
+    // Require at minimum a series name and issue number
     if (!parsed.series || !parsed.issue) {
       console.log(`[SMART-PROCESSOR] Failed to parse series or issue from: ${file.name}`);
       return {
@@ -56,7 +98,8 @@ export const processComicFile = async (
       };
     }
 
-    // 1. Attempt GCD DB search first (if available and connected)
+    // 1. Attempt GCD Database Search First (Highest Quality)
+    // The Grand Comics Database provides the most comprehensive and accurate data
     if (gcdDbService && parsed.series) {
       console.log(`[SMART-PROCESSOR] Attempting GCD database search for: ${parsed.series}`);
       try {
@@ -90,10 +133,10 @@ export const processComicFile = async (
               publicationDate: issueDetails?.publication_date,
               genre: issueDetails?.genre,
               characters: issueDetails?.characters,
-              price: issueDetails?.price,
-              barcode: issueDetails?.barcode,
-              languageCode: issueDetails?.language_code,
-              countryCode: issueDetails?.series_country_code,
+              price: (issueDetails as any)?.price,
+              barcode: (issueDetails as any)?.barcode,
+              languageCode: (issueDetails as any)?.language_code,
+              countryCode: (issueDetails as any)?.series_country_code,
               creators: creators,
               confidence: issueDetails ? "High" : "Medium",
               source: 'knowledge'
@@ -196,7 +239,18 @@ export const processComicFile = async (
   }
 };
 
-// Batch process multiple files
+/**
+ * Batch Process Multiple Files
+ * Processes an array of files sequentially with progress reporting
+ * 
+ * @param files - Array of QueuedFile to process
+ * @param comicVineApiKey - Comic Vine API key
+ * @param marvelPublicKey - Marvel API public key
+ * @param marvelPrivateKey - Marvel API private key
+ * @param gcdDbService - GCD database service
+ * @param onProgress - Callback function for progress updates
+ * @returns A map of file IDs to their processing results
+ */
 export const batchProcessFiles = async (
   files: QueuedFile[],
   comicVineApiKey: string,
@@ -214,7 +268,7 @@ export const batchProcessFiles = async (
     const result = await processComicFile(file, comicVineApiKey, marvelPublicKey, marvelPrivateKey, gcdDbService);
     results.set(file.id, result);
     
-    // Small delay to prevent UI blocking
+    // Small delay to prevent UI blocking and API rate limiting
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   
@@ -222,7 +276,13 @@ export const batchProcessFiles = async (
   return results;
 };
 
-// Get processing statistics
+/**
+ * Get Processing Statistics
+ * Calculates statistics from a batch processing result
+ * 
+ * @param results - Map of file IDs to processing results
+ * @returns An object with total, successful, failed, and confidence counts
+ */
 export const getProcessingStats = (results: Map<string, ProcessingResult>) => {
   const stats = {
     total: results.size,

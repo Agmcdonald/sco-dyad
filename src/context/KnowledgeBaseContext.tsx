@@ -1,9 +1,28 @@
+/**
+ * Knowledge Base Context
+ * 
+ * This context manages the local database of comic series and creator information.
+ * The knowledge base is used by the smart processor to intelligently match and
+ * enrich metadata for comic files.
+ * 
+ * Features:
+ * - Loads a default knowledge base from JSON files
+ * - Loads and persists a user-specific knowledge base in Electron
+ * - Merges default and user knowledge bases
+ * - Provides functions to add, replace, and save knowledge base entries
+ * - Automatically grows as users map new comics
+ */
+
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { ComicKnowledge, CreatorKnowledge, KnowledgeBase, Creator } from '@/types';
 import { useElectron } from '@/hooks/useElectron';
 import defaultSeriesKB from '@/data/comicsKnowledge.json';
 import defaultCreatorsKB from '@/data/creatorsKnowledge.json';
 
+/**
+ * Knowledge Base Context Interface
+ * Defines the state and actions provided by the context
+ */
 interface KnowledgeBaseContextType {
   knowledgeBase: KnowledgeBase;
   addToKnowledgeBase: (entry: ComicKnowledge) => void;
@@ -13,14 +32,25 @@ interface KnowledgeBaseContextType {
   addCreatorsToKnowledgeBase: (creators: Creator[]) => void;
 }
 
+// Initial empty state for the knowledge base
 const emptyKB: KnowledgeBase = { series: [], creators: [] };
 
 const KnowledgeBaseContext = createContext<KnowledgeBaseContextType | undefined>(undefined);
 
+/**
+ * Knowledge Base Provider Component
+ * Provides the knowledge base state and management functions to its children
+ */
 export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => {
   const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeBase>(emptyKB);
   const { isElectron, electronAPI } = useElectron();
 
+  /**
+   * Load knowledge base on component mount
+   * - In Electron, loads from user's data directory
+   * - In web mode, loads from bundled JSON files
+   * - Merges user data with bundled defaults
+   */
   useEffect(() => {
     const loadKnowledgeBase = async () => {
       let data: any;
@@ -30,21 +60,18 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
           data = await electronAPI.getKnowledgeBase();
         } catch (error) {
           console.error("Failed to load knowledge base from Electron:", error);
-          // fall back to bundled defaults below
         }
       }
 
-      // If not running in Electron or electron read failed, use bundled defaults
+      // If not in Electron or load failed, use bundled defaults
       if (!data) {
-        // defaultSeriesKB may be an array (legacy) or object. Normalize to { series, creators }.
-        const series = Array.isArray(defaultSeriesKB) ? defaultSeriesKB : defaultSeriesKB.series || [];
-        const creators = Array.isArray(defaultCreatorsKB) ? defaultCreatorsKB : defaultCreatorsKB.creators || defaultCreatorsKB;
+        const series = Array.isArray(defaultSeriesKB) ? defaultSeriesKB : (defaultSeriesKB as any).series || [];
+        const creators = Array.isArray(defaultCreatorsKB) ? defaultCreatorsKB : (defaultCreatorsKB as any).creators || defaultCreatorsKB;
         data = { series, creators };
       }
 
-      // Normalize different shapes
+      // Normalize data structure
       if (Array.isArray(data)) {
-        // Legacy single-array format -> assume series only
         setKnowledgeBase({ series: data, creators: [] });
       } else if (data && typeof data === 'object') {
         setKnowledgeBase({ series: data.series || [], creators: data.creators || [] });
@@ -55,6 +82,10 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
     loadKnowledgeBase();
   }, [isElectron, electronAPI]);
 
+  /**
+   * Persist knowledge base to disk (Electron only)
+   * Updates local state and saves to user's data directory
+   */
   const persistKnowledgeBase = useCallback(async (kb: KnowledgeBase) => {
     setKnowledgeBase(kb);
     if (isElectron && electronAPI) {
@@ -66,8 +97,13 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
     }
   }, [isElectron, electronAPI]);
 
+  // Helper to normalize strings for comparison
   const normalizeStr = (s?: string | null) => (s || "").trim().toLowerCase();
 
+  /**
+   * Replace the entire series knowledge base
+   * Deduplicates and normalizes entries before saving
+   */
   const replaceKnowledgeBase = useCallback(async (entries: ComicKnowledge[]) => {
     const map = new Map<string, ComicKnowledge>();
     for (const rawEntry of entries) {
@@ -82,6 +118,7 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
         }))
       };
 
+      // Merge with existing entries in the map
       if (map.has(seriesKey)) {
         const existing = map.get(seriesKey)!;
         if (normalizedEntry.startYear < (existing.startYear || Number.MAX_SAFE_INTEGER)) {
@@ -104,6 +141,10 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
     await persistKnowledgeBase({ ...knowledgeBase, series: finalSeries });
   }, [knowledgeBase, persistKnowledgeBase]);
 
+  /**
+   * Add or update a single series entry in the knowledge base
+   * Merges with existing entries to prevent duplicates
+   */
   const addToKnowledgeBase = useCallback((newEntry: ComicKnowledge) => {
     setKnowledgeBase(prev => {
       const updatedSeries = [...prev.series];
@@ -121,6 +162,7 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
       };
 
       if (existingEntryIndex > -1) {
+        // Update existing entry
         const existingEntry = { ...updatedSeries[existingEntryIndex] };
         existingEntry.publisher = normalizedEntry.publisher || existingEntry.publisher;
         if (normalizedEntry.startYear && (!existingEntry.startYear || normalizedEntry.startYear < existingEntry.startYear)) {
@@ -140,6 +182,7 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
         });
         updatedSeries[existingEntryIndex] = existingEntry;
       } else {
+        // Add new entry
         updatedSeries.push(normalizedEntry);
       }
       
@@ -149,6 +192,10 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
     });
   }, [persistKnowledgeBase]);
 
+  /**
+   * Add new creators to the knowledge base
+   * Skips duplicates based on name
+   */
   const addCreatorsToKnowledgeBase = useCallback((newCreators: Creator[]) => {
     if (!newCreators || newCreators.length === 0) return;
 
@@ -181,6 +228,10 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
     });
   }, [persistKnowledgeBase]);
 
+  /**
+   * Replace the entire creators knowledge base
+   * Deduplicates and normalizes entries before saving
+   */
   const replaceCreators = useCallback(async (creators: CreatorKnowledge[]) => {
     const map = new Map<string, CreatorKnowledge>();
     for (const creator of creators) {
@@ -193,6 +244,9 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
     await persistKnowledgeBase({ ...knowledgeBase, creators: finalCreators });
   }, [knowledgeBase, persistKnowledgeBase]);
 
+  /**
+   * Manually trigger a save of the current knowledge base state
+   */
   const saveKnowledgeBase = useCallback(async () => {
     await persistKnowledgeBase(knowledgeBase);
   }, [knowledgeBase, persistKnowledgeBase]);
@@ -204,6 +258,10 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
   );
 };
 
+/**
+ * Hook to access the knowledge base context
+ * Must be used within a KnowledgeBaseProvider
+ */
 export const useKnowledgeBase = () => {
   const context = useContext(KnowledgeBaseContext);
   if (context === undefined) {

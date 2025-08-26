@@ -1,3 +1,16 @@
+/**
+ * Electron Main Process
+ * 
+ * This is the entry point for the Electron application. It handles:
+ * - Creating and managing the main browser window
+ * - Initializing backend services (file handler, database)
+ * - Setting up the application menu
+ * - Registering IPC (Inter-Process Communication) handlers for communication
+ *   with the renderer process (the React app)
+ * - Handling application lifecycle events (ready, activate, window-all-closed)
+ * - Security settings for the web contents
+ */
+
 const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
@@ -6,19 +19,25 @@ const ComicDatabase = require('./database');
 const { createMenu } = require('./appMenu');
 const { registerIpcHandlers } = require('./ipcManager');
 
+// Check if running in development mode
 const isDev = !app.isPackaged;
 
-// Enable remote debugging for MCP in development mode
+// Enable remote debugging in development for better diagnostics
 if (isDev) {
   app.commandLine.appendSwitch('remote-debugging-port', '9222');
 }
 
+// Global references to main window and services
 let mainWindow;
 let fileHandler;
 let database;
 let knowledgeBasePath;
 let publicCoversDir;
 
+/**
+ * Create Main Window
+ * Creates and configures the main browser window for the application
+ */
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -26,68 +45,54 @@ function createWindow() {
     minWidth: 1200,
     minHeight: 700,
     webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js'),
-      // Add these for better compatibility
+      nodeIntegration: false,      // Disable Node.js integration in renderer for security
+      contextIsolation: true,      // Isolate renderer from main process
+      preload: path.join(__dirname, 'preload.js'), // Script to bridge main and renderer
       enableRemoteModule: false,
       webSecurity: true
     },
-    show: false,
+    show: false, // Don't show until ready
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default'
   });
 
-  // Fix the path for packaged app
+  // Determine the URL to load (dev server or packaged file)
   const startUrl = isDev 
     ? 'http://localhost:5173' 
     : `file://${path.join(__dirname, '../dist/index.html')}`;
   
   console.log('Loading URL:', startUrl);
-  console.log('__dirname:', __dirname);
-  console.log('isDev:', isDev);
   
+  // Load the React application
   mainWindow.loadURL(startUrl).catch(err => {
-    console.error('ERROR: Failed to load start URL:', startUrl);
-    if (isDev) {
-      console.error('Please ensure the Vite development server is running and accessible.');
-    } else {
-      console.error('Failed to load packaged HTML file. Checking if file exists...');
-      const htmlPath = path.join(__dirname, '../dist/index.html');
-      console.log('Looking for HTML at:', htmlPath);
-      fs.access(htmlPath).then(() => {
-        console.log('HTML file exists');
-      }).catch(() => {
-        console.error('HTML file does not exist at expected location');
-      });
-    }
-    console.error(err);
+    console.error('ERROR: Failed to load start URL:', startUrl, err);
   });
 
+  // Show the window once it's ready to avoid a blank screen
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    // Only open dev tools in development mode when explicitly needed
-    // Remove automatic opening of dev tools
   });
 
+  // Clean up on close
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
 
+  // Open external links in the user's default browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
   });
 
-  // Add error handling for the web contents
+  // Error handling for web contents
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
     console.error('Failed to load:', validatedURL, 'Error:', errorCode, errorDescription);
   });
-
-  mainWindow.webContents.on('dom-ready', () => {
-    console.log('DOM is ready');
-  });
 }
 
+/**
+ * Initialize Backend Services
+ * Sets up the file handler, database, and necessary paths
+ */
 async function initializeServices() {
   try {
     fileHandler = new ComicFileHandler();
@@ -97,7 +102,7 @@ async function initializeServices() {
     const userDataPath = app.getPath('userData');
     knowledgeBasePath = path.join(userDataPath, 'userKnowledgeBase.json');
     
-    // In packaged app, create covers directory in userData
+    // Set up covers directory (in userData for packaged app)
     if (isDev) {
       publicCoversDir = path.join(__dirname, '../public/covers');
     } else {
@@ -113,11 +118,16 @@ async function initializeServices() {
   }
 }
 
+/**
+ * Initialize Knowledge Base File
+ * Merges the default knowledge base with the user's custom knowledge base
+ * This ensures users get updates to the default KB without losing their custom entries
+ */
 async function initializeKnowledgeBaseFile() {
   const normalize = (s) => (s || "").trim().toLowerCase();
 
   try {
-    // In packaged app, data files are in resources/app.asar/src/data
+    // Determine path to default data files
     const dataDir = isDev
       ? path.join(__dirname, '../src/data')
       : path.join(process.resourcesPath, 'app.asar.unpacked/src/data');
@@ -125,29 +135,27 @@ async function initializeKnowledgeBaseFile() {
     const defaultSeriesKBPath = path.join(dataDir, 'comicsKnowledge.json');
     const defaultCreatorsKBPath = path.join(dataDir, 'creatorsKnowledge.json');
 
-    // Check if files exist before reading
+    // Load default knowledge bases
     let masterSeries = [];
     let masterCreators = [];
 
     try {
       const masterSeriesData = await fs.readFile(defaultSeriesKBPath, 'utf-8');
       masterSeries = JSON.parse(masterSeriesData);
-      console.log(`Loaded ${masterSeries.length} master series entries.`);
     } catch (e) {
-      console.warn(`Could not load default series file from ${defaultSeriesKBPath}:`, e.message);
+      console.warn(`Could not load default series file:`, e.message);
     }
     
     try {
       const masterCreatorsData = await fs.readFile(defaultCreatorsKBPath, 'utf-8');
       masterCreators = JSON.parse(masterCreatorsData);
-      console.log(`Loaded ${masterCreators.length} master creators entries.`);
     } catch (e) {
-      console.warn(`Could not load default creators file from ${defaultCreatorsKBPath}:`, e.message);
+      console.warn(`Could not load default creators file:`, e.message);
     }
 
+    // Load user's knowledge base
     let userKB = { series: [], creators: [] };
     try {
-      // Try to read the user's local knowledge base
       const userKBData = await fs.readFile(knowledgeBasePath, 'utf-8');
       const parsedUserKB = JSON.parse(userKBData);
       if (Array.isArray(parsedUserKB)) { // Handle old format
@@ -156,11 +164,10 @@ async function initializeKnowledgeBaseFile() {
         userKB = { series: parsedUserKB.series || [], creators: parsedUserKB.creators || [] };
       }
     } catch (userKbError) {
-      // User file doesn't exist, will be created.
       console.log('No existing user knowledge base found, will create new one.');
     }
 
-    // Merge Series
+    // Merge series (user data takes precedence)
     const seriesMap = new Map();
     for (const entry of userKB.series) {
       if (entry.series) seriesMap.set(normalize(entry.series), entry);
@@ -172,7 +179,7 @@ async function initializeKnowledgeBaseFile() {
     }
     const mergedSeries = Array.from(seriesMap.values());
 
-    // Merge Creators
+    // Merge creators (user data takes precedence)
     const creatorsMap = new Map();
     for (const entry of userKB.creators) {
       if (entry.name) creatorsMap.set(normalize(entry.name), entry);
@@ -184,23 +191,20 @@ async function initializeKnowledgeBaseFile() {
     }
     const mergedCreators = Array.from(creatorsMap.values());
 
+    // Write the merged knowledge base back to the user's directory
     const finalKB = { series: mergedSeries, creators: mergedCreators };
     await fs.writeFile(knowledgeBasePath, JSON.stringify(finalKB, null, 2), 'utf-8');
     console.log(`Knowledge base merged. Series: ${mergedSeries.length}, Creators: ${mergedCreators.length}`);
 
   } catch (error) {
     console.error('Could not initialize or merge knowledge base file:', error);
-    // Create empty knowledge base as fallback
-    const emptyKB = { series: [], creators: [] };
-    try {
-      await fs.writeFile(knowledgeBasePath, JSON.stringify(emptyKB, null, 2), 'utf-8');
-      console.log('Created empty knowledge base as fallback.');
-    } catch (writeError) {
-      console.error('Could not create fallback knowledge base:', writeError);
-    }
   }
 }
 
+/**
+ * Application Lifecycle: Ready
+ * This event is fired when Electron has finished initialization
+ */
 app.whenReady().then(async () => {
   await initializeServices();
   
@@ -208,6 +212,7 @@ app.whenReady().then(async () => {
   createMenu(mainWindow);
   registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBasePath, publicCoversDir });
 
+  // Handle macOS dock icon click
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
@@ -215,12 +220,22 @@ app.whenReady().then(async () => {
   });
 });
 
+/**
+ * Application Lifecycle: Window All Closed
+ * This event is fired when all windows have been closed
+ */
 app.on('window-all-closed', () => {
   if (database) database.close();
-  if (process.platform !== 'darwin') app.quit();
+  if (process.platform !== 'darwin') app.quit(); // Quit on Windows/Linux
 });
 
+/**
+ * Security: Web Contents Created
+ * This event is fired when a new web contents is created
+ * Used to enforce security policies
+ */
 app.on('web-contents-created', (event, contents) => {
+  // Prevent navigation to external sites within the app
   contents.on('will-navigate', (event, navigationUrl) => {
     const parsedUrl = new URL(navigationUrl);
     if (parsedUrl.origin !== 'http://localhost:5173' && !navigationUrl.startsWith('file://')) {
@@ -228,6 +243,7 @@ app.on('web-contents-created', (event, contents) => {
     }
   });
   
+  // Open new windows in external browser
   contents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
