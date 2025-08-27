@@ -107,6 +107,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 });
 
 // Security: Remove Node.js globals from the renderer process
-delete (window as any).require;
-delete (window as any).exports;
-delete (window as any).module;
+delete window.require;
+delete window.exports;
+delete window.module;
