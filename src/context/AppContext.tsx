@@ -13,6 +13,7 @@ import { useRecentlyRead } from './hooks/useRecentlyRead';
 import { processComicFile } from '@/lib/smartProcessor';
 import { useGcdDatabaseService } from '@/services/gcdDatabaseService';
 import { useKnowledgeBase } from './KnowledgeBaseContext';
+import { parseFilename } from '@/lib/parser';
 
 interface FileLoadStatus {
   isLoading: boolean;
@@ -41,6 +42,7 @@ interface AppContextType {
   triggerScanFolder: () => void;
   addFilesFromDrop: (droppedFiles: File[]) => void;
   addFilesFromPaths: (paths: string[]) => Promise<void>;
+  quickAddFiles: (files: QueuedFile[]) => Promise<void>;
   fileLoadStatus: FileLoadStatus;
   readingList: any[];
   addToReadingList: (comic: Comic) => void;
@@ -241,6 +243,34 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       showSuccess(`Added '${newComic.series} #${newComic.issue}' to library`);
     }
   }, [isElectron, electronAPI, databaseService, settings, logAction, refreshComics, setComics, addToKnowledgeBase]);
+
+  const quickAddFiles = useCallback(async (filesToQuickAdd: QueuedFile[]) => {
+    let addedCount = 0;
+    for (const file of filesToQuickAdd) {
+      const parsed = parseFilename(file.path);
+
+      if (!parsed.series || !parsed.issue) {
+        showError(`Could not quick add "${file.name}": Missing series or issue number.`);
+        continue;
+      }
+
+      const comicData: NewComic = {
+        series: parsed.series,
+        issue: parsed.issue,
+        year: parsed.year || new Date().getFullYear(),
+        publisher: "Unknown Publisher",
+        volume: parsed.volume || String(parsed.year || new Date().getFullYear()),
+        summary: `Quick added from file: ${file.name}`
+      };
+
+      await addComic(comicData, file);
+      removeFile(file.id);
+      addedCount++;
+    }
+    if (addedCount > 0) {
+      showSuccess(`Quick added ${addedCount} comic(s) to the library.`);
+    }
+  }, [addComic, removeFile]);
 
   const updateComic = useCallback(async (updatedComic: Comic) => {
     console.log('[APP-CONTEXT] Updating comic:', updatedComic.series, 'with rating:', updatedComic.rating);
@@ -537,7 +567,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       comics, addComic, updateComic, removeComic, updateComicRating,
       actions, logAction, lastUndoableAction, undoLastAction,
       addMockFiles, triggerSelectFiles, triggerScanFolder, addFilesFromDrop,
-      addFilesFromPaths, fileLoadStatus,
+      addFilesFromPaths, quickAddFiles, fileLoadStatus,
       readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted,
       toggleComicReadStatus,
       setReadingItemPriority, setReadingItemRating,
