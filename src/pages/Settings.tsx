@@ -163,6 +163,19 @@ const Settings = () => {
           <div>
             <Button onClick={handleSave}>Save Library Settings</Button>
           </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>What do these settings do?</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground space-y-4">
+              <p>
+                <strong>Library Path:</strong> This is the main folder where Super Comic Organizer will place your comics after they are processed. They will be sorted into subfolders based on publisher and series.
+              </p>
+              <p>
+                <strong>File Operations:</strong> This setting controls what happens to your original files. If "Keep Original Files" is ON, the app will copy your comics to the library path, leaving the originals untouched. If it's OFF, the app will move the files to the new location.
+              </p>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="scrapers">

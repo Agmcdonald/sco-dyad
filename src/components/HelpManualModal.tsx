@@ -129,7 +129,13 @@ const HelpManualModal = ({ isOpen, onClose }: HelpManualModalProps) => {
                   <p>Configure the application to suit your preferences.</p>
                   <ul className="list-disc pl-5 space-y-1 text-sm">
                     <li><strong>General:</strong> Change the application's theme (light/dark mode).</li>
-                    <li><strong>Library:</strong> Set the root folder where your organized comics are stored and configure how original files are handled (move vs. copy).</li>
+                    <li>
+                      <strong>Library:</strong> Set the root folder where your organized comics are stored and configure how original files are handled.
+                      <div className="pl-4 mt-2 text-xs space-y-1 text-muted-foreground bg-muted/50 p-2 rounded-md">
+                        <p>The <strong>Library Path</strong> is the main folder where Super Comic Organizer will place your comics after they are processed, sorted into subfolders based on publisher and series.</p>
+                        <p><strong>File Operations</strong> lets you choose whether to copy files (leaving originals untouched) or move them to the new location.</p>
+                      </div>
+                    </li>
                     <li><strong>Scrapers:</strong> (Coming Soon) Enter API keys for online databases like Comic Vine to enhance metadata fetching.</li>
                   </ul>
                 </div>
