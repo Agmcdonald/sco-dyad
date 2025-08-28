@@ -10,17 +10,23 @@ interface ComicCardProps {
   comic: Comic;
   onDoubleClick?: (seriesName: string) => void;
   onToggleInspector?: () => void;
+  selectionMode?: boolean;
+  onToggleSelection?: (comicId: string) => void;
 }
 
-const ComicCard = ({ comic, onDoubleClick, onToggleInspector }: ComicCardProps) => {
+const ComicCard = ({ comic, onDoubleClick, onToggleInspector, selectionMode, onToggleSelection }: ComicCardProps) => {
   const { selectedItem, setSelectedItem } = useSelection();
   const [imageError, setImageError] = useState(false);
 
-  const isSelected = selectedItem?.type === 'comic' && selectedItem.id === comic.id;
+  const isSelectedForInspector = selectedItem?.type === 'comic' && selectedItem.id === comic.id;
 
   const handleClick = () => {
-    // Single click always selects the comic
-    setSelectedItem({ ...comic, type: 'comic' });
+    if (selectionMode && onToggleSelection) {
+      onToggleSelection(comic.id);
+    } else {
+      // Single click always selects the comic for inspector
+      setSelectedItem({ ...comic, type: 'comic' });
+    }
   };
 
   const handleDoubleClick = () => {
@@ -50,7 +56,7 @@ const ComicCard = ({ comic, onDoubleClick, onToggleInspector }: ComicCardProps) 
     <Card 
       className={cn(
         "overflow-hidden transition-all duration-200 hover:scale-105 hover:shadow-lg cursor-pointer",
-        isSelected && "ring-2 ring-primary shadow-lg scale-105"
+        isSelectedForInspector && !selectionMode && "ring-2 ring-primary shadow-lg scale-105"
       )}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}

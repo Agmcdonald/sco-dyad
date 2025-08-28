@@ -3,6 +3,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import ComicCard from "./ComicCard";
 import LibraryBulkActions from "./LibraryBulkActions";
 import { Comic } from "@/types";
+import { cn } from "@/lib/utils";
 
 interface LibraryGridProps {
   comics: Comic[];
@@ -49,12 +50,16 @@ const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onTog
     }
   };
 
-  const handleComicSelection = (comicId: string, selected: boolean) => {
-    if (selected) {
-      setSelectedComics(prev => [...prev, comicId]);
-    } else {
-      setSelectedComics(prev => prev.filter(id => id !== comicId));
-    }
+  const handleToggleSelection = (comicId: string) => {
+    setSelectedComics(prev => {
+      const newSelection = new Set(prev);
+      if (newSelection.has(comicId)) {
+        newSelection.delete(comicId);
+      } else {
+        newSelection.add(comicId);
+      }
+      return Array.from(newSelection);
+    });
   };
 
   if (comics.length === 0) {
@@ -110,7 +115,7 @@ const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onTog
 
       {/* Comics Grid with Publisher Headers */}
       <div className="space-y-6">
-        {groupedComics.map(({ publisher, comics: groupComics }, groupIndex) => (
+        {groupedComics.map(({ publisher, comics: groupComics }) => (
           <div key={publisher || 'all'} className="space-y-4">
             {/* Publisher Header - only show when sorting by publisher */}
             {publisher && sortOption.startsWith('publisher-') && (
@@ -125,12 +130,18 @@ const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onTog
             {/* Comics Grid */}
             <div className={`grid ${gridClass} gap-4`}>
               {groupComics.map((comic) => (
-                <div key={comic.id} className="relative">
+                <div 
+                  key={comic.id} 
+                  className={cn(
+                    "relative transition-all duration-200 rounded-lg",
+                    selectionMode && selectedComics.includes(comic.id) && "ring-2 ring-primary shadow-lg scale-105"
+                  )}
+                >
                   {selectionMode && (
-                    <div className="absolute top-2 left-2 z-10">
+                    <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selectedComics.includes(comic.id)}
-                        onCheckedChange={(checked) => handleComicSelection(comic.id, Boolean(checked))}
+                        onCheckedChange={() => handleToggleSelection(comic.id)}
                         className="bg-background border-2 shadow-sm"
                       />
                     </div>
@@ -139,6 +150,8 @@ const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onTog
                     comic={comic} 
                     onDoubleClick={onSeriesDoubleClick}
                     onToggleInspector={onToggleInspector}
+                    selectionMode={selectionMode}
+                    onToggleSelection={handleToggleSelection}
                   />
                 </div>
               ))}
