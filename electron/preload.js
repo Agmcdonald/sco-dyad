@@ -43,6 +43,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   extractCover: (filePath) => ipcRenderer.invoke('extract-cover', filePath),
   scanFolder: (folderPath) => ipcRenderer.invoke('scan-folder', folderPath),
   organizeFile: (filePath, targetPath) => ipcRenderer.invoke('organize-file', filePath, targetPath),
+  getNewComicPath: (comicData, oldPath) => ipcRenderer.invoke('fs:get-new-path', comicData, oldPath),
+  moveComicFile: (oldPath, newPath) => ipcRenderer.invoke('fs:move-file', oldPath, newPath),
   
   // Comic Reader Operations
   getComicPages: (filePath) => ipcRenderer.invoke('get-comic-pages', filePath),

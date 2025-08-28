@@ -4,6 +4,30 @@ const fs = require('fs');
 const fsPromises = fs.promises;
 const { pathToFileURL } = require('url');
 
+// Helper functions for path formatting (duplicated from src/lib/formatter.ts to avoid TS/module issues)
+const sanitize = (name) => {
+  return String(name).replace(/[<>:"/\\|?*]/g, '');
+};
+
+const formatPath = (format, comicData) => {
+  let pathStr = format;
+  const replacements = {
+    '{series}': comicData.series,
+    '{issue}': comicData.issue,
+    '{year}': comicData.year,
+    '{publisher}': comicData.publisher,
+    '{volume}': comicData.volume,
+  };
+
+  for (const placeholder in replacements) {
+    const value = replacements[placeholder];
+    if (value !== null && value !== undefined) {
+      pathStr = pathStr.replace(new RegExp(placeholder.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g'), sanitize(value));
+    }
+  }
+  return pathStr;
+};
+
 function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBasePath, publicCoversDir }) {
   // App info
   ipcMain.handle('get-app-version', () => app.getVersion());
@@ -217,6 +241,44 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     } catch (error) {
       console.error('Organize file error:', error);
       throw error;
+    }
+  });
+
+  ipcMain.handle('fs:get-new-path', (event, comicData, oldPath) => {
+    try {
+        const settings = database.getAllSettings();
+        const libraryRoot = settings.libraryPath || path.join(app.getPath('documents'), 'Comic Organizer Library');
+        const fileExtension = path.extname(oldPath);
+
+        const folderPart = formatPath(settings.folderNameFormat, comicData);
+        const filePart = formatPath(settings.fileNameFormat, comicData) + fileExtension;
+        
+        const newPath = path.join(libraryRoot, folderPart, filePart);
+        return path.normalize(newPath);
+    } catch (error) {
+        console.error('Error getting new path:', error);
+        throw error;
+    }
+  });
+
+  ipcMain.handle('fs:move-file', async (event, oldPath, newPath) => {
+    try {
+        await fsPromises.mkdir(path.dirname(newPath), { recursive: true });
+        await fsPromises.rename(oldPath, newPath);
+        return { success: true, newPath: newPath };
+    } catch (error) {
+        if (error.code === 'EXDEV') {
+            try {
+                await fsPromises.copyFile(oldPath, newPath);
+                await fsPromises.unlink(oldPath);
+                return { success: true, newPath: newPath };
+            } catch (copyError) {
+                console.error('Error moving file across devices:', copyError);
+                return { success: false, error: copyError.message };
+            }
+        }
+        console.error('Error moving file:', error);
+        return { success: false, error: error.message };
     }
   });
 

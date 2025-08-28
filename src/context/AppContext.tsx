@@ -273,32 +273,65 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [addComic, removeFile]);
 
   const updateComic = useCallback(async (updatedComic: Comic) => {
-    console.log('[APP-CONTEXT] Updating comic:', updatedComic.series, 'with rating:', updatedComic.rating);
-    
-    if (databaseService) {
-      try {
-        await databaseService.updateComic({
-          ...updatedComic,
-          filePath: updatedComic.filePath || '',
-          fileSize: 0,
-          dateAdded: updatedComic.dateAdded.toISOString(),
-          lastModified: new Date().toISOString()
-        });
-        await refreshComics();
-      } catch (error) {
-        console.error('Error updating comic in database:', error);
-      }
+    const originalComic = comics.find(c => c.id === updatedComic.id);
+    if (!originalComic) {
+        showError("Could not find original comic to update.");
+        return;
     }
-    setComics(prev => prev.map(c => c.id === updatedComic.id ? updatedComic : c));
-    logAction('info', `Updated metadata for '${updatedComic.series} #${updatedComic.issue}'`);
+
+    const oldPath = originalComic.filePath;
+    let newPath = oldPath;
+
+    if (isElectron && electronAPI && oldPath && !isMockFile(oldPath)) {
+        try {
+            const potentialNewPath = await electronAPI.getNewComicPath(updatedComic, oldPath);
+
+            if (potentialNewPath && potentialNewPath !== oldPath) {
+                console.log(`[UPDATE-COMIC] Moving file from ${oldPath} to ${potentialNewPath}`);
+                const moveResult = await electronAPI.moveComicFile(oldPath, potentialNewPath);
+                if (moveResult.success) {
+                    newPath = moveResult.newPath;
+                    logAction('info', `Relocated file for '${updatedComic.series} #${updatedComic.issue}'`);
+                } else {
+                    showError(`Metadata updated, but failed to move file: ${moveResult.error}`);
+                    logAction('error', `Failed to relocate file for '${updatedComic.series} #${updatedComic.issue}'`);
+                }
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            showError(`Metadata updated, but an error occurred during file relocation: ${errorMessage}`);
+            logAction('error', `Error during file relocation: ${errorMessage}`);
+        }
+    }
+
+    const finalUpdatedComic = { ...updatedComic, filePath: newPath };
+
+    if (databaseService) {
+        try {
+            await databaseService.updateComic({
+                ...finalUpdatedComic,
+                filePath: finalUpdatedComic.filePath || '',
+                fileSize: originalComic.fileSize || 0,
+                dateAdded: finalUpdatedComic.dateAdded.toISOString(),
+                lastModified: new Date().toISOString()
+            });
+            await refreshComics();
+        } catch (error) {
+            console.error('Error updating comic in database:', error);
+        }
+    } else {
+        setComics(prev => prev.map(c => c.id === finalUpdatedComic.id ? finalUpdatedComic : c));
+    }
+
+    logAction('info', `Updated metadata for '${finalUpdatedComic.series} #${finalUpdatedComic.issue}'`);
     
     addToKnowledgeBase({
-      series: updatedComic.series,
-      publisher: updatedComic.publisher,
-      startYear: updatedComic.year,
-      volumes: [{ volume: updatedComic.volume, year: updatedComic.year }]
+        series: finalUpdatedComic.series,
+        publisher: finalUpdatedComic.publisher,
+        startYear: finalUpdatedComic.year,
+        volumes: [{ volume: finalUpdatedComic.volume, year: finalUpdatedComic.year }]
     });
-  }, [databaseService, logAction, refreshComics, setComics, addToKnowledgeBase]);
+  }, [comics, isElectron, electronAPI, databaseService, settings, logAction, refreshComics, setComics, addToKnowledgeBase]);
 
   const updateComicRating = useCallback(async (comicId: string, rating: number) => {
     console.log('[APP-CONTEXT] updateComicRating called for comic:', comicId, 'rating:', rating);
