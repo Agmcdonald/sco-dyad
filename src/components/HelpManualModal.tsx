@@ -141,6 +141,48 @@ const HelpManualModal = ({ isOpen, onClose }: HelpManualModalProps) => {
                 </div>
               </AccordionContent>
             </AccordionItem>
+
+            <AccordionItem value="advanced">
+              <AccordionTrigger>Advanced: Manual Knowledge Base Editing</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-destructive">Warning: Advanced Users Only</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Editing these files manually can cause issues if the format is incorrect. It is highly recommended to use the in-app editor on the "Knowledge" page. Always back up your `userKnowledgeBase.json` file before making manual changes.
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold">What is the Knowledge Base?</h4>
+                    <p className="text-sm">
+                      The application uses a local JSON file (`userKnowledgeBase.json`) to store your personal, evolving database of comic series and creators. Every time you manually map a comic or edit details, the information is saved here to improve future matching.
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold">How to Edit Manually</h4>
+                    <ol className="list-decimal pl-5 space-y-2 text-sm">
+                      <li>
+                        <strong>Locate the file:</strong> The file is stored in the application's data directory, which is separate from the project folder.
+                        <ul className="list-disc pl-5 mt-1">
+                          <li><strong>Windows:</strong> `%APPDATA%\super-comic-organizer\userKnowledgeBase.json`</li>
+                          <li><strong>macOS:</strong> `~/Library/Application Support/super-comic-organizer/userKnowledgeBase.json`</li>
+                          <li><strong>Linux:</strong> `~/.config/super-comic-organizer/userKnowledgeBase.json`</li>
+                        </ul>
+                      </li>
+                      <li>
+                        <strong>Back up the file:</strong> Before editing, make a copy of `userKnowledgeBase.json` and save it in a safe place.
+                      </li>
+                      <li>
+                        <strong>Edit the JSON:</strong> Open the file in a text editor. It contains two main keys: `series` and `creators`. Ensure you maintain the correct JSON structure.
+                      </li>
+                      <li>
+                        <strong>Restart the Application:</strong> The knowledge base is loaded only on startup. You must completely close and restart the application for your changes to take effect.
+                      </li>
+                    </ol>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
           </Accordion>
         </ScrollArea>
         <DialogFooter>
