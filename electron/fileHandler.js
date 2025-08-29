@@ -3,15 +3,15 @@
  * 
  * This module is responsible for all file system operations related to comic files.
  * It runs in the Electron main process and provides functionalities like:
- * - Scanning folders for comic files (CBR, CBZ)
+ * - Scanning folders for comic files (CBR, CBZ, PDF)
  * - Reading file metadata (size, type, etc.)
  * - Extracting cover images from comic archives
  * - Getting a list of pages from an archive
  * - Extracting individual pages as data URLs for the reader
  * - Organizing (moving/copying) files to the library
  * 
- * It uses libraries like `node-stream-zip` for ZIP archives and `unrar-promise`
- * for robust error handling and timeouts.
+ * It uses libraries like `node-stream-zip` for ZIP archives, `unrar-promise`
+ * for RAR archives, and `pdfjs-dist` for PDF documents.
  */
 
 const fs = require('fs').promises;
@@ -19,10 +19,12 @@ const path = require('path');
 const StreamZip = require('node-stream-zip');
 const sharp = require('sharp');
 const os = require('os');
+const { getDocument } = require('pdfjs-dist/legacy/build/pdf.js');
+const { createCanvas } = require('canvas');
 
 class ComicFileHandler {
   constructor() {
-    this.supportedExtensions = ['.cbr', '.cbz'];
+    this.supportedExtensions = ['.cbr', '.cbz', '.pdf'];
     this.imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
     this.unrarAvailable = false;
     this.unrar = null;
@@ -143,7 +145,7 @@ class ComicFileHandler {
         lastModified: stats.mtime
       };
 
-      if (fileInfo.type === 'cbz' || fileInfo.type === 'cbr') {
+      if (['cbz', 'cbr', 'pdf'].includes(fileInfo.type)) {
         try {
           fileInfo.pageCount = await this.getPageCount(filePath);
         } catch (error) {
@@ -158,7 +160,7 @@ class ComicFileHandler {
   }
 
   /**
-   * Get page count from a comic archive
+   * Get page count from a comic archive or PDF
    * @param filePath - Path to the comic file
    * @returns Number of image pages in the archive
    */
@@ -188,6 +190,10 @@ class ComicFileHandler {
       } finally {
         if (tempDir) await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
       }
+    } else if (fileType === 'pdf') {
+      const data = new Uint8Array(await fs.readFile(filePath));
+      const pdf = await getDocument(data).promise;
+      return pdf.numPages;
     }
     return 0;
   }
@@ -203,6 +209,7 @@ class ComicFileHandler {
     try {
       if (ext === '.cbz') return await this.extractCoverFromZipArchive(filePath, outputDir);
       if (ext === '.cbr') return await this.extractCoverFromRarArchive(filePath, outputDir);
+      if (ext === '.pdf') return await this.extractCoverFromPdf(filePath, outputDir);
       throw new Error(`Unsupported file type: ${ext}`);
     } catch (error) {
       console.error(`Error extracting cover:`, error);
@@ -306,6 +313,37 @@ class ComicFileHandler {
   }
 
   /**
+   * Extract cover from a PDF document
+   * @param filePath - Path to the PDF file
+   * @param outputDir - Directory to save the cover
+   * @returns Path to the extracted cover
+   */
+  async extractCoverFromPdf(filePath, outputDir) {
+    const data = new Uint8Array(await fs.readFile(filePath));
+    const pdf = await getDocument(data).promise;
+    if (pdf.numPages === 0) {
+      throw new Error('PDF has no pages');
+    }
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 1.5 });
+    const canvas = createCanvas(viewport.width, viewport.height);
+    const context = canvas.getContext('2d');
+
+    await page.render({ canvasContext: context, viewport }).promise;
+
+    const outputPath = path.join(outputDir, `${path.basename(filePath, '.pdf')}_cover.jpg`);
+    await fs.mkdir(outputDir, { recursive: true });
+
+    const buffer = canvas.toBuffer('image/jpeg');
+    await sharp(buffer)
+      .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85 })
+      .toFile(outputPath);
+
+    return outputPath;
+  }
+
+  /**
    * Organize a file (move or copy) to the target location
    * @param sourcePath - Original file path
    * @param targetPath - Destination file path
@@ -360,7 +398,7 @@ class ComicFileHandler {
   /**
    * Get a list of page filenames from a comic archive
    * @param filePath - Path to the comic file
-   * @returns Array of page filenames
+   * @returns Array of page filenames or numbers
    */
   async getPages(filePath) {
     const ext = path.extname(filePath).toLowerCase();
@@ -381,13 +419,17 @@ class ComicFileHandler {
       // CBR reading for pages is handled by prepareCbrForReading
       throw new Error('Use prepareCbrForReading for CBR page lists');
     }
+    if (ext === '.pdf') {
+      const pageCount = await this.getPageCount(filePath);
+      return Array.from({ length: pageCount }, (_, i) => String(i + 1));
+    }
     throw new Error(`Unsupported file type for page extraction: ${ext}`);
   }
 
   /**
    * Extract a specific page from a comic archive as a data URL
    * @param filePath - Path to the comic file
-   * @param pageName - Filename of the page to extract
+   * @param pageName - Filename or page number of the page to extract
    * @returns Data URL of the page image
    */
   async extractPageAsDataUrl(filePath, pageName) {
@@ -401,6 +443,23 @@ class ComicFileHandler {
       } finally {
         if (zip) await zip.close().catch(() => {});
       }
+    }
+    if (fileType === 'pdf') {
+      const pageNumber = parseInt(pageName, 10);
+      if (isNaN(pageNumber)) throw new Error('Invalid page number for PDF');
+
+      const data = new Uint8Array(await fs.readFile(filePath));
+      const pdf = await getDocument(data).promise;
+      if (pageNumber < 1 || pageNumber > pdf.numPages) {
+        throw new Error(`Page number ${pageNumber} is out of range.`);
+      }
+      const page = await pdf.getPage(pageNumber);
+      const viewport = page.getViewport({ scale: 2.0 });
+      const canvas = createCanvas(viewport.width, viewport.height);
+      const context = canvas.getContext('2d');
+
+      await page.render({ canvasContext: context, viewport }).promise;
+      return canvas.toDataURL('image/jpeg');
     }
     // CBR page extraction is handled by getPageDataUrlFromTemp
     throw new Error(`Unsupported file type for direct page extraction: ${fileType}`);
