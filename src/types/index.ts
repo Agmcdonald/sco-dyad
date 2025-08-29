@@ -30,6 +30,8 @@ export interface Comic extends NewComic {
   metadataLastChecked?: string;
   ignoreInScans?: boolean;
   isSeriesCover?: boolean; // Whether this comic's cover should be used for the series
+  lastReadPage?: number;
+  totalPages?: number;
 }
 
 export interface ReadingListItem {

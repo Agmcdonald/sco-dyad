@@ -60,6 +60,8 @@ interface AppContextType {
   isScanningMetadata: boolean;
   metadataScanProgress: { processed: number; total: number; updated: number };
   startMetadataScan: () => void;
+  updateComicProgress: (comicId: string, lastReadPage: number, totalPages: number) => Promise<void>;
+  updateReadingHistory: (comic: Comic, currentPage: number, totalPages: number) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -561,6 +563,36 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     showSuccess(`Metadata scan complete. Updated ${updatedCount} of ${candidates.length} comics.`);
   }, [comics, settings, updateComic, logAction, gcdDbService]);
 
+  const updateComicProgress = useCallback(async (comicId: string, lastReadPage: number, totalPages: number) => {
+    const comicToUpdate = comics.find(c => c.id === comicId);
+    if (comicToUpdate && (comicToUpdate.lastReadPage !== lastReadPage || comicToUpdate.totalPages !== totalPages)) {
+      const updatedComic = { ...comicToUpdate, lastReadPage, totalPages };
+      
+      if (databaseService) {
+        try {
+          await databaseService.updateComic({
+            ...updatedComic,
+            filePath: updatedComic.filePath || '',
+            fileSize: 0,
+            dateAdded: updatedComic.dateAdded.toISOString(),
+            lastModified: new Date().toISOString()
+          });
+          setComics(prev => prev.map(c => c.id === updatedComic.id ? updatedComic : c));
+        } catch (error) {
+          console.error('Error updating comic progress in database:', error);
+        }
+      } else {
+        setComics(prev => prev.map(c => c.id === updatedComic.id ? updatedComic : c));
+      }
+    }
+  }, [comics, databaseService, setComics]);
+
+  const updateReadingHistory = useCallback((comic: Comic, currentPage: number, totalPages: number) => {
+    if (totalPages > 0 && (currentPage / totalPages > 0.1 || currentPage === totalPages)) {
+        addToRecentlyRead(comic);
+    }
+  }, [addToRecentlyRead]);
+
   return (
     <AppContext.Provider value={{ 
       files, addFile, addFiles, removeFile, updateFile, skipFile,
@@ -576,7 +608,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       importComics,
       isScanningMetadata,
       metadataScanProgress,
-      startMetadataScan
+      startMetadataScan,
+      updateComicProgress,
+      updateReadingHistory
     }}>
       {children}
     </AppContext.Provider>
