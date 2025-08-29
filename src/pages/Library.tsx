@@ -30,7 +30,7 @@ interface LibraryProps {
 }
 
 const Library = ({ onToggleInspector }: LibraryProps) => {
-  const { comics } = useAppContext();
+  const { comics, readingList } = useAppContext();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOption, setSortOption] = useLocalStorage("library-sort-option", "issue-asc");
@@ -39,6 +39,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
   const [coverSize, setCoverSize] = useLocalStorage("library-cover-size", 3);
   const [isDrilledDown, setIsDrilledDown] = useState(false);
   const [ratingFilter, setRatingFilter] = useState<string>("all");
+  const [readStatusFilter, setReadStatusFilter] = useState<string>("all");
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -100,6 +101,18 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
       return inSeries || inPublisher || inCreators || inIssue;
     });
 
+    // Apply read status filter
+    if (readStatusFilter !== "all") {
+      const readComicIds = new Set(
+        readingList.filter(item => item.completed).map(item => item.comicId)
+      );
+      if (readStatusFilter === "read") {
+        filtered = filtered.filter(comic => readComicIds.has(comic.id));
+      } else { // "unread"
+        filtered = filtered.filter(comic => !readComicIds.has(comic.id));
+      }
+    }
+
     // Apply rating filter
     if (ratingFilter !== "all") {
       if (ratingFilter === "unrated") {
@@ -111,7 +124,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
     }
 
     return filtered;
-  }, [comics, searchTerm, ratingFilter]);
+  }, [comics, searchTerm, ratingFilter, readStatusFilter, readingList]);
 
   const sortedAndGroupedComics = useMemo(() => {
     const comicsToSort = [...filteredComics];
@@ -247,6 +260,16 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                 }}
               />
             </div>
+            <Select value={readStatusFilter} onValueChange={setReadStatusFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Read Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="unread">Unread</SelectItem>
+                <SelectItem value="read">Read</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={ratingFilter} onValueChange={setRatingFilter}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Rating" />
