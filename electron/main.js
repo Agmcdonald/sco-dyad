@@ -230,19 +230,19 @@ app.on('window-all-closed', () => {
 });
 
 /**
- * Graceful Shutdown
- * Listen for termination signals to ensure the app quits properly.
- * This can help prevent file locking issues during rebuilds.
+ * Forceful Shutdown
+ * This helps prevent file locking issues during rebuilds in development.
  */
-process.on('SIGTERM', () => {
-  console.log('Received SIGTERM, quitting application.');
-  app.quit();
-});
+const forceQuit = () => {
+  console.log('Force quitting application to release file locks for rebuild.');
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.destroy(); // Use destroy() to bypass confirmation dialogs
+  }
+  app.exit(); // Force exit the process
+};
 
-process.on('SIGINT', () => {
-  console.log('Received SIGINT, quitting application.');
-  app.quit();
-});
+process.on('SIGTERM', forceQuit);
+process.on('SIGINT', forceQuit);
 
 /**
  * Security: Web Contents Created
