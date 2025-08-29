@@ -25,14 +25,14 @@ let createCanvas;
 let canvasAvailable = false;
 
 try {
-  // Try to load canvas module
+  // Try to load canvas module. This may fail if native bindings are not built for Electron.
   const canvasModule = require('canvas');
   createCanvas = canvasModule.createCanvas;
   canvasAvailable = true;
-  console.log('Canvas module loaded successfully');
+  console.log('Canvas module loaded successfully. PDF rendering is enabled.');
 } catch (error) {
-  console.warn('Canvas module not available. PDF rendering will use alternative method.');
-  // We'll use an alternative approach for PDF rendering
+  console.warn('Canvas module not available. PDF rendering will use a placeholder fallback.', error.message);
+  // canvasAvailable remains false, allowing the app to run without crashing.
 }
 
 // --- Robust PDF.js Initialization ---
