@@ -324,7 +324,7 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
             <NextIssuePreview nextComic={nextComic} onReadNext={loadNextComic} />
           ) : (
             <div
-              className="transition-transform duration-200 flex gap-4 items-center justify-center"
+              className="transition-transform duration-200 flex gap-2 items-center justify-center"
               style={{
                 transform: `scale(1) rotate(${rotation}deg)`,
                 width: "100%",
