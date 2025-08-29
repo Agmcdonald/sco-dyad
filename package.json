@@ -1,4 +1,16 @@
 {
+  "name": "super-comic-organizer-dyad",
+  "version": "1.0.0",
+  "description": "A comprehensive comic book collection management application.",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "electron": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron electron/main.js\"",
+    "package": "vite build && electron-builder"
+  },
   "dependencies": {
     "@capacitor/android": "^7.4.3",
     "@capacitor/cli": "^7.4.3",
