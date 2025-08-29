@@ -220,6 +220,24 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
+  ipcMain.handle('move-file', async (event, sourcePath, relativeTargetPath) => {
+    try {
+      const settings = database.getAllSettings();
+      const libraryRoot = settings.libraryPath || path.join(app.getPath('documents'), 'Comic Organizer Library');
+      const fullTargetPath = path.join(libraryRoot, relativeTargetPath);
+
+      if (sourcePath === fullTargetPath) {
+        return { success: true, newPath: sourcePath };
+      }
+
+      await fileHandler.moveFile(sourcePath, fullTargetPath);
+      return { success: true, newPath: fullTargetPath };
+    } catch (error) {
+      console.error('Move file error:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
   // Comic Reader operations
   ipcMain.handle('get-comic-pages', (event, filePath) => fileHandler.getPages(filePath));
   ipcMain.handle('get-comic-page-data-url', (event, filePath, pageName) => fileHandler.extractPageAsDataUrl(filePath, pageName));

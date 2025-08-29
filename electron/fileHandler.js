@@ -11,7 +11,7 @@
  * - Organizing (moving/copying) files to the library
  * 
  * It uses libraries like `node-stream-zip` for ZIP archives and `unrar-promise`
- * for RAR archives, with robust error handling and timeouts.
+ * for robust error handling and timeouts.
  */
 
 const fs = require('fs').promises;
@@ -328,6 +328,31 @@ class ComicFileHandler {
         return true;
       }
       console.error('Error organizing file:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Move a file from one location to another.
+   * @param {string} sourcePath - The current absolute path of the file.
+   * @param {string} targetPath - The new absolute path for the file.
+   * @returns {Promise<boolean>} - True on success.
+   */
+  async moveFile(sourcePath, targetPath) {
+    try {
+      // Ensure target directory exists
+      await fs.mkdir(path.dirname(targetPath), { recursive: true });
+
+      // Move the file
+      await fs.rename(sourcePath, targetPath);
+      return true;
+    } catch (error) {
+      if (error.code === 'EXDEV') { // Handle cross-device move
+        await fs.copyFile(sourcePath, targetPath);
+        await fs.unlink(sourcePath);
+        return true;
+      }
+      console.error('Error moving file:', error);
       throw error;
     }
   }

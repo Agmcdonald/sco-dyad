@@ -276,6 +276,36 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [addComic, removeFile]);
 
   const updateComic = useCallback(async (updatedComic: Comic) => {
+    const oldComic = comics.find(c => c.id === updatedComic.id);
+
+    if (isElectron && electronAPI && databaseService && oldComic && oldComic.filePath) {
+      const seriesChanged = oldComic.series !== updatedComic.series;
+      const publisherChanged = oldComic.publisher !== updatedComic.publisher;
+
+      if (seriesChanged || publisherChanged) {
+        try {
+          const fileExtension = oldComic.filePath.substring(oldComic.filePath.lastIndexOf('.'));
+          const newFolderPart = formatPath(settings.folderNameFormat, updatedComic);
+          const newFilePart = formatPath(settings.fileNameFormat, updatedComic) + fileExtension;
+          const newRelativePath = `${newFolderPart}/${newFilePart}`.replace(/\\/g, '/');
+
+          const moveResult = await electronAPI.moveFile(oldComic.filePath, newRelativePath);
+
+          if (moveResult.success) {
+            updatedComic.filePath = moveResult.newPath;
+            logAction('info', `Moved file for '${updatedComic.series} #${updatedComic.issue}'`);
+            showSuccess('Comic file moved to new location.');
+          } else {
+            showError(`Failed to move comic file: ${moveResult.error}`);
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error('Error moving comic file:', error);
+          showError(`An error occurred while moving the comic file: ${errorMessage}`);
+        }
+      }
+    }
+
     console.log('[APP-CONTEXT] Updating comic:', updatedComic.series, 'with rating:', updatedComic.rating);
     
     if (databaseService) {
@@ -301,7 +331,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       startYear: updatedComic.year,
       volumes: [{ volume: updatedComic.volume, year: updatedComic.year }]
     });
-  }, [databaseService, logAction, refreshComics, setComics, addToKnowledgeBase]);
+  }, [comics, isElectron, electronAPI, databaseService, settings, logAction, refreshComics, setComics, addToKnowledgeBase]);
 
   const updateComicRating = useCallback(async (comicId: string, rating: number) => {
     console.log('[APP-CONTEXT] updateComicRating called for comic:', comicId, 'rating:', rating);
