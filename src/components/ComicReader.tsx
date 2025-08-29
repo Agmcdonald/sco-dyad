@@ -71,6 +71,9 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
   const rating = comic.rating;
   const isMarkedAsRead = readingListItem?.completed || false;
 
+  const progressToSave = useRef({ comic, currentPage, totalPages });
+  progressToSave.current = { comic, currentPage, totalPages };
+
   useEffect(() => {
     if (comicList && comicIndex >= 0 && comicIndex < comicList.length) {
       const newComic = comicList[comicIndex];
@@ -220,25 +223,36 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [nextPage, prevPage, onClose, handleMarkAsRead]);
 
+  // Effect for auto-hiding controls
   useEffect(() => {
     let timer: NodeJS.Timeout;
     const handleMouseMove = () => {
       setShowControls(true);
       clearTimeout(timer);
-      timer = setTimeout(() => setShowControls(false), 3000);
+      timer = setTimeout(() => setShowControls(false), 2000); // Hide after 2 seconds
     };
+
+    // Initially hide controls after 2 seconds
+    timer = setTimeout(() => setShowControls(false), 2000);
+
     window.addEventListener("mousemove", handleMouseMove);
-    
-    // Save progress on unmount
+
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       clearTimeout(timer);
+    };
+  }, []);
+
+  // Effect for saving progress ONLY on unmount
+  useEffect(() => {
+    return () => {
+      const { comic, currentPage, totalPages } = progressToSave.current;
       if (totalPages > 0) {
         updateComicProgress(comic.id, currentPage, totalPages);
         updateReadingHistory(comic, currentPage, totalPages);
       }
     };
-  }, [comic, currentPage, totalPages, updateComicProgress, updateReadingHistory]);
+  }, [updateComicProgress, updateReadingHistory]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
