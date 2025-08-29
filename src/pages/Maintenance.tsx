@@ -4,7 +4,6 @@ import { Progress } from "@/components/ui/progress";
 import { 
   Database, 
   FileSearch, 
-  RefreshCw, 
   Download,
   Upload,
   Trash2,
@@ -97,10 +96,6 @@ const Maintenance = () => {
     }
   };
 
-  const handleRebuildIndex = () => {
-    showSuccess("Library index rebuilt successfully");
-  };
-
   const handleCleanupFiles = () => {
     showSuccess("Temporary files cleaned up");
   };
@@ -169,10 +164,6 @@ const Maintenance = () => {
               <Button className="w-full md:w-auto justify-start" variant="outline" onClick={handleImportLibrary}>
                 <Upload className="h-4 w-4 mr-2" />
                 Import Library
-              </Button>
-              <Button className="w-full md:w-auto justify-start" variant="outline" onClick={handleRebuildIndex}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Rebuild Index
               </Button>
               <Button className="w-full md:w-auto justify-start" variant="outline" onClick={handleCleanupFiles}>
                 <Trash2 className="h-4 w-4 mr-2" />
