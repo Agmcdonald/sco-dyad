@@ -1,84 +1,35 @@
 {
   "name": "super-comic-organizer",
   "version": "1.0.0",
-  "description": "A comprehensive comic book collection management application",
-  "author": "Super Comic Organizer Team",
+  "private": true,
   "main": "electron/main.js",
-  "homepage": "./",
   "scripts": {
     "dev": "vite",
+    "electron": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build",
     "preview": "vite preview",
-    "electron": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron . --inspect=5858\"",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "package": "npm run build && electron-builder",
-    "package:win": "npm run build && electron-builder --win",
-    "package:mac": "npm run build && electron-builder --mac",
-    "package:linux": "npm run build && electron-builder --linux",
-    "package:clean": "npm run clean && npm run package",
-    "clean": "rimraf dist release",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "package:win": "npm run build && electron-builder --win"
   },
   "build": {
-    "appId": "com.supercomicorganizer.app",
+    "appId": "com.dyad.supercomicorganizer",
     "productName": "Super Comic Organizer",
-    "directories": {
-      "output": "release",
-      "buildResources": "build"
-    },
     "files": [
       "dist/**/*",
-      "electron/**/*",
-      "node_modules/**/*",
-      "package.json"
+      "electron/**/*"
     ],
-    "extraResources": [
-      {
-        "from": "src/data",
-        "to": "app.asar.unpacked/src/data"
-      }
-    ],
-    "asarUnpack": [
-      "src/data/**/*"
-    ],
-    "mac": {
-      "category": "public.app-category.productivity",
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ]
+    "directories": {
+      "buildResources": "build"
     },
     "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "publisherName": "Super Comic Organizer Team"
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
     },
     "linux": {
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "target": "AppImage"
     }
   },
   "dependencies": {
