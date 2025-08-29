@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { SkipForward, Undo, ThumbsUp, Edit, PlusSquare } from "lucide-react";
+import { SkipForward, Undo, ThumbsUp, Edit } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
 import FileQueue from "@/components/FileQueue";
 import BulkActions from "@/components/BulkActions";
@@ -28,7 +28,6 @@ const Organize = () => {
     fileLoadStatus,
     addComic,
     removeFile,
-    quickAddFiles
   } = useAppContext();
   const { selectedItem, setSelectedItem } = useSelection();
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
@@ -94,13 +93,6 @@ const Organize = () => {
   const handleSkip = () => {
     if (selectedItem?.type === 'file') {
       skipFile(selectedItem as QueuedFile);
-      setSelectedItem(null);
-    }
-  };
-
-  const handleQuickAdd = async () => {
-    if (selectedItem?.type === 'file') {
-      await quickAddFiles([selectedItem as QueuedFile]);
       setSelectedItem(null);
     }
   };
@@ -171,10 +163,6 @@ const Organize = () => {
         </div>
         {files.length > 0 && (
           <div className="flex items-center gap-2">
-            <Button variant="outline" disabled={!selectedFile} onClick={handleQuickAdd}>
-              <PlusSquare className="h-4 w-4 mr-2" />
-              Quick Add
-            </Button>
             <Button 
               variant={canConfirm ? "default" : "outline"} 
               disabled={!selectedFile}

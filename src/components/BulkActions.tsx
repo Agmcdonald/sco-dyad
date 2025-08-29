@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Trash2, Play, SkipForward, Edit, Check, PlusSquare } from "lucide-react";
+import { ChevronDown, Trash2, Play, SkipForward, Edit, Check } from "lucide-react";
 import { QueuedFile } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess, showError } from "@/utils/toast";
@@ -20,7 +20,7 @@ interface BulkActionsProps {
 }
 
 const BulkActions = ({ files, selectedFiles, onSelectionChange }: BulkActionsProps) => {
-  const { removeFile, skipFile, startProcessing, addComic, quickAddFiles } = useAppContext();
+  const { removeFile, skipFile, startProcessing, addComic } = useAppContext();
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
 
   const handleSelectAll = (checked: boolean) => {
@@ -53,14 +53,6 @@ const BulkActions = ({ files, selectedFiles, onSelectionChange }: BulkActionsPro
 
   const handleBulkEdit = () => {
     setIsBulkEditOpen(true);
-  };
-
-  const handleBulkQuickAdd = async () => {
-    const filesToQuickAdd = files.filter(f => selectedFiles.includes(f.id));
-    if (filesToQuickAdd.length > 0) {
-      await quickAddFiles(filesToQuickAdd);
-      onSelectionChange([]); // Clear selection after action
-    }
   };
 
   const handleBulkConfirm = () => {
@@ -112,10 +104,6 @@ const BulkActions = ({ files, selectedFiles, onSelectionChange }: BulkActionsPro
 
         {selectedFiles.length > 0 && (
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleBulkQuickAdd}>
-              <PlusSquare className="h-4 w-4 mr-2" />
-              Quick Add Selected ({selectedFiles.length})
-            </Button>
             <Button variant="default" size="sm" onClick={handleBulkConfirm}>
               <Check className="h-4 w-4 mr-2" />
               Confirm Selected ({selectedFiles.length})

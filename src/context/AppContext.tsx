@@ -40,6 +40,7 @@ interface AppContextType {
   addMockFiles: () => void;
   triggerSelectFiles: () => void;
   triggerScanFolder: () => void;
+  triggerQuickAdd: () => void;
   addFilesFromDrop: (droppedFiles: File[]) => void;
   addFilesFromPaths: (paths: string[]) => Promise<void>;
   quickAddFiles: (files: QueuedFile[]) => Promise<void>;
@@ -271,6 +272,33 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       showSuccess(`Quick added ${addedCount} comic(s) to the library.`);
     }
   }, [addComic, removeFile]);
+
+  const triggerQuickAdd = useCallback(async () => {
+    if (!isElectron || !electronAPI) {
+      showError("This feature is only available in the desktop app.");
+      return;
+    }
+    try {
+      const filePaths = await electronAPI.selectFilesDialog();
+      if (filePaths && filePaths.length > 0) {
+        const filesToQuickAdd: QueuedFile[] = filePaths.map((filePath, index) => ({
+          id: `quick-add-file-${Date.now()}-${index}`,
+          name: filePath.split(/[\\/]/).pop() || 'Unknown File',
+          path: filePath,
+          series: null,
+          issue: null,
+          year: null,
+          publisher: null,
+          confidence: null,
+          status: 'Pending',
+        }));
+        await quickAddFiles(filesToQuickAdd);
+      }
+    } catch (error) {
+      showError("Could not select files for Quick Add.");
+      console.error("Quick Add error:", error);
+    }
+  }, [isElectron, electronAPI, quickAddFiles]);
 
   const updateComic = useCallback(async (updatedComic: Comic) => {
     const originalComic = comics.find(c => c.id === updatedComic.id);
@@ -599,7 +627,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       files, addFile, addFiles, removeFile, updateFile, skipFile,
       comics, addComic, updateComic, removeComic, updateComicRating,
       actions, logAction, lastUndoableAction, undoLastAction,
-      addMockFiles, triggerSelectFiles, triggerScanFolder, addFilesFromDrop,
+      addMockFiles, triggerSelectFiles, triggerScanFolder, triggerQuickAdd, addFilesFromDrop,
       addFilesFromPaths, quickAddFiles, fileLoadStatus,
       readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted,
       toggleComicReadStatus,
