@@ -28,25 +28,22 @@ import { useAppContext } from "@/context/AppContext";
 import { showError, showSuccess } from "@/utils/toast";
 import { RATING_EMOJIS } from "@/lib/ratings";
 import RatingSelector from "./RatingSelector";
+import NextIssuePreview from "./NextIssuePreview";
 
 interface ComicReaderProps {
   comic: Comic;
   onClose: () => void;
+  comicList?: Comic[];
+  currentIndex?: number;
 }
 
-const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
-  const { 
-    isElectron, 
-    electronAPI 
-  } = useElectron();
-  const { 
-    comics,
-    readingList, 
-    logAction, 
-    addToRecentlyRead,
-    updateComicRating,
-    toggleComicReadStatus
-  } = useAppContext();
+const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: ComicReaderProps) => {
+  const { isElectron, electronAPI } = useElectron();
+  const { comics, readingList, addToRecentlyRead, updateComicRating, toggleComicReadStatus } = useAppContext();
+  
+  const [comicIndex, setComicIndex] = useState(currentIndex ?? -1);
+  const [internalComic, setInternalComic] = useState(initialComic);
+  
   const [pages, setPages] = useState<string[]>([]);
   const [pageImageUrls, setPageImageUrls] = useState<Record<number, string>>({});
   const [totalPages, setTotalPages] = useState(0);
@@ -62,8 +59,10 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
   const hasAddedToRecent = useRef(false);
 
   const comic = useMemo(() => {
-    return comics.find(c => c.id === initialComic.id) || initialComic;
-  }, [comics, initialComic]);
+    return comics.find(c => c.id === internalComic.id) || internalComic;
+  }, [comics, internalComic]);
+
+  const nextComic = comicList && comicIndex !== -1 && comicIndex + 1 < comicList.length ? comicList[comicIndex + 1] : null;
 
   const canReadComic = isElectron && !!comic.filePath;
   const isCbr = comic.filePath?.toLowerCase().endsWith('.cbr');
@@ -71,6 +70,21 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
   const readingListItem = readingList.find(item => item.comicId === comic.id);
   const rating = comic.rating;
   const isMarkedAsRead = readingListItem?.completed || false;
+
+  useEffect(() => {
+    if (comicList && comicIndex >= 0 && comicIndex < comicList.length) {
+      const newComic = comicList[comicIndex];
+      if (newComic.id !== internalComic.id) {
+        setInternalComic(newComic);
+        setCurrentPage(1);
+        setPages([]);
+        setPageImageUrls({});
+        fetchedPages.current.clear();
+        setIsLoading(true);
+        hasAddedToRecent.current = false;
+      }
+    }
+  }, [comicIndex, comicList, internalComic.id]);
 
   useEffect(() => {
     if (!hasAddedToRecent.current) {
@@ -114,7 +128,7 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
         electronAPI.cleanupTempDir(cbrTempDir);
       }
     };
-  }, [canReadComic, electronAPI, comic.filePath, isCbr]);
+  }, [canReadComic, electronAPI, comic.filePath, isCbr, comic.id]);
 
   useEffect(() => {
     const preloadPage = async (pageNumber: number, pageName: string) => {
@@ -161,9 +175,19 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
     setCurrentPage(newPage);
   }, [totalPages]);
 
+  const loadNextComic = useCallback(() => {
+    if (nextComic) {
+      setComicIndex(prev => prev + 1);
+    }
+  }, [nextComic]);
+
   const nextPage = useCallback(() => {
-    goToPage(currentPage + (viewMode === "double" ? 2 : 1));
-  }, [currentPage, goToPage, viewMode]);
+    if (currentPage === totalPages && nextComic) {
+      loadNextComic();
+    } else {
+      goToPage(currentPage + (viewMode === "double" ? 2 : 1));
+    }
+  }, [currentPage, totalPages, nextComic, goToPage, viewMode, loadNextComic]);
 
   const prevPage = useCallback(() => {
     goToPage(currentPage - (viewMode === "double" ? 2 : 1));
@@ -174,15 +198,9 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
   };
 
   const handleRateComic = async (newRating: number) => {
-    console.log(`[COMIC-READER] Rating comic ${comic.series} #${comic.issue} with rating: ${newRating}`);
-    try {
-      await updateComicRating(comic.id, newRating);
-      if (readingListItem && !readingListItem.completed) {
-        toggleComicReadStatus(comic);
-      }
-      console.log(`[COMIC-READER] Rating updated successfully`);
-    } catch (error) {
-      console.error(`[COMIC-READER] Failed to update rating:`, error);
+    await updateComicRating(comic.id, newRating);
+    if (readingListItem && !readingListItem.completed) {
+      toggleComicReadStatus(comic);
     }
   };
 
@@ -294,6 +312,8 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
                 }
               </p>
             </div>
+          ) : currentPage === totalPages && nextComic && viewMode === 'single' ? (
+            <NextIssuePreview nextComic={nextComic} onReadNext={loadNextComic} />
           ) : (
             <div
               className="transition-transform duration-200 flex gap-4 items-center justify-center"
@@ -368,7 +388,7 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
             variant="outline"
             size="icon"
             onClick={nextPage}
-            disabled={currentPage >= totalPages}
+            disabled={currentPage >= totalPages && !nextComic}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>

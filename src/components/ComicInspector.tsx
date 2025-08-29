@@ -37,6 +37,7 @@ import FixCoverModal from "./FixCoverModal";
 import { useAppContext } from "@/context/AppContext";
 import { useSelection } from "@/context/SelectionContext";
 import { useElectron } from "@/hooks/useElectron";
+import { useLibraryContext } from "@/context/LibraryContext";
 import { RATING_EMOJIS } from "@/lib/ratings";
 import { showError, showSuccess } from "@/utils/toast";
 import { getCoverUrl } from "@/lib/cover";
@@ -52,10 +53,15 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
   const { comics, readingList, addToReadingList, removeComic, updateComicRating, updateComic, toggleComicReadStatus } = useAppContext();
   const { setSelectedItem } = useSelection();
   const { isElectron } = useElectron();
+  const { sortedComics } = useLibraryContext();
 
   const comic = useMemo(() => {
     return comics.find(c => c.id === initialComic.id) || initialComic;
   }, [comics, initialComic]);
+
+  const currentIndex = useMemo(() => {
+    return sortedComics.findIndex(c => c.id === comic.id);
+  }, [sortedComics, comic.id]);
 
   const readingListItem = readingList.find(item => item.comicId === comic.id);
   const isInReadingList = !!readingListItem;
@@ -370,7 +376,12 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
       </div>
       
       {isReaderOpen && (
-        <ComicReader comic={comic} onClose={() => setIsReaderOpen(false)} />
+        <ComicReader 
+          comic={comic} 
+          onClose={() => setIsReaderOpen(false)}
+          comicList={sortedComics}
+          currentIndex={currentIndex}
+        />
       )}
 
       {isModalOpen && (

@@ -21,6 +21,7 @@ import LibraryGrid from "@/components/LibraryGrid";
 import SeriesView from "@/components/SeriesView";
 import PublisherView from "@/components/PublisherView";
 import { useAppContext } from "@/context/AppContext";
+import { useLibraryContext } from "@/context/LibraryContext";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import useSessionStorage from "@/hooks/useSessionStorage";
 import { Comic, LibraryViewMode } from "@/types";
@@ -32,6 +33,7 @@ interface LibraryProps {
 
 const Library = ({ onToggleInspector }: LibraryProps) => {
   const { comics } = useAppContext();
+  const { setSortedComics } = useLibraryContext();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOption, setSortOption] = useLocalStorage("library-sort-option", "issue-asc");
@@ -127,12 +129,46 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
     return filtered;
   }, [comics, searchTerm, ratingFilter]);
 
-  const sortedAndGroupedComics = useMemo(() => {
+  const sortedComicsForContext = useMemo(() => {
     const comicsToSort = [...filteredComics];
+    return comicsToSort.sort((a, b) => {
+      let primaryCompare = 0;
+      switch (sortOption) {
+        case "issue-asc": primaryCompare = a.series.localeCompare(b.series) || parseInt(a.issue) - parseInt(b.issue); break;
+        case "issue-desc": primaryCompare = a.series.localeCompare(b.series) || parseInt(b.issue) - parseInt(a.issue); break;
+        case "publisher-asc": primaryCompare = a.publisher.localeCompare(b.publisher); break;
+        case "publisher-desc": primaryCompare = b.publisher.localeCompare(a.publisher); break;
+        case "year-desc": primaryCompare = b.year - a.year; break;
+        case "year-asc": primaryCompare = a.year - b.year; break;
+        case "series-asc": primaryCompare = a.series.localeCompare(b.series); break;
+        case "series-desc": primaryCompare = b.series.localeCompare(a.series); break;
+        default: return 0;
+      }
 
+      if (primaryCompare === 0) {
+        if (sortOption.startsWith('publisher-')) {
+          switch (secondarySort) {
+            case "series-asc": return a.series.localeCompare(b.series) || parseInt(a.issue) - parseInt(b.issue);
+            case "series-desc": return b.series.localeCompare(a.series) || parseInt(a.issue) - parseInt(b.issue);
+            case "year-asc": return a.year - b.year || parseInt(a.issue) - parseInt(b.issue);
+            case "year-desc": return b.year - a.year || parseInt(a.issue) - parseInt(b.issue);
+            default: return a.series.localeCompare(b.series) || parseInt(a.issue) - parseInt(b.issue);
+          }
+        }
+        return parseInt(a.issue) - parseInt(b.issue);
+      }
+      return primaryCompare;
+    });
+  }, [filteredComics, sortOption, secondarySort]);
+
+  useEffect(() => {
+    setSortedComics(sortedComicsForContext);
+  }, [sortedComicsForContext, setSortedComics]);
+
+  const sortedAndGroupedComics = useMemo(() => {
     if (sortOption.startsWith('series-')) {
       const seriesGroups = new Map<string, Comic>();
-      comicsToSort.forEach(comic => {
+      sortedComicsForContext.forEach(comic => {
         const seriesKey = `${comic.series.toLowerCase()}-${comic.publisher.toLowerCase()}`;
         const existing = seriesGroups.get(seriesKey);
         
@@ -146,31 +182,8 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
         ? latestComics.sort((a, b) => a.series.localeCompare(b.series))
         : latestComics.sort((a, b) => b.series.localeCompare(a.series));
     }
-
-    return comicsToSort.sort((a, b) => {
-      let primaryCompare = 0;
-      switch (sortOption) {
-        case "issue-asc": primaryCompare = a.series.localeCompare(b.series) || parseInt(a.issue) - parseInt(b.issue); break;
-        case "issue-desc": primaryCompare = a.series.localeCompare(b.series) || parseInt(b.issue) - parseInt(a.issue); break;
-        case "publisher-asc": primaryCompare = a.publisher.localeCompare(b.publisher); break;
-        case "publisher-desc": primaryCompare = b.publisher.localeCompare(a.publisher); break;
-        case "year-desc": primaryCompare = b.year - a.year; break;
-        case "year-asc": primaryCompare = a.year - b.year; break;
-        default: return 0;
-      }
-
-      if (primaryCompare === 0 && sortOption.startsWith('publisher-')) {
-        switch (secondarySort) {
-          case "series-asc": return a.series.localeCompare(b.series);
-          case "series-desc": return b.series.localeCompare(a.series);
-          case "year-asc": return a.year - b.year;
-          case "year-desc": return b.year - a.year;
-          default: return a.series.localeCompare(b.series);
-        }
-      }
-      return primaryCompare;
-    });
-  }, [filteredComics, sortOption, secondarySort]);
+    return sortedComicsForContext;
+  }, [sortedComicsForContext, sortOption]);
 
   const handleSeriesDoubleClick = (seriesName: string) => {
     if (sortOption.startsWith('series-')) {
@@ -308,7 +321,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
               onToggleInspector={onToggleInspector}
             />
           ) : viewMode === "series" ? (
-            <SeriesView comics={sortedAndGroupedComics} sortOption={sortOption} />
+            <SeriesView comics={sortedComicsForContext} sortOption={sortOption} />
           ) : (
             <PublisherView comics={filteredComics} />
           )}

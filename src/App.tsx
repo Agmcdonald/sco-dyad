@@ -22,6 +22,7 @@ import { AppProvider } from "./context/AppContext";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { SettingsProvider } from "./context/SettingsContext";
 import { KnowledgeBaseProvider } from "./context/KnowledgeBaseContext";
+import { LibraryProvider } from "./context/LibraryContext";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import { useElectron } from "./hooks/useElectron";
 
@@ -100,9 +101,11 @@ const App = () => {
             <KnowledgeBaseProvider>
               <AppProvider>
                 <SelectionProvider>
-                  <Toaster />
-                  <Sonner position="bottom-left" />
-                  <RouterProvider router={router} />
+                  <LibraryProvider>
+                    <Toaster />
+                    <Sonner position="bottom-left" />
+                    <RouterProvider router={router} />
+                  </LibraryProvider>
                 </SelectionProvider>
               </AppProvider>
             </KnowledgeBaseProvider>
