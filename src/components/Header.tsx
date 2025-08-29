@@ -53,7 +53,11 @@ const Header = ({ isInspectorOpen, toggleInspector }: HeaderProps) => {
     <TooltipProvider>
       <header className="flex h-14 items-center gap-4 border-b bg-background px-6 sticky top-0 z-10">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleQuickAdd}>
+          <Button 
+            size="sm" 
+            onClick={handleQuickAdd}
+            className="bg-green-100 text-green-900 hover:bg-green-200 dark:bg-blue-500/20 dark:text-blue-300 dark:hover:bg-blue-500/30 border border-green-200 dark:border-blue-500/30"
+          >
             <PlusSquare className="h-4 w-4 mr-2" /> Quick Add...
           </Button>
           <Button variant="outline" size="sm" onClick={handleAddFiles}>
