@@ -1,36 +1,18 @@
 {
   "name": "super-comic-organizer",
   "version": "1.0.0",
-  "private": true,
+  "description": "A comprehensive comic book collection management application.",
+  "author": "Dyad",
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
-    "electron": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build",
-    "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "package": "npm run build && electron-builder",
-    "package:win": "npm run build && electron-builder --win"
-  },
-  "build": {
-    "appId": "com.dyad.supercomicorganizer",
-    "productName": "Super Comic Organizer",
-    "files": [
-      "dist/**/*",
-      "electron/**/*"
-    ],
-    "directories": {
-      "buildResources": "build"
-    },
-    "win": {
-      "target": "nsis"
-    },
-    "mac": {
-      "target": "dmg"
-    },
-    "linux": {
-      "target": "AppImage"
-    }
+    "preview": "vite preview",
+    "electron": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
+    "clean:covers": "rimraf public/covers",
+    "package": "npm run clean:covers && npm run build && electron-builder",
+    "package:win": "npm run clean:covers && npm run build && electron-builder --win"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.3",
@@ -117,5 +99,26 @@
     "typescript-eslint": "^8.0.1",
     "vite": "^6.3.4",
     "wait-on": "^7.0.0"
+  },
+  "build": {
+    "appId": "com.example.supercomicorganizerdyad",
+    "productName": "Super Comic Organizer",
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "directories": {
+      "buildResources": "assets",
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
   }
 }
