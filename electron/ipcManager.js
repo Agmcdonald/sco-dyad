@@ -253,7 +253,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       },
       show: false,
       title: 'Comic Reader',
-      frame: process.platform === 'darwin',
+      frame: true, // Ensure the window has a frame on all platforms
       titleBarStyle: process.platform === 'darwin' ? 'hidden' : 'default',
     });
 
