@@ -3,6 +3,8 @@ import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import Inspector from "./Inspector";
+import ComicReader from "./ComicReader";
+import { useAppContext } from "@/context/AppContext";
 import { useSelection } from "@/context/SelectionContext";
 import {
   ResizableHandle,
@@ -13,6 +15,7 @@ import {
 const Layout = () => {
   const [isInspectorOpen, setIsInspectorOpen] = useState(true);
   const { selectedItem } = useSelection();
+  const { readingComic, setReadingComic } = useAppContext();
 
   const toggleInspector = () => {
     setIsInspectorOpen(!isInspectorOpen);
@@ -56,6 +59,9 @@ const Layout = () => {
           </>
         )}
       </ResizablePanelGroup>
+      {readingComic && (
+        <ComicReader comic={readingComic} onClose={() => setReadingComic(null)} />
+      )}
     </div>
   );
 };

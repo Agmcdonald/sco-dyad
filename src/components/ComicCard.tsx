@@ -1,11 +1,14 @@
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Card, CardFooter } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import { useSelection } from "@/context/SelectionContext";
+import { useAppContext } from "@/context/AppContext";
 import { Comic } from "@/types";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { getCoverUrl } from "@/lib/cover";
+import { BookOpen } from "lucide-react";
 
 interface ComicCardProps {
   comic: Comic;
@@ -25,6 +28,7 @@ const ComicCard = ({
   onBulkSelect
 }: ComicCardProps) => {
   const { selectedItem, setSelectedItem } = useSelection();
+  const { setReadingComic } = useAppContext();
   const [imageError, setImageError] = useState(false);
 
   const isSelectedForInspector = selectedItem?.type === 'comic' && selectedItem.id === comic.id;
@@ -60,7 +64,7 @@ const ComicCard = ({
   return (
     <Card 
       className={cn(
-        "overflow-hidden transition-all duration-200 hover:scale-105 hover:shadow-lg cursor-pointer relative",
+        "overflow-hidden transition-all duration-200 hover:scale-105 hover:shadow-lg cursor-pointer relative group",
         isSelectedForInspector && !selectionMode && "ring-2 ring-primary shadow-lg scale-105",
         isSelectedForBulk && "ring-2 ring-primary shadow-lg scale-105"
       )}
@@ -75,7 +79,7 @@ const ComicCard = ({
           />
         </div>
       )}
-      <AspectRatio ratio={2 / 3}>
+      <AspectRatio ratio={2 / 3} className="relative">
         {!imageError ? (
           <img
             src={coverSrc}
@@ -90,6 +94,20 @@ const ComicCard = ({
               <div className="text-4xl mb-2">📚</div>
               <div className="text-xs text-muted-foreground">No Cover</div>
             </div>
+          </div>
+        )}
+        {!selectionMode && (
+          <div className="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <Button
+              variant="secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                setReadingComic(comic);
+              }}
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              Read
+            </Button>
           </div>
         )}
       </AspectRatio>

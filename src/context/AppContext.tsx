@@ -63,6 +63,8 @@ interface AppContextType {
   startMetadataScan: () => void;
   updateComicProgress: (comicId: string, lastReadPage: number, totalPages: number) => Promise<void>;
   updateReadingHistory: (comic: Comic, currentPage: number, totalPages: number) => void;
+  readingComic: Comic | null;
+  setReadingComic: (comic: Comic | null) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -103,6 +105,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     total: 0,
     currentFile: "",
   });
+  const [readingComic, setReadingComic] = useState<Comic | null>(null);
   const databaseService = useElectronDatabaseService();
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
@@ -700,7 +703,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       metadataScanProgress,
       startMetadataScan,
       updateComicProgress,
-      updateReadingHistory
+      updateReadingHistory,
+      readingComic, setReadingComic
     }}>
       {children}
     </AppContext.Provider>

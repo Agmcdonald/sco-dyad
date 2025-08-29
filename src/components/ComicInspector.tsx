@@ -31,7 +31,6 @@ import {
   CheckCircle
 } from "lucide-react";
 import EditComicModal from "./EditComicModal";
-import ComicReader from "./ComicReader";
 import RatingSelector from "./RatingSelector";
 import FixCoverModal from "./FixCoverModal";
 import { useAppContext } from "@/context/AppContext";
@@ -47,9 +46,8 @@ interface ComicInspectorProps {
 
 const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isReaderOpen, setIsReaderOpen] = useState(false);
   const [isFixCoverOpen, setIsFixCoverOpen] = useState(false);
-  const { comics, readingList, addToReadingList, removeComic, updateComicRating, updateComic, toggleComicReadStatus } = useAppContext();
+  const { comics, readingList, addToReadingList, removeComic, updateComicRating, updateComic, toggleComicReadStatus, setReadingComic } = useAppContext();
   const { setSelectedItem } = useSelection();
   const { isElectron } = useElectron();
 
@@ -287,7 +285,7 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
           </div>
         </div>
         <div className="p-4 border-t mt-auto bg-background space-y-2">
-          <Button className="w-full" onClick={() => setIsReaderOpen(true)}>
+          <Button className="w-full" onClick={() => setReadingComic(comic)}>
             <BookOpen className="mr-2 h-4 w-4" /> Read Comic
           </Button>
           <div className="grid grid-cols-2 gap-2">
@@ -369,10 +367,6 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
         </div>
       </div>
       
-      {isReaderOpen && (
-        <ComicReader comic={comic} onClose={() => setIsReaderOpen(false)} />
-      )}
-
       {isModalOpen && (
         <EditComicModal
           comic={comic}
