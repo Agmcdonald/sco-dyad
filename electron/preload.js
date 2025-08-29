@@ -46,6 +46,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   moveFile: (sourcePath, relativeTargetPath) => ipcRenderer.invoke('move-file', sourcePath, relativeTargetPath),
   
   // Comic Reader Operations
+  openReaderWindow: (comicId) => ipcRenderer.invoke('reader:open-window', comicId),
   getComicPages: (filePath) => ipcRenderer.invoke('get-comic-pages', filePath),
   getComicPageDataUrl: (filePath, pageName) => ipcRenderer.invoke('get-comic-page-data-url', filePath, pageName),
   prepareCbrForReading: (filePath) => ipcRenderer.invoke('reader:prepare-cbr', filePath),

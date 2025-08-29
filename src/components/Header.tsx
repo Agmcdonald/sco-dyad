@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import { useSelection } from "@/context/SelectionContext";
+import { useElectron } from "@/hooks/useElectron";
 
 interface HeaderProps {
   isInspectorOpen: boolean;
@@ -26,6 +27,7 @@ const Header = ({ isInspectorOpen, toggleInspector }: HeaderProps) => {
   const navigate = useNavigate();
   const { triggerSelectFiles, triggerScanFolder, triggerQuickAddFiles } = useAppContext();
   const { selectedItem } = useSelection();
+  const { isElectron, electronAPI } = useElectron();
 
   const handleAddFiles = () => {
     triggerSelectFiles();
@@ -38,10 +40,8 @@ const Header = ({ isInspectorOpen, toggleInspector }: HeaderProps) => {
   };
 
   const handleOpenInNewWindow = () => {
-    // Open selected comic in a new reader window (future feature)
-    if (selectedItem?.type === 'comic') {
-      console.log('Open in new window:', selectedItem.series);
-      // Could open comic reader in a separate window
+    if (isElectron && electronAPI && selectedItem?.type === 'comic') {
+      electronAPI.openReaderWindow(selectedItem.id);
     }
   };
 
@@ -67,13 +67,13 @@ const Header = ({ isInspectorOpen, toggleInspector }: HeaderProps) => {
                 variant="outline" 
                 size="icon" 
                 onClick={handleOpenInNewWindow}
-                disabled={!selectedItem || selectedItem.type !== 'comic'}
+                disabled={!isElectron || !selectedItem || selectedItem.type !== 'comic'}
               >
                 <ArrowUpRightFromSquare className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Open in New Window (WIP)</p>
+              <p>{isElectron ? "Open in New Window" : "Feature unavailable in web mode"}</p>
             </TooltipContent>
           </Tooltip>
 
