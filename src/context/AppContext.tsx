@@ -53,9 +53,10 @@ interface AppContextType {
   setReadingItemPriority: (itemId: string, priority: 'low' | 'medium' | 'high') => void;
   setReadingItemRating: (itemId: string, rating: number) => void;
   recentlyRead: any[];
-  addToRecentlyRead: (comic: Comic, rating?: number) => void;
+  updateReadingHistory: (comic: Comic, lastReadPage: number, totalPages: number) => void;
   updateRecentRating: (comicId: string, rating: number) => void;
   updateComicRating: (comicId: string, rating: number) => Promise<void>;
+  updateComicProgress: (comicId: string, lastReadPage: number, totalPages: number) => Promise<void>;
   refreshComics: () => Promise<void>;
   importComics: (comicsToImport: Comic[]) => Promise<{ added: number; skipped: number } | null>;
   isScanningMetadata: boolean;
@@ -89,7 +90,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { 
     recentlyRead, 
     setRecentlyRead, 
-    addToRecentlyRead, 
+    updateReadingHistory, 
     updateRecentRating
   } = useRecentlyRead();
   
@@ -361,6 +362,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [comics, isElectron, electronAPI, databaseService, settings, logAction, refreshComics, setComics, addToKnowledgeBase]);
 
+  const updateComicProgress = useCallback(async (comicId: string, lastReadPage: number, totalPages: number) => {
+    const comicToUpdate = comics.find(c => c.id === comicId);
+    if (!comicToUpdate) return;
+
+    const readProgress = totalPages > 0 ? Math.round((lastReadPage / totalPages) * 100) : 0;
+    const updatedComic = { ...comicToUpdate, lastReadPage, readProgress };
+    
+    await updateComic(updatedComic);
+  }, [comics, updateComic]);
+
   const updateComicRating = useCallback(async (comicId: string, rating: number) => {
     console.log('[APP-CONTEXT] updateComicRating called for comic:', comicId, 'rating:', rating);
     
@@ -625,14 +636,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AppContext.Provider value={{ 
       files, addFile, addFiles, removeFile, updateFile, skipFile,
-      comics, addComic, updateComic, removeComic, updateComicRating,
+      comics, addComic, updateComic, removeComic, updateComicRating, updateComicProgress,
       actions, logAction, lastUndoableAction, undoLastAction,
       addMockFiles, triggerSelectFiles, triggerScanFolder, triggerQuickAdd, addFilesFromDrop,
       addFilesFromPaths, quickAddFiles, fileLoadStatus,
       readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted,
       toggleComicReadStatus,
       setReadingItemPriority, setReadingItemRating,
-      recentlyRead, addToRecentlyRead, updateRecentRating,
+      recentlyRead, updateReadingHistory, updateRecentRating,
       refreshComics,
       importComics,
       isScanningMetadata,

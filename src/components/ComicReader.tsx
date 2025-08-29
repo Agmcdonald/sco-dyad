@@ -39,7 +39,7 @@ interface ComicReaderProps {
 
 const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: ComicReaderProps) => {
   const { isElectron, electronAPI } = useElectron();
-  const { comics, readingList, addToRecentlyRead, updateComicRating, toggleComicReadStatus } = useAppContext();
+  const { comics, readingList, updateReadingHistory, updateComicRating, toggleComicReadStatus, updateComicProgress } = useAppContext();
   
   const [comicIndex, setComicIndex] = useState(currentIndex ?? -1);
   const [internalComic, setInternalComic] = useState(initialComic);
@@ -47,7 +47,7 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
   const [pages, setPages] = useState<string[]>([]);
   const [pageImageUrls, setPageImageUrls] = useState<Record<number, string>>({});
   const [totalPages, setTotalPages] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(internalComic.lastReadPage || 1);
   const [rotation, setRotation] = useState(0);
   const [viewMode, setViewMode] = useState<"single" | "double">("single");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -56,7 +56,6 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
   const [isLoading, setIsLoading] = useState(true);
   const [cbrTempDir, setCbrTempDir] = useState<string | null>(null);
   const fetchedPages = useRef(new Set());
-  const hasAddedToRecent = useRef(false);
 
   const comic = useMemo(() => {
     return comics.find(c => c.id === internalComic.id) || internalComic;
@@ -76,22 +75,14 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
       const newComic = comicList[comicIndex];
       if (newComic.id !== internalComic.id) {
         setInternalComic(newComic);
-        setCurrentPage(1);
+        setCurrentPage(newComic.lastReadPage || 1);
         setPages([]);
         setPageImageUrls({});
         fetchedPages.current.clear();
         setIsLoading(true);
-        hasAddedToRecent.current = false;
       }
     }
   }, [comicIndex, comicList, internalComic.id]);
-
-  useEffect(() => {
-    if (!hasAddedToRecent.current) {
-      addToRecentlyRead(comic);
-      hasAddedToRecent.current = true;
-    }
-  }, [comic, addToRecentlyRead]);
 
   useEffect(() => {
     const fetchPages = async () => {
@@ -195,6 +186,9 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
 
   const handleMarkAsRead = () => {
     toggleComicReadStatus(comic);
+    if (!isMarkedAsRead) {
+      updateComicProgress(comic.id, totalPages, totalPages);
+    }
   };
 
   const handleRateComic = async (newRating: number) => {
@@ -223,11 +217,17 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
       timer = setTimeout(() => setShowControls(false), 3000);
     };
     window.addEventListener("mousemove", handleMouseMove);
+    
+    // Save progress on unmount
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       clearTimeout(timer);
+      if (totalPages > 0) {
+        updateComicProgress(comic.id, currentPage, totalPages);
+        updateReadingHistory(comic, currentPage, totalPages);
+      }
     };
-  }, []);
+  }, [comic, currentPage, totalPages, updateComicProgress, updateReadingHistory]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {

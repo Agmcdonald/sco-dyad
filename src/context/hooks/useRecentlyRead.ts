@@ -19,9 +19,10 @@ export const useRecentlyRead = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array ensures it runs only once after initial load
 
-  const addToRecentlyRead = (comic: Comic, rating?: number) => {
+  const updateReadingHistory = (comic: Comic, lastReadPage: number, totalPages: number) => {
+    const progress = totalPages > 0 ? Math.round((lastReadPage / totalPages) * 100) : 0;
     const recentItem: RecentlyReadComic = {
-      id: `recent-${Date.now()}`,
+      id: `recent-${comic.id}`,
       comicId: comic.id,
       title: `${comic.series} #${comic.issue}`,
       series: comic.series,
@@ -30,17 +31,18 @@ export const useRecentlyRead = () => {
       year: comic.year,
       coverUrl: comic.coverUrl,
       dateRead: new Date(),
-      rating: rating || comic.rating
+      rating: comic.rating,
+      lastReadPage: lastReadPage,
+      readProgress: progress,
     };
 
     setRecentlyRead(prev => {
-      // Ensure all dates in the previous state are Date objects before filtering
       const parsedPrev = prev.map(item => ({
         ...item,
         dateRead: item.dateRead instanceof Date ? item.dateRead : new Date(item.dateRead),
       }));
       const filtered = parsedPrev.filter(item => item.comicId !== comic.id);
-      return [recentItem, ...filtered].slice(0, 10);
+      return [recentItem, ...filtered].slice(0, 20);
     });
   };
 
@@ -60,5 +62,5 @@ export const useRecentlyRead = () => {
     }));
   };
 
-  return { recentlyRead, setRecentlyRead, addToRecentlyRead, updateRecentRating, syncRecentlyReadWithComics };
+  return { recentlyRead, setRecentlyRead, updateReadingHistory, updateRecentRating, syncRecentlyReadWithComics };
 };

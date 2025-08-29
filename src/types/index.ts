@@ -31,6 +31,8 @@ export interface Comic extends NewComic {
   metadataLastChecked?: string;
   ignoreInScans?: boolean;
   isSeriesCover?: boolean; // Whether this comic's cover should be used for the series
+  lastReadPage?: number;
+  readProgress?: number;
 }
 
 export interface ReadingListItem {
@@ -59,6 +61,8 @@ export interface RecentlyReadComic {
   coverUrl: string;
   dateRead: Date;
   rating?: number; // 0-6 rating system
+  lastReadPage?: number;
+  readProgress?: number;
 }
 
 export type FileStatus = "Pending" | "Success" | "Warning" | "Error";
