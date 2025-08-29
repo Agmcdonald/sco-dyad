@@ -24,7 +24,6 @@ import { SettingsProvider } from "./context/SettingsContext";
 import { KnowledgeBaseProvider } from "./context/KnowledgeBaseContext";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import { useElectron } from "./hooks/useElectron";
-import StandaloneReader from "./pages/StandaloneReader";
 
 const queryClient = new QueryClient();
 
@@ -68,10 +67,6 @@ const router = createHashRouter([
       {
         path: "/",
         element: <Index />,
-      },
-      {
-        path: "/reader",
-        element: <StandaloneReader />,
       },
       {
         path: "/app",

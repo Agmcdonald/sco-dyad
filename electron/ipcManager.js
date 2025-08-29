@@ -1,4 +1,4 @@
-const { ipcMain, dialog, app, BrowserWindow } = require('electron');
+const { ipcMain, dialog, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const fsPromises = fs.promises;
@@ -239,36 +239,6 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   });
 
   // Comic Reader operations
-  ipcMain.handle('reader:open-window', (event, comicId) => {
-    const readerWindow = new BrowserWindow({
-      width: 1000,
-      height: 800,
-      minWidth: 800,
-      minHeight: 600,
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-        preload: path.join(__dirname, 'preload.js'),
-        webSecurity: true,
-      },
-      show: false,
-      title: 'Comic Reader',
-      frame: true, // Ensure the window has a frame on all platforms
-      titleBarStyle: process.platform === 'darwin' ? 'hidden' : 'default',
-    });
-
-    const isDev = !app.isPackaged;
-    const startUrl = isDev 
-      ? `http://localhost:5173#/reader?comicId=${comicId}`
-      : `file://${path.join(__dirname, '../dist/index.html')}#/reader?comicId=${comicId}`;
-
-    console.log('[IPC] Opening reader window with URL:', startUrl);
-    readerWindow.loadURL(startUrl);
-
-    readerWindow.once('ready-to-show', () => {
-      readerWindow.show();
-    });
-  });
   ipcMain.handle('get-comic-pages', (event, filePath) => fileHandler.getPages(filePath));
   ipcMain.handle('get-comic-page-data-url', (event, filePath, pageName) => fileHandler.extractPageAsDataUrl(filePath, pageName));
   ipcMain.handle('reader:prepare-cbr', (event, filePath) => fileHandler.prepareCbrForReading(filePath));
