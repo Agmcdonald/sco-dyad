@@ -4,6 +4,7 @@ import { Comic } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import ComicReader from "@/components/ComicReader";
 import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const StandaloneReader = () => {
   const { comics } = useAppContext();
