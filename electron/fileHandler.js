@@ -19,8 +19,11 @@ const path = require('path');
 const StreamZip = require('node-stream-zip');
 const sharp = require('sharp');
 const os = require('os');
-const { getDocument } = require('pdfjs-dist/legacy/build/pdf.js');
+const { getDocument, GlobalWorkerOptions } = require('pdfjs-dist');
 const { createCanvas } = require('canvas');
+
+// Set worker path for Node.js environment. This is needed for pdfjs-dist v3+
+GlobalWorkerOptions.workerSrc = require.resolve('pdfjs-dist/build/pdf.worker.js');
 
 class ComicFileHandler {
   constructor() {
