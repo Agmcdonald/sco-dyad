@@ -33,12 +33,12 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
   const { comics } = useAppContext();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortOption, setSortOption] = useState("issue-asc");
-  const [secondarySort, setSecondarySort] = useState("series-asc");
-  const [viewMode, setViewMode] = useState<LibraryViewMode>("grid");
+  const [sortOption, setSortOption] = useLocalStorage("library-sort-option", "issue-asc");
+  const [secondarySort, setSecondarySort] = useLocalStorage("library-secondary-sort", "series-asc");
+  const [viewMode, setViewMode] = useLocalStorage<LibraryViewMode>("library-view-mode", "grid");
   const [coverSize, setCoverSize] = useLocalStorage("library-cover-size", 3);
   const [isDrilledDown, setIsDrilledDown] = useState(false);
-  const [ratingFilter, setRatingFilter] = useState<string>("all");
+  const [ratingFilter, setRatingFilter] = useLocalStorage("library-rating-filter", "all");
 
   // Handle search from sidebar
   useEffect(() => {

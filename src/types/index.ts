@@ -129,3 +129,5 @@ export interface KnowledgeBase {
   series: ComicKnowledge[];
   creators: CreatorKnowledge[];
 }
+
+export type LibraryViewMode = "grid" | "series" | "publisher";
