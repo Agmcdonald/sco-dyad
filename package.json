@@ -107,6 +107,10 @@
       "dist/**/*",
       "electron/**/*"
     ],
+    "asarUnpack": [
+      "**/node_modules/sharp/**",
+      "**/node_modules/unrar-promise/**"
+    ],
     "directories": {
       "buildResources": "assets",
       "output": "release"
