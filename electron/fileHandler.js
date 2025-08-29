@@ -21,16 +21,38 @@ const sharp = require('sharp');
 const os = require('os');
 const { createCanvas } = require('canvas');
 
-// Robustly find the pdfjs-dist legacy build path to avoid module resolution issues
-const pdfjsDistPath = path.dirname(require.resolve('pdfjs-dist/package.json'));
-const pdfjsLegacyPath = path.join(pdfjsDistPath, 'legacy', 'build', 'pdf.js');
-const pdfjsWorkerPath = path.join(pdfjsDistPath, 'legacy', 'build', 'pdf.worker.js');
+// --- Robust PDF.js Initialization ---
+let pdfjs, getDocument, GlobalWorkerOptions;
+let pdfjsAvailable = false;
 
-const pdfjs = require(pdfjsLegacyPath);
-const { getDocument, GlobalWorkerOptions } = pdfjs;
+try {
+  // Dynamically resolve the path to the installed pdfjs-dist package
+  const pdfjsDistPath = path.dirname(require.resolve('pdfjs-dist/package.json'));
+  
+  // Construct the full paths to the required legacy build files
+  const pdfjsLegacyPath = path.join(pdfjsDistPath, 'legacy', 'build', 'pdf.js');
+  const pdfjsWorkerPath = path.join(pdfjsDistPath, 'legacy', 'build', 'pdf.worker.js');
 
-// Set worker path for Node.js environment. This is needed for pdfjs-dist v3+
-GlobalWorkerOptions.workerSrc = pdfjsWorkerPath;
+  // Verify that both files exist before attempting to use them
+  require('fs').accessSync(pdfjsLegacyPath);
+  require('fs').accessSync(pdfjsWorkerPath);
+
+  // If they exist, require the main module and configure the worker
+  const pdfjsModule = require(pdfjsLegacyPath);
+  pdfjs = pdfjsModule;
+  getDocument = pdfjsModule.getDocument;
+  GlobalWorkerOptions = pdfjsModule.GlobalWorkerOptions;
+  
+  GlobalWorkerOptions.workerSrc = pdfjsWorkerPath;
+  
+  pdfjsAvailable = true;
+  console.log('PDF.js initialized successfully from:', pdfjsLegacyPath);
+
+} catch (error) {
+  console.error('Failed to initialize PDF.js. PDF functionality will be disabled.', error.message);
+  // pdfjsAvailable remains false, allowing the app to run without PDF support
+}
+// --- End of PDF.js Initialization ---
 
 class ComicFileHandler {
   constructor() {
@@ -38,6 +60,7 @@ class ComicFileHandler {
     this.imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
     this.unrarAvailable = false;
     this.unrar = null;
+    this.pdfjsAvailable = pdfjsAvailable; // Store the status
     this.initUnrar();
   }
 
@@ -201,6 +224,10 @@ class ComicFileHandler {
         if (tempDir) await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
       }
     } else if (fileType === 'pdf') {
+      if (!this.pdfjsAvailable) {
+        console.warn('PDF processing is disabled. Cannot get page count.');
+        return 0;
+      }
       const data = new Uint8Array(await fs.readFile(filePath));
       const pdf = await getDocument(data).promise;
       return pdf.numPages;
@@ -219,7 +246,10 @@ class ComicFileHandler {
     try {
       if (ext === '.cbz') return await this.extractCoverFromZipArchive(filePath, outputDir);
       if (ext === '.cbr') return await this.extractCoverFromRarArchive(filePath, outputDir);
-      if (ext === '.pdf') return await this.extractCoverFromPdf(filePath, outputDir);
+      if (ext === '.pdf') {
+        if (!this.pdfjsAvailable) throw new Error('PDF processing is disabled. Cannot extract cover.');
+        return await this.extractCoverFromPdf(filePath, outputDir);
+      }
       throw new Error(`Unsupported file type: ${ext}`);
     } catch (error) {
       console.error(`Error extracting cover:`, error);
@@ -329,6 +359,7 @@ class ComicFileHandler {
    * @returns Path to the extracted cover
    */
   async extractCoverFromPdf(filePath, outputDir) {
+    if (!this.pdfjsAvailable) throw new Error('PDF processing is disabled.');
     const data = new Uint8Array(await fs.readFile(filePath));
     const pdf = await getDocument(data).promise;
     if (pdf.numPages === 0) {
@@ -430,6 +461,7 @@ class ComicFileHandler {
       throw new Error('Use prepareCbrForReading for CBR page lists');
     }
     if (ext === '.pdf') {
+      if (!this.pdfjsAvailable) throw new Error('PDF processing is disabled.');
       const pageCount = await this.getPageCount(filePath);
       return Array.from({ length: pageCount }, (_, i) => String(i + 1));
     }
@@ -455,6 +487,7 @@ class ComicFileHandler {
       }
     }
     if (fileType === 'pdf') {
+      if (!this.pdfjsAvailable) throw new Error('PDF processing is disabled.');
       const pageNumber = parseInt(pageName, 10);
       if (isNaN(pageNumber)) throw new Error('Invalid page number for PDF');
 
