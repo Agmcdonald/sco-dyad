@@ -54,6 +54,7 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
   const [showControls, setShowControls] = useState(true);
   const [showThumbnails, setShowThumbnails] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState("Loading pages...");
   const [cbrTempDir, setCbrTempDir] = useState<string | null>(null);
   const fetchedPages = useRef(new Set());
 
@@ -80,6 +81,7 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
         setPageImageUrls({});
         fetchedPages.current.clear();
         setIsLoading(true);
+        setLoadingMessage("Loading pages...");
       }
     }
   }, [comicIndex, comicList, internalComic.id]);
@@ -95,18 +97,20 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
       setIsLoading(true);
       try {
         if (isCbr) {
+          setLoadingMessage("Preparing comic archive...");
           const { tempDir, pages: pageList } = await electronAPI.prepareCbrForReading(comic.filePath!);
           setCbrTempDir(tempDir);
           setPages(pageList);
           setTotalPages(pageList.length);
         } else {
+          setLoadingMessage("Loading pages...");
           const pageList = await electronAPI.getComicPages(comic.filePath!);
           setPages(pageList);
           setTotalPages(pageList.length);
         }
       } catch (error) {
         console.error("Failed to fetch comic pages:", error);
-        showError("Failed to load comic. The file might be corrupted.");
+        showError("Failed to load comic. The file might be corrupted or too large.");
         setTotalPages(0);
       } finally {
         setIsLoading(false);
@@ -300,7 +304,11 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
 
         <main className="flex-1 flex items-center justify-center overflow-hidden p-4">
           {isLoading ? (
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <div className="text-center text-muted-foreground">
+              <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+              <p className="font-semibold">{loadingMessage}</p>
+              <p className="text-sm mt-1">This can take a moment for large files.</p>
+            </div>
           ) : !canReadComic || totalPages === 0 ? (
             <div className="text-center text-muted-foreground">
               <BookOpen className="h-12 w-12 mx-auto mb-4" />

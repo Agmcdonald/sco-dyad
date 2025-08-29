@@ -417,13 +417,17 @@ class ComicFileHandler {
    * @returns {Promise<object>} A promise that resolves to an object with the temp directory path and a list of page filenames.
    */
   async prepareCbrForReading(filePath) {
+    console.log('[FILE-HANDLER] Preparing CBR for reading:', filePath);
     if (!this.unrarAvailable) throw new Error('RAR support is not available');
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-reader-'));
+    console.log('[FILE-HANDLER] Created temp directory for CBR:', tempDir);
     try {
       await Promise.race([
         this.unrar(filePath, tempDir),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR extraction timeout')), 60000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR extraction timed out after 30 seconds')), 30000))
       ]);
+      console.log('[FILE-HANDLER] CBR extraction complete.');
+      
       const allFiles = await this._walk(tempDir);
       const imageFiles = allFiles
         .filter(file => this.isImageFile(file))
@@ -431,8 +435,10 @@ class ComicFileHandler {
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
       
       if (imageFiles.length === 0) throw new Error('No image files found in CBR archive');
+      console.log(`[FILE-HANDLER] Found ${imageFiles.length} pages in CBR.`);
       return { tempDir, pages: imageFiles };
     } catch (error) {
+      console.error('[FILE-HANDLER] Error during CBR preparation:', error);
       await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
       throw error;
     }
