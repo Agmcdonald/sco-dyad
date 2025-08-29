@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { RecentlyReadComic, Comic } from '@/types';
 import useLocalStorage from '@/hooks/useLocalStorage';
 
@@ -13,7 +13,7 @@ export const useRecentlyRead = () => {
     }));
   }, [storedRecentlyRead]);
 
-  const setRecentlyRead = (updater: React.SetStateAction<RecentlyReadComic[]>) => {
+  const setRecentlyRead = useCallback((updater: React.SetStateAction<RecentlyReadComic[]>) => {
     if (typeof updater === 'function') {
       setStoredRecentlyRead(prev => {
         const parsedPrev = (prev || []).map(item => ({ ...item, dateRead: new Date(item.dateRead) }));
@@ -22,9 +22,9 @@ export const useRecentlyRead = () => {
     } else {
       setStoredRecentlyRead(updater);
     }
-  };
+  }, [setStoredRecentlyRead]);
 
-  const addToRecentlyRead = (comic: Comic, rating?: number) => {
+  const addToRecentlyRead = useCallback((comic: Comic, rating?: number) => {
     const recentItem: RecentlyReadComic = {
       id: `recent-${Date.now()}`,
       comicId: comic.id,
@@ -42,15 +42,15 @@ export const useRecentlyRead = () => {
       const filtered = (prev || []).filter(item => item.comicId !== comic.id);
       return [recentItem, ...filtered].slice(0, 10);
     });
-  };
+  }, [setStoredRecentlyRead]);
 
-  const updateRecentRating = (comicId: string, rating: number) => {
+  const updateRecentRating = useCallback((comicId: string, rating: number) => {
     setStoredRecentlyRead(prev => (prev || []).map(item => 
       item.comicId === comicId ? { ...item, rating } : item
     ));
-  };
+  }, [setStoredRecentlyRead]);
 
-  const syncRecentlyReadWithComics = (comics: Comic[]) => {
+  const syncRecentlyReadWithComics = useCallback((comics: Comic[]) => {
     setStoredRecentlyRead(prev => (prev || []).map(item => {
       const comic = comics.find(c => c.id === item.comicId);
       if (comic && comic.rating !== item.rating) {
@@ -58,7 +58,7 @@ export const useRecentlyRead = () => {
       }
       return item;
     }));
-  };
+  }, [setStoredRecentlyRead]);
 
   return { recentlyRead, setRecentlyRead, addToRecentlyRead, updateRecentRating, syncRecentlyReadWithComics };
 };
