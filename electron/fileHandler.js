@@ -424,7 +424,7 @@ class ComicFileHandler {
     try {
       await Promise.race([
         this.unrar(filePath, tempDir),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR extraction timed out after 30 seconds')), 30000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR extraction timed out after 2 minutes')), 120000))
       ]);
       console.log('[FILE-HANDLER] CBR extraction complete.');
       
