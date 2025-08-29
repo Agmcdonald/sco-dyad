@@ -19,7 +19,21 @@ const path = require('path');
 const StreamZip = require('node-stream-zip');
 const sharp = require('sharp');
 const os = require('os');
-const { createCanvas } = require('canvas');
+
+// --- Canvas Module Conditional Loading ---
+let createCanvas;
+let canvasAvailable = false;
+
+try {
+  // Try to load canvas module
+  const canvasModule = require('canvas');
+  createCanvas = canvasModule.createCanvas;
+  canvasAvailable = true;
+  console.log('Canvas module loaded successfully');
+} catch (error) {
+  console.warn('Canvas module not available. PDF rendering will use alternative method.');
+  // We'll use an alternative approach for PDF rendering
+}
 
 // --- Robust PDF.js Initialization ---
 let pdfjs, getDocument, GlobalWorkerOptions;
@@ -61,6 +75,7 @@ class ComicFileHandler {
     this.unrarAvailable = false;
     this.unrar = null;
     this.pdfjsAvailable = pdfjsAvailable; // Store the status
+    this.canvasAvailable = canvasAvailable; // Store canvas availability
     this.initUnrar();
   }
 
@@ -354,32 +369,67 @@ class ComicFileHandler {
 
   /**
    * Extract cover from a PDF document
+   * Alternative implementation that doesn't require canvas module
    * @param filePath - Path to the PDF file
    * @param outputDir - Directory to save the cover
    * @returns Path to the extracted cover
    */
   async extractCoverFromPdf(filePath, outputDir) {
     if (!this.pdfjsAvailable) throw new Error('PDF processing is disabled.');
-    const data = new Uint8Array(await fs.readFile(filePath));
-    const pdf = await getDocument(data).promise;
-    if (pdf.numPages === 0) {
-      throw new Error('PDF has no pages');
-    }
-    const page = await pdf.getPage(1);
-    const viewport = page.getViewport({ scale: 1.5 });
-    const canvas = createCanvas(viewport.width, viewport.height);
-    const context = canvas.getContext('2d');
-
-    await page.render({ canvasContext: context, viewport }).promise;
-
+    
     const outputPath = path.join(outputDir, `${path.basename(filePath, '.pdf')}_cover.jpg`);
     await fs.mkdir(outputDir, { recursive: true });
 
-    const buffer = canvas.toBuffer('image/jpeg');
-    await sharp(buffer)
-      .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 85 })
-      .toFile(outputPath);
+    if (this.canvasAvailable) {
+      // Use canvas if available
+      const data = new Uint8Array(await fs.readFile(filePath));
+      const pdf = await getDocument(data).promise;
+      if (pdf.numPages === 0) {
+        throw new Error('PDF has no pages');
+      }
+      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 1.5 });
+      const canvas = createCanvas(viewport.width, viewport.height);
+      const context = canvas.getContext('2d');
+
+      await page.render({ canvasContext: context, viewport }).promise;
+
+      const buffer = canvas.toBuffer('image/jpeg');
+      await sharp(buffer)
+        .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toFile(outputPath);
+    } else {
+      // Alternative: Create a placeholder cover or extract embedded images
+      // For now, we'll create a simple placeholder with PDF metadata
+      console.warn('Canvas not available. Creating placeholder cover for PDF.');
+      
+      const data = new Uint8Array(await fs.readFile(filePath));
+      const pdf = await getDocument(data).promise;
+      
+      if (pdf.numPages === 0) {
+        throw new Error('PDF has no pages');
+      }
+
+      // Try to get the first page's text content as metadata
+      const page = await pdf.getPage(1);
+      const textContent = await page.getTextContent();
+      const text = textContent.items.map(item => item.str).join(' ').slice(0, 100);
+
+      // Create a simple placeholder image with sharp
+      const svg = `
+        <svg width="400" height="600" xmlns="http://www.w3.org/2000/svg">
+          <rect width="400" height="600" fill="#f0f0f0"/>
+          <text x="200" y="280" text-anchor="middle" font-size="24" fill="#333">PDF Document</text>
+          <text x="200" y="320" text-anchor="middle" font-size="16" fill="#666">${pdf.numPages} pages</text>
+          <text x="200" y="360" text-anchor="middle" font-size="12" fill="#999">${path.basename(filePath, '.pdf')}</text>
+        </svg>
+      `;
+
+      await sharp(Buffer.from(svg))
+        .jpeg({ quality: 85 })
+        .toFile(outputPath);
+    }
 
     return outputPath;
   }
@@ -488,6 +538,7 @@ class ComicFileHandler {
     }
     if (fileType === 'pdf') {
       if (!this.pdfjsAvailable) throw new Error('PDF processing is disabled.');
+      
       const pageNumber = parseInt(pageName, 10);
       if (isNaN(pageNumber)) throw new Error('Invalid page number for PDF');
 
@@ -496,13 +547,39 @@ class ComicFileHandler {
       if (pageNumber < 1 || pageNumber > pdf.numPages) {
         throw new Error(`Page number ${pageNumber} is out of range.`);
       }
-      const page = await pdf.getPage(pageNumber);
-      const viewport = page.getViewport({ scale: 2.0 });
-      const canvas = createCanvas(viewport.width, viewport.height);
-      const context = canvas.getContext('2d');
 
-      await page.render({ canvasContext: context, viewport }).promise;
-      return canvas.toDataURL('image/jpeg');
+      if (this.canvasAvailable) {
+        // Use canvas if available
+        const page = await pdf.getPage(pageNumber);
+        const viewport = page.getViewport({ scale: 2.0 });
+        const canvas = createCanvas(viewport.width, viewport.height);
+        const context = canvas.getContext('2d');
+
+        await page.render({ canvasContext: context, viewport }).promise;
+        return canvas.toDataURL('image/jpeg');
+      } else {
+        // Alternative: Return a placeholder or basic page info
+        console.warn('Canvas not available. Cannot render PDF page as image.');
+        
+        // Create a simple SVG placeholder with page info
+        const page = await pdf.getPage(pageNumber);
+        const viewport = page.getViewport({ scale: 1.0 });
+        
+        const svg = `
+          <svg width="${viewport.width}" height="${viewport.height}" xmlns="http://www.w3.org/2000/svg">
+            <rect width="${viewport.width}" height="${viewport.height}" fill="#f8f8f8"/>
+            <text x="${viewport.width/2}" y="${viewport.height/2}" text-anchor="middle" font-size="24" fill="#666">
+              Page ${pageNumber} of ${pdf.numPages}
+            </text>
+            <text x="${viewport.width/2}" y="${viewport.height/2 + 40}" text-anchor="middle" font-size="16" fill="#999">
+              PDF rendering requires canvas module
+            </text>
+          </svg>
+        `;
+        
+        const buffer = Buffer.from(svg);
+        return `data:image/svg+xml;base64,${buffer.toString('base64')}`;
+      }
     }
     // CBR page extraction is handled by getPageDataUrlFromTemp
     throw new Error(`Unsupported file type for direct page extraction: ${fileType}`);
