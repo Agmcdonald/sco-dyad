@@ -1,3 +1,21 @@
+/**
+ * Main Application Context (AppContext)
+ * 
+ * This is the central state management hub for the entire application. It orchestrates
+ * state and actions related to the file queue, comic library, user actions, reading lists,
+ * and interactions with backend services (like the Electron main process).
+ * 
+ * By consolidating these concerns here, we provide a single, consistent source of truth
+ * for the rest of the application to consume.
+ * 
+ * It uses a combination of custom hooks to modularize state management for:
+ * - File Queue (`useFileQueue`): Manages files waiting to be processed.
+ * - Comic Library (`useComicLibrary`): Manages the user's collection of comics.
+ * - Action Log (`useActionLog`): Keeps a history of user actions for display and undo functionality.
+ * - Reading List (`useReadingList`): Manages the user's list of comics to read.
+ * - Recently Read (`useRecentlyRead`): Tracks comics that have been recently opened.
+ */
+
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { QueuedFile, Comic, NewComic, UndoPayload } from '@/types';
 import { useElectronDatabaseService } from '@/services/electronDatabaseService';
@@ -22,6 +40,10 @@ interface FileLoadStatus {
   currentFile: string;
 }
 
+/**
+ * Defines the shape of the context provided to the application.
+ * Includes all state and action dispatchers.
+ */
 interface AppContextType {
   files: QueuedFile[];
   addFile: (file: QueuedFile) => void;
@@ -73,6 +95,9 @@ const isMockFile = (filePath: string): boolean => {
   return filePath.startsWith('mock://');
 };
 
+/**
+ * The main provider component that wraps the application and provides the AppContext.
+ */
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { actions, logAction, setActions } = useActionLog();
   const { files, setFiles, addFile, addFiles, removeFile, updateFile } = useFileQueue();
@@ -108,6 +133,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const gcdDbService = useGcdDatabaseService();
   const { addToKnowledgeBase } = useKnowledgeBase();
 
+  /**
+   * Processes an array of file paths, reads their basic info, and adds them to the processing queue.
+   * @param paths - An array of absolute file paths.
+   */
   const addFilesFromPaths = useCallback(async (paths: string[]) => {
     if (paths.length === 0) return;
 
@@ -150,6 +179,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setFileLoadStatus({ isLoading: false, progress: 0, total: 0, currentFile: "" });
   }, [addFiles, isElectron, electronAPI]);
 
+  /**
+   * Adds a processed comic to the library. This involves organizing the file,
+   * extracting the cover, saving to the database, and updating the UI state.
+   * @param comicData - The metadata for the new comic.
+   * @param originalFile - The file from the queue that this comic was created from.
+   */
   const addComic = useCallback(async (comicData: NewComic, originalFile: QueuedFile) => {
     addToKnowledgeBase({
       series: comicData.series,
@@ -246,6 +281,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isElectron, electronAPI, databaseService, settings, logAction, refreshComics, setComics, addToKnowledgeBase]);
 
+  /**
+   * A streamlined version of `addComic` that uses parsed filename data directly,
+   * intended for quick, bulk additions where manual verification is not needed.
+   * @param filesToQuickAdd - An array of files from the queue to be added.
+   */
   const quickAddFiles = useCallback(async (filesToQuickAdd: QueuedFile[]) => {
     let addedCount = 0;
     for (const file of filesToQuickAdd) {
@@ -274,6 +314,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [addComic, removeFile]);
 
+  /**
+   * Triggers the file selection dialog for the "Quick Add" feature.
+   */
   const triggerQuickAdd = useCallback(async () => {
     if (!isElectron || !electronAPI) {
       showError("This feature is only available in the desktop app.");
@@ -301,6 +344,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isElectron, electronAPI, quickAddFiles]);
 
+  /**
+   * Updates an existing comic's metadata in the library. If metadata changes
+   * affect its file path (e.g., series name), it will also relocate the file.
+   * @param updatedComic - The comic object with updated information.
+   */
   const updateComic = useCallback(async (updatedComic: Comic) => {
     const originalComic = comics.find(c => c.id === updatedComic.id);
     if (!originalComic) {
@@ -362,6 +410,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [comics, isElectron, electronAPI, databaseService, settings, logAction, refreshComics, setComics, addToKnowledgeBase]);
 
+  /**
+   * Updates the reading progress for a specific comic.
+   * @param comicId - The ID of the comic to update.
+   * @param lastReadPage - The page number the user was last on.
+   * @param totalPages - The total number of pages in the comic.
+   */
   const updateComicProgress = useCallback(async (comicId: string, lastReadPage: number, totalPages: number) => {
     const comicToUpdate = comics.find(c => c.id === comicId);
     if (!comicToUpdate) return;
@@ -372,6 +426,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     await updateComic(updatedComic);
   }, [comics, updateComic]);
 
+  /**
+   * Updates the rating for a comic and syncs it across the reading list and recently read list.
+   * @param comicId - The ID of the comic to rate.
+   * @param rating - The new rating (0-6).
+   */
   const updateComicRating = useCallback(async (comicId: string, rating: number) => {
     console.log('[APP-CONTEXT] updateComicRating called for comic:', comicId, 'rating:', rating);
     
@@ -398,6 +457,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     console.log('[APP-CONTEXT] Rating update complete');
   }, [comics, updateComic, setReadingList, setRecentlyRead]);
 
+  /**
+   * Removes a comic from the library. Can optionally delete the associated file from disk.
+   * @param id - The ID of the comic to remove.
+   * @param deleteFile - If true, the comic file will be permanently deleted.
+   */
   const removeComic = useCallback(async (id: string, deleteFile: boolean = false) => {
     const comicToRemove = comics.find(c => c.id === id);
     if (!comicToRemove) return;

@@ -30,8 +30,9 @@ class ComicFileHandler {
   }
 
   /**
-   * Initialize unrar-promise for CBR support
-   * Handles dynamic import and gracefully degrades if unrar is not available
+   * Initialize unrar-promise for CBR support.
+   * This is done asynchronously to handle the dynamic import of an ES module.
+   * It gracefully degrades if the 'unrar-promise' package is not available.
    */
   async initUnrar() {
     try {
@@ -47,9 +48,9 @@ class ComicFileHandler {
   }
 
   /**
-   * Recursively walk a directory to find all files
-   * @param dir - Directory to walk
-   * @returns Array of full file paths
+   * Recursively walk a directory to find all files.
+   * @param {string} dir - The directory to walk.
+   * @returns {Promise<string[]>} A promise that resolves to an array of full file paths.
    */
   async _walk(dir) {
     try {
@@ -72,20 +73,28 @@ class ComicFileHandler {
     }
   }
 
-  // Helper to check if a file is a supported comic format
+  /**
+   * Checks if a file is a supported comic format.
+   * @param {string} filePath - The path to the file.
+   * @returns {boolean} True if the file is a supported comic type.
+   */
   isComicFile(filePath) {
     return this.supportedExtensions.includes(path.extname(filePath).toLowerCase());
   }
 
-  // Helper to check if a file is an image
+  /**
+   * Checks if a file is a supported image format.
+   * @param {string} filePath - The path to the file.
+   * @returns {boolean} True if the file is an image.
+   */
   isImageFile(filePath) {
     return this.imageExtensions.includes(path.extname(filePath).toLowerCase());
   }
 
   /**
-   * Scan a folder for comic files
-   * @param folderPath - Path to the folder to scan
-   * @returns Array of comic file information objects
+   * Scans a folder for comic files.
+   * @param {string} folderPath - The path to the folder to scan.
+   * @returns {Promise<object[]>} A promise that resolves to an array of comic file information objects.
    */
   async scanFolder(folderPath) {
     try {
@@ -116,7 +125,11 @@ class ComicFileHandler {
     }
   }
 
-  // Get file type from extension
+  /**
+   * Gets the file type from its extension.
+   * @param {string} filePath - The path to the file.
+   * @returns {string} The file type ('cbr', 'cbz', 'pdf', 'unknown').
+   */
   getFileType(filePath) {
     const ext = path.extname(filePath).toLowerCase();
     switch (ext) {
@@ -128,9 +141,9 @@ class ComicFileHandler {
   }
 
   /**
-   * Read comic file information (metadata)
-   * @param filePath - Path to the comic file
-   * @returns File information object, including page count
+   * Reads comic file information, including page count.
+   * @param {string} filePath - The path to the comic file.
+   * @returns {Promise<object>} A promise that resolves to a file information object.
    */
   async readComicFile(filePath) {
     try {
@@ -158,9 +171,9 @@ class ComicFileHandler {
   }
 
   /**
-   * Get page count from a comic archive
-   * @param filePath - Path to the comic file
-   * @returns Number of image pages in the archive
+   * Gets the page count from a comic archive.
+   * @param {string} filePath - The path to the comic file.
+   * @returns {Promise<number>} A promise that resolves to the number of image pages.
    */
   async getPageCount(filePath) {
     const fileType = this.getFileType(filePath);
@@ -193,10 +206,10 @@ class ComicFileHandler {
   }
 
   /**
-   * Extract cover image from a comic file to a specified directory
-   * @param filePath - Path to the comic file
-   * @param outputDir - Directory to save the cover image
-   * @returns Path to the extracted cover image
+   * Extracts the cover image from a comic file to a specified directory.
+   * @param {string} filePath - The path to the comic file.
+   * @param {string} outputDir - The directory to save the cover image.
+   * @returns {Promise<string>} A promise that resolves to the path of the extracted cover image.
    */
   async extractCover(filePath, outputDir) {
     const ext = path.extname(filePath).toLowerCase();
@@ -211,10 +224,10 @@ class ComicFileHandler {
   }
 
   /**
-   * Extract cover to the public covers directory and return a verified path
-   * @param filePath - Path to the comic file
-   * @param publicCoversDir - The application's public covers directory
-   * @returns Absolute path to the verified cover image
+   * Extracts a cover, saves it to the public covers directory, and returns a verified path.
+   * @param {string} filePath - The path to the comic file.
+   * @param {string} publicCoversDir - The application's public covers directory.
+   * @returns {Promise<string>} A promise that resolves to the absolute path of the verified cover image.
    */
   async extractCoverToPublic(filePath, publicCoversDir) {
     let tempDir = null;
@@ -238,10 +251,10 @@ class ComicFileHandler {
   }
 
   /**
-   * Extract cover from a CBZ (ZIP) archive
-   * @param filePath - Path to the CBZ file
-   * @param outputDir - Directory to save the cover
-   * @returns Path to the extracted cover
+   * Extracts the cover from a CBZ (ZIP) archive.
+   * @param {string} filePath - The path to the CBZ file.
+   * @param {string} outputDir - The directory to save the cover.
+   * @returns {Promise<string>} A promise that resolves to the path of the extracted cover.
    */
   async extractCoverFromZipArchive(filePath, outputDir) {
     let zip;
@@ -270,10 +283,10 @@ class ComicFileHandler {
   }
 
   /**
-   * Extract cover from a CBR (RAR) archive
-   * @param filePath - Path to the CBR file
-   * @param outputDir - Directory to save the cover
-   * @returns Path to the extracted cover
+   * Extracts the cover from a CBR (RAR) archive.
+   * @param {string} filePath - The path to the CBR file.
+   * @param {string} outputDir - The directory to save the cover.
+   * @returns {Promise<string>} A promise that resolves to the path of the extracted cover.
    */
   async extractCoverFromRarArchive(filePath, outputDir) {
     if (!this.unrarAvailable) throw new Error('RAR support is not available');
@@ -306,11 +319,11 @@ class ComicFileHandler {
   }
 
   /**
-   * Organize a file (move or copy) to the target location
-   * @param sourcePath - Original file path
-   * @param targetPath - Destination file path
-   * @param keepOriginal - If true, copy the file; otherwise, move it
-   * @returns True on success
+   * Organizes a file by moving or copying it to the target location.
+   * @param {string} sourcePath - The original file path.
+   * @param {string} targetPath - The destination file path.
+   * @param {boolean} [keepOriginal=false] - If true, copy the file; otherwise, move it.
+   * @returns {Promise<boolean>} A promise that resolves to true on success.
    */
   async organizeFile(sourcePath, targetPath, keepOriginal = false) {
     try {
@@ -333,9 +346,9 @@ class ComicFileHandler {
   }
 
   /**
-   * Get a list of page filenames from a comic archive
-   * @param filePath - Path to the comic file
-   * @returns Array of page filenames
+   * Gets a list of page filenames from a comic archive.
+   * @param {string} filePath - The path to the comic file.
+   * @returns {Promise<string[]>} A promise that resolves to an array of page filenames.
    */
   async getPages(filePath) {
     const ext = path.extname(filePath).toLowerCase();
@@ -360,10 +373,10 @@ class ComicFileHandler {
   }
 
   /**
-   * Extract a specific page from a comic archive as a data URL
-   * @param filePath - Path to the comic file
-   * @param pageName - Filename of the page to extract
-   * @returns Data URL of the page image
+   * Extracts a specific page from a comic archive as a data URL.
+   * @param {string} filePath - The path to the comic file.
+   * @param {string} pageName - The filename of the page to extract.
+   * @returns {Promise<string>} A promise that resolves to the data URL of the page image.
    */
   async extractPageAsDataUrl(filePath, pageName) {
     const fileType = this.getFileType(filePath);
@@ -381,7 +394,11 @@ class ComicFileHandler {
     throw new Error(`Unsupported file type for direct page extraction: ${fileType}`);
   }
 
-  // Get MIME type from filename
+  /**
+   * Gets the MIME type from a filename.
+   * @param {string} fileName - The filename.
+   * @returns {string} The corresponding MIME type.
+   */
   getMimeType(fileName) {
     const ext = path.extname(fileName).toLowerCase();
     switch(ext) {
@@ -395,9 +412,9 @@ class ComicFileHandler {
   }
 
   /**
-   * Prepare a CBR file for reading by extracting it to a temporary directory
-   * @param filePath - Path to the CBR file
-   * @returns Object with temp directory path and list of page filenames
+   * Prepares a CBR file for reading by extracting it to a temporary directory.
+   * @param {string} filePath - The path to the CBR file.
+   * @returns {Promise<object>} A promise that resolves to an object with the temp directory path and a list of page filenames.
    */
   async prepareCbrForReading(filePath) {
     if (!this.unrarAvailable) throw new Error('RAR support is not available');
@@ -422,10 +439,10 @@ class ComicFileHandler {
   }
 
   /**
-   * Get a page's data URL from a temporary extraction directory (for CBRs)
-   * @param tempDir - Path to the temporary directory
-   * @param pageName - Filename of the page
-   * @returns Data URL of the page image
+   * Gets a page's data URL from a temporary extraction directory (for CBRs).
+   * @param {string} tempDir - The path to the temporary directory.
+   * @param {string} pageName - The filename of the page.
+   * @returns {Promise<string>} A promise that resolves to the data URL of the page image.
    */
   async getPageDataUrlFromTemp(tempDir, pageName) {
     const safePagePath = path.join(tempDir, pageName);
@@ -436,8 +453,8 @@ class ComicFileHandler {
   }
 
   /**
-   * Clean up a temporary directory
-   * @param tempDir - Path to the directory to clean up
+   * Cleans up a temporary directory.
+   * @param {string} tempDir - The path to the directory to clean up.
    */
   async cleanupTempDir(tempDir) {
     if (tempDir && tempDir.startsWith(os.tmpdir())) {
