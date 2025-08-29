@@ -48,30 +48,6 @@ const HelpManualModal = ({ isOpen, onClose }: HelpManualModalProps) => {
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="shortcuts">
-              <AccordionTrigger>Keyboard Shortcuts</AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold">Comic Reader</h4>
-                    <ul className="list-disc pl-5 space-y-1 text-sm mt-2">
-                      <li><strong>Right Arrow / Spacebar:</strong> Go to the next page.</li>
-                      <li><strong>Left Arrow:</strong> Go to the previous page.</li>
-                      <li><strong>R key:</strong> Mark the current comic as Read/Unread.</li>
-                      <li><strong>Escape key:</strong> Close the comic reader.</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">Knowledge Base Editor</h4>
-                    <ul className="list-disc pl-5 space-y-1 text-sm mt-2">
-                      <li><strong>N / J key:</strong> Jump to the next search result in the list.</li>
-                      <li><strong>P / K key:</strong> Jump to the previous search result in the list.</li>
-                    </ul>
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
             <AccordionItem value="library">
               <AccordionTrigger>Library</AccordionTrigger>
               <AccordionContent>

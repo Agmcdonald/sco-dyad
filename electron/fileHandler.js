@@ -22,14 +22,34 @@ const os = require('os');
 
 class ComicFileHandler {
   constructor() {
-    this.supportedExtensions = ['.cbz'];
+    this.supportedExtensions = ['.cbr', '.cbz'];
     this.imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+    this.unrarAvailable = false;
+    this.unrar = null;
+    this.initUnrar();
   }
 
   /**
-   * Recursively walk a directory to find all files.
-   * @param {string} dir - The directory to walk.
-   * @returns {Promise<string[]>} A promise that resolves to an array of full file paths.
+   * Initialize unrar-promise for CBR support
+   * Handles dynamic import and gracefully degrades if unrar is not available
+   */
+  async initUnrar() {
+    try {
+      const unrarModule = await import('unrar-promise');
+      this.unrar = unrarModule.unrar;
+      this.unrarAvailable = true;
+      console.log('RAR support initialized successfully');
+    } catch (error) {
+      console.warn('RAR support not available:', error.message);
+      this.unrarAvailable = false;
+      this.unrar = null;
+    }
+  }
+
+  /**
+   * Recursively walk a directory to find all files
+   * @param dir - Directory to walk
+   * @returns Array of full file paths
    */
   async _walk(dir) {
     try {
@@ -52,28 +72,20 @@ class ComicFileHandler {
     }
   }
 
-  /**
-   * Checks if a file is a supported comic format.
-   * @param {string} filePath - The path to the file.
-   * @returns {boolean} True if the file is a supported comic type.
-   */
+  // Helper to check if a file is a supported comic format
   isComicFile(filePath) {
     return this.supportedExtensions.includes(path.extname(filePath).toLowerCase());
   }
 
-  /**
-   * Checks if a file is a supported image format.
-   * @param {string} filePath - The path to the file.
-   * @returns {boolean} True if the file is an image.
-   */
+  // Helper to check if a file is an image
   isImageFile(filePath) {
     return this.imageExtensions.includes(path.extname(filePath).toLowerCase());
   }
 
   /**
-   * Scans a folder for comic files.
-   * @param {string} folderPath - The path to the folder to scan.
-   * @returns {Promise<object[]>} A promise that resolves to an array of comic file information objects.
+   * Scan a folder for comic files
+   * @param folderPath - Path to the folder to scan
+   * @returns Array of comic file information objects
    */
   async scanFolder(folderPath) {
     try {
@@ -104,14 +116,11 @@ class ComicFileHandler {
     }
   }
 
-  /**
-   * Gets the file type from its extension.
-   * @param {string} filePath - The path to the file.
-   * @returns {string} The file type ('cbr', 'cbz', 'pdf', 'unknown').
-   */
+  // Get file type from extension
   getFileType(filePath) {
     const ext = path.extname(filePath).toLowerCase();
     switch (ext) {
+      case '.cbr': return 'cbr';
       case '.cbz': return 'cbz';
       case '.pdf': return 'pdf';
       default: return 'unknown';
@@ -119,9 +128,9 @@ class ComicFileHandler {
   }
 
   /**
-   * Reads comic file information, including page count.
-   * @param {string} filePath - The path to the comic file.
-   * @returns {Promise<object>} A promise that resolves to a file information object.
+   * Read comic file information (metadata)
+   * @param filePath - Path to the comic file
+   * @returns File information object, including page count
    */
   async readComicFile(filePath) {
     try {
@@ -134,7 +143,7 @@ class ComicFileHandler {
         lastModified: stats.mtime
       };
 
-      if (fileInfo.type === 'cbz') {
+      if (fileInfo.type === 'cbz' || fileInfo.type === 'cbr') {
         try {
           fileInfo.pageCount = await this.getPageCount(filePath);
         } catch (error) {
@@ -149,9 +158,9 @@ class ComicFileHandler {
   }
 
   /**
-   * Gets the page count from a comic archive.
-   * @param {string} filePath - The path to the comic file.
-   * @returns {Promise<number>} A promise that resolves to the number of image pages.
+   * Get page count from a comic archive
+   * @param filePath - Path to the comic file
+   * @returns Number of image pages in the archive
    */
   async getPageCount(filePath) {
     const fileType = this.getFileType(filePath);
@@ -165,20 +174,35 @@ class ComicFileHandler {
       } finally {
         if (zip) await zip.close().catch(() => {});
       }
+    } else if (fileType === 'cbr') {
+      if (!this.unrarAvailable) return 0;
+      let tempDir = null;
+      try {
+        tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-pages-'));
+        await Promise.race([
+          this.unrar(filePath, tempDir),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('CBR page count timeout')), 15000))
+        ]);
+        const allFiles = await this._walk(tempDir);
+        return allFiles.filter(file => this.isImageFile(file)).length;
+      } finally {
+        if (tempDir) await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      }
     }
     return 0;
   }
 
   /**
-   * Extracts the cover image from a comic file to a specified directory.
-   * @param {string} filePath - The path to the comic file.
-   * @param {string} outputDir - The directory to save the cover image.
-   * @returns {Promise<string>} A promise that resolves to the path of the extracted cover image.
+   * Extract cover image from a comic file to a specified directory
+   * @param filePath - Path to the comic file
+   * @param outputDir - Directory to save the cover image
+   * @returns Path to the extracted cover image
    */
   async extractCover(filePath, outputDir) {
     const ext = path.extname(filePath).toLowerCase();
     try {
       if (ext === '.cbz') return await this.extractCoverFromZipArchive(filePath, outputDir);
+      if (ext === '.cbr') return await this.extractCoverFromRarArchive(filePath, outputDir);
       throw new Error(`Unsupported file type: ${ext}`);
     } catch (error) {
       console.error(`Error extracting cover:`, error);
@@ -187,10 +211,10 @@ class ComicFileHandler {
   }
 
   /**
-   * Extracts a cover, saves it to the public covers directory, and returns a verified path.
-   * @param {string} filePath - The path to the comic file.
-   * @param {string} publicCoversDir - The application's public covers directory.
-   * @returns {Promise<string>} A promise that resolves to the absolute path of the verified cover image.
+   * Extract cover to the public covers directory and return a verified path
+   * @param filePath - Path to the comic file
+   * @param publicCoversDir - The application's public covers directory
+   * @returns Absolute path to the verified cover image
    */
   async extractCoverToPublic(filePath, publicCoversDir) {
     let tempDir = null;
@@ -214,10 +238,10 @@ class ComicFileHandler {
   }
 
   /**
-   * Extracts the cover from a CBZ (ZIP) archive.
-   * @param {string} filePath - The path to the CBZ file.
-   * @param {string} outputDir - The directory to save the cover.
-   * @returns {Promise<string>} A promise that resolves to the path of the extracted cover.
+   * Extract cover from a CBZ (ZIP) archive
+   * @param filePath - Path to the CBZ file
+   * @param outputDir - Directory to save the cover
+   * @returns Path to the extracted cover
    */
   async extractCoverFromZipArchive(filePath, outputDir) {
     let zip;
@@ -246,11 +270,47 @@ class ComicFileHandler {
   }
 
   /**
-   * Organizes a file by moving or copying it to the target location.
-   * @param {string} sourcePath - The original file path.
-   * @param {string} targetPath - The destination file path.
-   * @param {boolean} [keepOriginal=false] - If true, copy the file; otherwise, move it.
-   * @returns {Promise<boolean>} A promise that resolves to true on success.
+   * Extract cover from a CBR (RAR) archive
+   * @param filePath - Path to the CBR file
+   * @param outputDir - Directory to save the cover
+   * @returns Path to the extracted cover
+   */
+  async extractCoverFromRarArchive(filePath, outputDir) {
+    if (!this.unrarAvailable) throw new Error('RAR support is not available');
+    let tempDir = null;
+    try {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-cover-'));
+      await Promise.race([
+        this.unrar(filePath, tempDir),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR cover extraction timeout')), 30000))
+      ]);
+      
+      const allFiles = await this._walk(tempDir);
+      const imageFiles = allFiles
+        .filter(file => this.isImageFile(file))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+      if (imageFiles.length === 0) throw new Error('No images found in CBR archive');
+
+      const outputPath = path.join(outputDir, `${path.basename(filePath, '.cbr')}_cover.jpg`);
+      await fs.mkdir(outputDir, { recursive: true });
+      await sharp(imageFiles[0])
+        .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toFile(outputPath);
+        
+      return outputPath;
+    } finally {
+      if (tempDir) await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+
+  /**
+   * Organize a file (move or copy) to the target location
+   * @param sourcePath - Original file path
+   * @param targetPath - Destination file path
+   * @param keepOriginal - If true, copy the file; otherwise, move it
+   * @returns True on success
    */
   async organizeFile(sourcePath, targetPath, keepOriginal = false) {
     try {
@@ -273,9 +333,9 @@ class ComicFileHandler {
   }
 
   /**
-   * Gets a list of page filenames from a comic archive.
-   * @param {string} filePath - The path to the comic file.
-   * @returns {Promise<string[]>} A promise that resolves to an array of page filenames.
+   * Get a list of page filenames from a comic archive
+   * @param filePath - Path to the comic file
+   * @returns Array of page filenames
    */
   async getPages(filePath) {
     const ext = path.extname(filePath).toLowerCase();
@@ -292,14 +352,18 @@ class ComicFileHandler {
         if (zip) await zip.close().catch(() => {});
       }
     }
+    if (ext === '.cbr') {
+      // CBR reading for pages is handled by prepareCbrForReading
+      throw new Error('Use prepareCbrForReading for CBR page lists');
+    }
     throw new Error(`Unsupported file type for page extraction: ${ext}`);
   }
 
   /**
-   * Extracts a specific page from a comic archive as a data URL.
-   * @param {string} filePath - The path to the comic file.
-   * @param {string} pageName - The filename of the page to extract.
-   * @returns {Promise<string>} A promise that resolves to the data URL of the page image.
+   * Extract a specific page from a comic archive as a data URL
+   * @param filePath - Path to the comic file
+   * @param pageName - Filename of the page to extract
+   * @returns Data URL of the page image
    */
   async extractPageAsDataUrl(filePath, pageName) {
     const fileType = this.getFileType(filePath);
@@ -313,14 +377,11 @@ class ComicFileHandler {
         if (zip) await zip.close().catch(() => {});
       }
     }
+    // CBR page extraction is handled by getPageDataUrlFromTemp
     throw new Error(`Unsupported file type for direct page extraction: ${fileType}`);
   }
 
-  /**
-   * Gets the MIME type from a filename.
-   * @param {string} fileName - The filename.
-   * @returns {string} The corresponding MIME type.
-   */
+  // Get MIME type from filename
   getMimeType(fileName) {
     const ext = path.extname(fileName).toLowerCase();
     switch(ext) {
@@ -330,6 +391,59 @@ class ComicFileHandler {
       case '.webp': return 'image/webp';
       case '.bmp': return 'image/bmp';
       default: return 'image/jpeg';
+    }
+  }
+
+  /**
+   * Prepare a CBR file for reading by extracting it to a temporary directory
+   * @param filePath - Path to the CBR file
+   * @returns Object with temp directory path and list of page filenames
+   */
+  async prepareCbrForReading(filePath) {
+    if (!this.unrarAvailable) throw new Error('RAR support is not available');
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-reader-'));
+    try {
+      await Promise.race([
+        this.unrar(filePath, tempDir),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR extraction timeout')), 60000))
+      ]);
+      const allFiles = await this._walk(tempDir);
+      const imageFiles = allFiles
+        .filter(file => this.isImageFile(file))
+        .map(file => path.relative(tempDir, file).replace(/\\/g, '/'))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+      
+      if (imageFiles.length === 0) throw new Error('No image files found in CBR archive');
+      return { tempDir, pages: imageFiles };
+    } catch (error) {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      throw error;
+    }
+  }
+
+  /**
+   * Get a page's data URL from a temporary extraction directory (for CBRs)
+   * @param tempDir - Path to the temporary directory
+   * @param pageName - Filename of the page
+   * @returns Data URL of the page image
+   */
+  async getPageDataUrlFromTemp(tempDir, pageName) {
+    const safePagePath = path.join(tempDir, pageName);
+    if (!safePagePath.startsWith(tempDir)) throw new Error('Invalid page path');
+    
+    const pageData = await fs.readFile(safePagePath);
+    return `data:${this.getMimeType(pageName)};base64,${pageData.toString('base64')}`;
+  }
+
+  /**
+   * Clean up a temporary directory
+   * @param tempDir - Path to the directory to clean up
+   */
+  async cleanupTempDir(tempDir) {
+    if (tempDir && tempDir.startsWith(os.tmpdir())) {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(e => 
+        console.error(`Failed to clean up temp dir ${tempDir}`, e)
+      );
     }
   }
 }

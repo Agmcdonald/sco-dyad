@@ -37,7 +37,6 @@ const formSchema = z.object({
   title: z.string().optional(),
   summary: z.string().optional(),
   creators: z.array(creatorSchema).optional(),
-  genre: z.string().optional(),
 });
 
 interface EditComicModalProps {
@@ -61,7 +60,6 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
       title: comic.title || "",
       summary: comic.summary || "",
       creators: comic.creators || [],
-      genre: comic.genre || "",
     },
   });
 
@@ -81,7 +79,6 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
         title: comic.title || "",
         summary: comic.summary || "",
         creators: comic.creators || [],
-        genre: comic.genre || "",
       });
     }
   }, [comic.id, form.reset]);
@@ -205,41 +202,26 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                     )}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="publisher"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Publisher</FormLabel>
-                        <FormControl>
-                          <>
-                            <Input {...field} list="publisher-options-comic" placeholder="Type or select publisher..." />
-                            <datalist id="publisher-options-comic">
-                              {publisherOptions.map((option) => (
-                                <option key={option} value={option} />
-                              ))}
-                            </datalist>
-                          </>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="genre"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Genre</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="e.g., Superhero" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="publisher"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Publisher</FormLabel>
+                      <FormControl>
+                        <>
+                          <Input {...field} list="publisher-options-comic" placeholder="Type or select publisher..." />
+                          <datalist id="publisher-options-comic">
+                            {publisherOptions.map((option) => (
+                              <option key={option} value={option} />
+                            ))}
+                          </datalist>
+                        </>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="summary"

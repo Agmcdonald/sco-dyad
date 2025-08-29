@@ -5,31 +5,22 @@ import { Comic } from "@/types";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { getCoverUrl } from "@/lib/cover";
-import { BookOpen } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface ComicCardProps {
   comic: Comic;
   onDoubleClick?: (seriesName: string) => void;
   onToggleInspector?: () => void;
-  selectionMode?: boolean;
-  onToggleSelection?: (comicId: string) => void;
-  onRead?: (comic: Comic) => void;
 }
 
-const ComicCard = ({ comic, onDoubleClick, onToggleInspector, selectionMode, onToggleSelection, onRead }: ComicCardProps) => {
+const ComicCard = ({ comic, onDoubleClick, onToggleInspector }: ComicCardProps) => {
   const { selectedItem, setSelectedItem } = useSelection();
   const [imageError, setImageError] = useState(false);
 
-  const isSelectedForInspector = selectedItem?.type === 'comic' && selectedItem.id === comic.id;
+  const isSelected = selectedItem?.type === 'comic' && selectedItem.id === comic.id;
 
   const handleClick = () => {
-    if (selectionMode && onToggleSelection) {
-      onToggleSelection(comic.id);
-    } else {
-      // Single click always selects the comic for inspector
-      setSelectedItem({ ...comic, type: 'comic' });
-    }
+    // Single click always selects the comic
+    setSelectedItem({ ...comic, type: 'comic' });
   };
 
   const handleDoubleClick = () => {
@@ -53,20 +44,13 @@ const ComicCard = ({ comic, onDoubleClick, onToggleInspector, selectionMode, onT
     console.log('[COMIC-CARD] Image loaded successfully for comic:', comic.series, 'URL:', comic.coverUrl);
   };
 
-  const handleReadClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent the card's onClick from firing and changing selection
-    if (onRead) {
-      onRead(comic);
-    }
-  };
-
   const coverSrc = getCoverUrl(comic.coverUrl);
 
   return (
     <Card 
       className={cn(
-        "overflow-hidden transition-all duration-200 hover:scale-105 hover:shadow-lg cursor-pointer group relative",
-        isSelectedForInspector && !selectionMode && "ring-2 ring-primary shadow-lg scale-105"
+        "overflow-hidden transition-all duration-200 hover:scale-105 hover:shadow-lg cursor-pointer",
+        isSelected && "ring-2 ring-primary shadow-lg scale-105"
       )}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
@@ -88,17 +72,6 @@ const ComicCard = ({ comic, onDoubleClick, onToggleInspector, selectionMode, onT
             </div>
           </div>
         )}
-        {/* Hover Overlay with Read Button */}
-        <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <Button
-            variant="secondary"
-            className="h-10 w-24"
-            onClick={handleReadClick}
-          >
-            <BookOpen className="h-4 w-4 mr-2" />
-            Read
-          </Button>
-        </div>
       </AspectRatio>
       <CardFooter className="p-3">
         <div>

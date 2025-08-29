@@ -22,17 +22,13 @@ import { fetchComicMetadata, fetchMarvelMetadata } from "./scraper";
 import { GcdDatabaseService } from "@/services/gcdDatabaseService";
 
 /**
- * @interface ProcessingResult
- * @description Structure returned by the smart processor containing detected metadata and confidence.
- * @property {boolean} success - Whether processing succeeded.
- * @property {Confidence} confidence - How confident we are about the results ('High', 'Medium', 'Low').
- * @property {object} [data] - Detected metadata (if successful).
- * @property {string} [error] - Error message (if failed).
+ * Processing Result Interface
+ * Structure returned by the smart processor containing detected metadata and confidence
  */
 export interface ProcessingResult {
-  success: boolean;
-  confidence: Confidence;
-  data?: {
+  success: boolean;           // Whether processing succeeded
+  confidence: Confidence;     // How confident we are about the results
+  data?: {                   // Detected metadata (if successful)
     series: string;
     issue: string;
     year: number;
@@ -41,29 +37,38 @@ export interface ProcessingResult {
     summary: string;
     creators?: Creator[];
     confidence: 'High' | 'Medium' | 'Low';
-    source: 'knowledge' | 'api';
-    title?: string;
-    publicationDate?: string;
-    genre?: string;
-    characters?: string;
-    price?: string;
-    barcode?: string;
-    languageCode?: string;
-    countryCode?: string;
+    source: 'knowledge' | 'api';  // Where the data came from
+    
+    // Extended metadata fields
+    title?: string;           // Specific issue title
+    publicationDate?: string; // Exact publication date
+    genre?: string;           // Genre classification
+    characters?: string;      // Featured characters
+    price?: string;           // Cover price
+    barcode?: string;         // UPC barcode
+    languageCode?: string;    // Language code
+    countryCode?: string;     // Country code
   };
-  error?: string;
+  error?: string;            // Error message (if failed)
 }
 
 /**
- * Processes a single comic file to extract and enrich its metadata.
- * It follows a multi-stage strategy to get the most accurate data possible.
+ * Process Comic File
+ * Main processing function that attempts to extract and enrich metadata for a comic file
  * 
- * @param {QueuedFile} file - The file from the queue to process.
- * @param {string} comicVineApiKey - API key for the Comic Vine service.
- * @param {string} marvelPublicKey - Public API key for the Marvel service.
- * @param {string} marvelPrivateKey - Private API key for the Marvel service.
- * @param {GcdDatabaseService | null} [gcdDbService] - An optional instance of the local GCD database service.
- * @returns {Promise<ProcessingResult>} A promise that resolves with the processing result.
+ * Processing Strategy:
+ * 1. Parse filename to extract basic information
+ * 2. Try GCD database lookup (highest quality, offline)
+ * 3. Try Marvel API (for Marvel comics)
+ * 4. Try Comic Vine API (for other publishers)
+ * 5. Fall back to parsed data only
+ * 
+ * @param file - QueuedFile to process
+ * @param comicVineApiKey - Comic Vine API key
+ * @param marvelPublicKey - Marvel API public key
+ * @param marvelPrivateKey - Marvel API private key
+ * @param gcdDbService - Grand Comics Database service (optional)
+ * @returns ProcessingResult with detected metadata and confidence
  */
 export const processComicFile = async (
   file: QueuedFile, 
@@ -77,11 +82,13 @@ export const processComicFile = async (
     const parsed = parseFilename(file.path);
     console.log(`[SMART-PROCESSOR] Parsed data:`, parsed);
     
+    // If no issue number detected, assume it's issue #1
     if (parsed.series && !parsed.issue) {
       parsed.issue = '1';
       console.log(`[SMART-PROCESSOR] No issue found, assuming issue #1 for: ${file.name}`);
     }
     
+    // Require at minimum a series name and issue number
     if (!parsed.series || !parsed.issue) {
       console.log(`[SMART-PROCESSOR] Failed to parse series or issue from: ${file.name}`);
       return {
@@ -91,7 +98,8 @@ export const processComicFile = async (
       };
     }
 
-    // Strategy 1: Attempt GCD Database Search First (Highest Quality)
+    // 1. Attempt GCD Database Search First (Highest Quality)
+    // The Grand Comics Database provides the most comprehensive and accurate data
     if (gcdDbService && parsed.series) {
       console.log(`[SMART-PROCESSOR] Attempting GCD database search for: ${parsed.series}`);
       try {
@@ -137,12 +145,13 @@ export const processComicFile = async (
         }
       } catch (error) {
         console.error(`[SMART-PROCESSOR] GCD database error:`, error);
+        // Continue to other methods if GCD fails
       }
     } else {
       console.log(`[SMART-PROCESSOR] GCD database not available or not connected`);
     }
 
-    // Strategy 2: Attempt Marvel API fetch if it's a Marvel comic
+    // 2. Attempt Marvel API fetch if it's a Marvel comic
     if (parsed.publisher?.toLowerCase() === 'marvel comics' && marvelPublicKey && marvelPrivateKey) {
       console.log(`[SMART-PROCESSOR] Attempting Marvel API search`);
       const marvelResult = await fetchMarvelMetadata(parsed, marvelPublicKey, marvelPrivateKey);
@@ -168,7 +177,7 @@ export const processComicFile = async (
       }
     }
 
-    // Strategy 3: Attempt Comic Vine API fetch for other publishers
+    // 3. Attempt Comic Vine API fetch for other publishers
     if (comicVineApiKey) {
       console.log(`[SMART-PROCESSOR] Attempting Comic Vine API search`);
       const apiResult = await fetchComicMetadata(parsed, comicVineApiKey);
@@ -192,7 +201,7 @@ export const processComicFile = async (
       }
     }
 
-    // Strategy 4: Fallback to parsed data only
+    // 4. Fallback to parsed data only
     if (parsed.year) {
       console.log(`[SMART-PROCESSOR] Using parsed data as fallback`);
       return {
@@ -212,7 +221,7 @@ export const processComicFile = async (
       };
     }
 
-    // Strategy 5: Failure
+    // 5. Failure
     console.log(`[SMART-PROCESSOR] Processing failed - insufficient information`);
     return {
       success: false,
@@ -231,14 +240,16 @@ export const processComicFile = async (
 };
 
 /**
- * Processes an array of files sequentially with progress reporting.
- * @param {QueuedFile[]} files - Array of files to process.
- * @param {string} comicVineApiKey - Comic Vine API key.
- * @param {string} marvelPublicKey - Marvel API public key.
- * @param {string} marvelPrivateKey - Marvel API private key.
- * @param {GcdDatabaseService | null} gcdDbService - GCD database service.
- * @param {function} [onProgress] - Callback for progress updates (processed, total, currentFile).
- * @returns {Promise<Map<string, ProcessingResult>>} A map of file IDs to their processing results.
+ * Batch Process Multiple Files
+ * Processes an array of files sequentially with progress reporting
+ * 
+ * @param files - Array of QueuedFile to process
+ * @param comicVineApiKey - Comic Vine API key
+ * @param marvelPublicKey - Marvel API public key
+ * @param marvelPrivateKey - Marvel API private key
+ * @param gcdDbService - GCD database service
+ * @param onProgress - Callback function for progress updates
+ * @returns A map of file IDs to their processing results
  */
 export const batchProcessFiles = async (
   files: QueuedFile[],
@@ -257,6 +268,7 @@ export const batchProcessFiles = async (
     const result = await processComicFile(file, comicVineApiKey, marvelPublicKey, marvelPrivateKey, gcdDbService);
     results.set(file.id, result);
     
+    // Small delay to prevent UI blocking and API rate limiting
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   
@@ -265,9 +277,11 @@ export const batchProcessFiles = async (
 };
 
 /**
- * Calculates statistics from a batch processing result.
- * @param {Map<string, ProcessingResult>} results - Map of file IDs to processing results.
- * @returns {object} An object with total, successful, failed, and confidence counts.
+ * Get Processing Statistics
+ * Calculates statistics from a batch processing result
+ * 
+ * @param results - Map of file IDs to processing results
+ * @returns An object with total, successful, failed, and confidence counts
  */
 export const getProcessingStats = (results: Map<string, ProcessingResult>) => {
   const stats = {

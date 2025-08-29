@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,11 +20,8 @@ import { Search, Grid3X3, List, ZoomIn, ArrowLeft, Building } from "lucide-react
 import LibraryGrid from "@/components/LibraryGrid";
 import SeriesView from "@/components/SeriesView";
 import PublisherView from "@/components/PublisherView";
-import ComicReader from "@/components/ComicReader";
 import { useAppContext } from "@/context/AppContext";
-import { useLibraryContext } from "@/context/LibraryContext";
 import useLocalStorage from "@/hooks/useLocalStorage";
-import useSessionStorage from "@/hooks/useSessionStorage";
 import { Comic, LibraryViewMode } from "@/types";
 import { RATING_EMOJIS } from "@/lib/ratings";
 
@@ -34,19 +31,14 @@ interface LibraryProps {
 
 const Library = ({ onToggleInspector }: LibraryProps) => {
   const { comics } = useAppContext();
-  const { setSortedComics } = useLibraryContext();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortOption, setSortOption] = useLocalStorage("library-sort-option", "issue-asc");
-  const [secondarySort, setSecondarySort] = useLocalStorage("library-secondary-sort", "series-asc");
-  const [viewMode, setViewMode] = useLocalStorage<LibraryViewMode>("library-view-mode", "grid");
+  const [sortOption, setSortOption] = useState("issue-asc");
+  const [secondarySort, setSecondarySort] = useState("series-asc");
+  const [viewMode, setViewMode] = useState<LibraryViewMode>("grid");
   const [coverSize, setCoverSize] = useLocalStorage("library-cover-size", 3);
   const [isDrilledDown, setIsDrilledDown] = useState(false);
-  const [ratingFilter, setRatingFilter] = useLocalStorage("library-rating-filter", "all");
-  const [readingComic, setReadingComic] = useState<Comic | null>(null);
-  
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [scrollPosition, setScrollPosition] = useSessionStorage('library-scroll-position', 0);
+  const [ratingFilter, setRatingFilter] = useState<string>("all");
 
   // Handle search from sidebar
   useEffect(() => {
@@ -56,46 +48,6 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
-
-  // Restore scroll position on mount
-  useEffect(() => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = scrollPosition;
-    }
-  }, []);
-
-  const resetScrollPosition = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 0;
-    }
-    setScrollPosition(0);
-  };
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    setIsDrilledDown(false);
-    resetScrollPosition();
-  };
-
-  const handleSortChange = (value: string) => {
-    setSortOption(value);
-    setIsDrilledDown(false);
-    resetScrollPosition();
-  };
-
-  const handleViewModeChange = (mode: LibraryViewMode) => {
-    setViewMode(mode);
-    resetScrollPosition();
-  };
-
-  const handleRatingFilterChange = (value: string) => {
-    setRatingFilter(value);
-    resetScrollPosition();
-  };
-
-  const handleReadComic = (comic: Comic) => {
-    setReadingComic(comic);
-  };
 
   const filteredComics = useMemo(() => {
     let filtered = comics.filter((comic) => {
@@ -135,61 +87,93 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
     return filtered;
   }, [comics, searchTerm, ratingFilter]);
 
-  const sortedComicsForContext = useMemo(() => {
-    const comicsToSort = [...filteredComics];
-    return comicsToSort.sort((a, b) => {
-      let primaryCompare = 0;
-      switch (sortOption) {
-        case "issue-asc": primaryCompare = a.series.localeCompare(b.series) || parseInt(a.issue) - parseInt(b.issue); break;
-        case "issue-desc": primaryCompare = a.series.localeCompare(b.series) || parseInt(b.issue) - parseInt(a.issue); break;
-        case "publisher-asc": primaryCompare = a.publisher.localeCompare(b.publisher); break;
-        case "publisher-desc": primaryCompare = b.publisher.localeCompare(a.publisher); break;
-        case "year-desc": primaryCompare = b.year - a.year; break;
-        case "year-asc": primaryCompare = a.year - b.year; break;
-        case "series-asc": primaryCompare = a.series.localeCompare(b.series); break;
-        case "series-desc": primaryCompare = b.series.localeCompare(a.series); break;
-        default: return 0;
-      }
-
-      if (primaryCompare === 0) {
-        if (sortOption.startsWith('publisher-')) {
-          switch (secondarySort) {
-            case "series-asc": return a.series.localeCompare(b.series) || parseInt(a.issue) - parseInt(b.issue);
-            case "series-desc": return b.series.localeCompare(a.series) || parseInt(a.issue) - parseInt(b.issue);
-            case "year-asc": return a.year - b.year || parseInt(a.issue) - parseInt(b.issue);
-            case "year-desc": return b.year - a.year || parseInt(a.issue) - parseInt(b.issue);
-            default: return a.series.localeCompare(b.series) || parseInt(a.issue) - parseInt(b.issue);
-          }
-        }
-        return parseInt(a.issue) - parseInt(b.issue);
-      }
-      return primaryCompare;
-    });
-  }, [filteredComics, sortOption, secondarySort]);
-
-  useEffect(() => {
-    setSortedComics(sortedComicsForContext);
-  }, [sortedComicsForContext, setSortedComics]);
-
   const sortedAndGroupedComics = useMemo(() => {
+    const comicsToSort = [...filteredComics];
+
     if (sortOption.startsWith('series-')) {
       const seriesGroups = new Map<string, Comic>();
-      sortedComicsForContext.forEach(comic => {
+      comicsToSort.forEach(comic => {
         const seriesKey = `${comic.series.toLowerCase()}-${comic.publisher.toLowerCase()}`;
         const existing = seriesGroups.get(seriesKey);
         
-        if (!existing || comic.isSeriesCover || (!existing.isSeriesCover && comic.dateAdded > existing.dateAdded)) {
+        // Prioritize series cover, then most recent, then first issue
+        if (!existing) {
           seriesGroups.set(seriesKey, comic);
+        } else {
+          // If this comic is marked as series cover, use it
+          if (comic.isSeriesCover) {
+            seriesGroups.set(seriesKey, comic);
+          }
+          // If existing isn't series cover and this one is newer, use this one
+          else if (!existing.isSeriesCover && comic.dateAdded > existing.dateAdded) {
+            seriesGroups.set(seriesKey, comic);
+          }
         }
       });
       const latestComics = Array.from(seriesGroups.values());
       
-      return sortOption === 'series-asc'
-        ? latestComics.sort((a, b) => a.series.localeCompare(b.series))
-        : latestComics.sort((a, b) => b.series.localeCompare(a.series));
+      if (sortOption === 'series-asc') {
+        return latestComics.sort((a, b) => a.series.localeCompare(b.series));
+      }
+      if (sortOption === 'series-desc') {
+        return latestComics.sort((a, b) => b.series.localeCompare(a.series));
+      }
     }
-    return sortedComicsForContext;
-  }, [sortedComicsForContext, sortOption]);
+
+    return comicsToSort.sort((a, b) => {
+      // Primary sort
+      let primaryCompare = 0;
+      switch (sortOption) {
+        case "issue-asc":
+          primaryCompare = a.series.localeCompare(b.series) || parseInt(a.issue) - parseInt(b.issue);
+          break;
+        case "issue-desc":
+          primaryCompare = a.series.localeCompare(b.series) || parseInt(b.issue) - parseInt(a.issue);
+          break;
+        case "publisher-asc":
+          primaryCompare = a.publisher.localeCompare(b.publisher);
+          break;
+        case "publisher-desc":
+          primaryCompare = b.publisher.localeCompare(a.publisher);
+          break;
+        case "year-desc":
+          primaryCompare = b.year - a.year;
+          break;
+        case "year-asc":
+          primaryCompare = a.year - b.year;
+          break;
+        default:
+          return 0;
+      }
+
+      // If primary sort is equal and we're sorting by publisher, apply secondary sort
+      if (primaryCompare === 0 && sortOption.startsWith('publisher-')) {
+        switch (secondarySort) {
+          case "series-asc":
+            return a.series.localeCompare(b.series);
+          case "series-desc":
+            return b.series.localeCompare(a.series);
+          case "year-asc":
+            return a.year - b.year;
+          case "year-desc":
+            return b.year - a.year;
+          case "issue-count-desc":
+            // Count issues per series for each comic
+            const aIssueCount = comicsToSort.filter(c => c.series === a.series && c.publisher === a.publisher).length;
+            const bIssueCount = comicsToSort.filter(c => c.series === b.series && c.publisher === b.publisher).length;
+            return bIssueCount - aIssueCount;
+          case "issue-count-asc":
+            const aIssueCountAsc = comicsToSort.filter(c => c.series === a.series && c.publisher === a.publisher).length;
+            const bIssueCountAsc = comicsToSort.filter(c => c.series === b.series && c.publisher === b.publisher).length;
+            return aIssueCountAsc - bIssueCountAsc;
+          default:
+            return a.series.localeCompare(b.series);
+        }
+      }
+
+      return primaryCompare;
+    });
+  }, [filteredComics, sortOption, secondarySort]);
 
   const handleSeriesDoubleClick = (seriesName: string) => {
     if (sortOption.startsWith('series-')) {
@@ -231,10 +215,13 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                 placeholder="Search series, issue, publisher, creator..."
                 className="pl-8 w-full md:w-64"
                 value={searchTerm}
-                onChange={handleSearchChange}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setIsDrilledDown(false);
+                }}
               />
             </div>
-            <Select value={ratingFilter} onValueChange={handleRatingFilterChange}>
+            <Select value={ratingFilter} onValueChange={setRatingFilter}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Rating" />
               </SelectTrigger>
@@ -248,7 +235,10 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={sortOption} onValueChange={handleSortChange}>
+            <Select value={sortOption} onValueChange={(value) => {
+              setSortOption(value);
+              setIsDrilledDown(false);
+            }}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
@@ -264,6 +254,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
               </SelectContent>
             </Select>
             
+            {/* Secondary Sort - only show when sorting by publisher */}
             {isPublisherSort && (
               <Select value={secondarySort} onValueChange={setSecondarySort}>
                 <SelectTrigger className="w-[160px]">
@@ -274,6 +265,8 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                   <SelectItem value="series-desc">Series (Z-A)</SelectItem>
                   <SelectItem value="year-asc">Year (Oldest)</SelectItem>
                   <SelectItem value="year-desc">Year (Newest)</SelectItem>
+                  <SelectItem value="issue-count-desc">Most Issues</SelectItem>
+                  <SelectItem value="issue-count-asc">Fewest Issues</SelectItem>
                 </SelectContent>
               </Select>
             )}
@@ -292,32 +285,53 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
             <div className="flex border rounded-md">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant={viewMode === "grid" ? "default" : "ghost"} size="sm" onClick={() => handleViewModeChange("grid")} className="rounded-r-none">
+                  <Button
+                    variant={viewMode === "grid" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("grid")}
+                    className="rounded-r-none"
+                  >
                     <Grid3X3 className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent><p>Grid View</p></TooltipContent>
+                <TooltipContent>
+                  <p>Grid View</p>
+                </TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant={viewMode === "series" ? "default" : "ghost"} size="sm" onClick={() => handleViewModeChange("series")} className="rounded-none">
+                  <Button
+                    variant={viewMode === "series" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("series")}
+                    className="rounded-none"
+                  >
                     <List className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent><p>Series View</p></TooltipContent>
+                <TooltipContent>
+                  <p>Series View</p>
+                </TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant={viewMode === "publisher" ? "default" : "ghost"} size="sm" onClick={() => handleViewModeChange("publisher")} className="rounded-l-none">
+                  <Button
+                    variant={viewMode === "publisher" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("publisher")}
+                    className="rounded-l-none"
+                  >
                     <Building className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent><p>Publisher View</p></TooltipContent>
+                <TooltipContent>
+                  <p>Publisher View</p>
+                </TooltipContent>
               </Tooltip>
             </div>
           </div>
         </div>
-        <div ref={scrollContainerRef} onScroll={(e) => setScrollPosition(e.currentTarget.scrollTop)} className="flex-1 overflow-auto pb-4 pr-4">
+        <div className="flex-1 overflow-auto pb-4 pr-4">
           {viewMode === "grid" ? (
             <LibraryGrid 
               comics={sortedAndGroupedComics} 
@@ -325,23 +339,14 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
               sortOption={sortOption}
               onSeriesDoubleClick={sortOption.startsWith('series-') ? handleSeriesDoubleClick : undefined}
               onToggleInspector={onToggleInspector}
-              onRead={handleReadComic}
             />
           ) : viewMode === "series" ? (
-            <SeriesView comics={sortedComicsForContext} sortOption={sortOption} onRead={handleReadComic} />
+            <SeriesView comics={sortedAndGroupedComics} sortOption={sortOption} />
           ) : (
-            <PublisherView comics={filteredComics} onRead={handleReadComic} />
+            <PublisherView comics={filteredComics} />
           )}
         </div>
       </div>
-      {readingComic && (
-        <ComicReader
-          comic={readingComic}
-          onClose={() => setReadingComic(null)}
-          comicList={sortedComicsForContext}
-          currentIndex={sortedComicsForContext.findIndex(c => c.id === readingComic.id)}
-        />
-      )}
     </TooltipProvider>
   );
 };

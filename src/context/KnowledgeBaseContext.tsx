@@ -85,7 +85,6 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
   /**
    * Persist knowledge base to disk (Electron only)
    * Updates local state and saves to user's data directory
-   * @param kb - The knowledge base object to save.
    */
   const persistKnowledgeBase = useCallback(async (kb: KnowledgeBase) => {
     setKnowledgeBase(kb);
@@ -104,7 +103,6 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
   /**
    * Replace the entire series knowledge base
    * Deduplicates and normalizes entries before saving
-   * @param entries - An array of ComicKnowledge entries to replace the existing ones.
    */
   const replaceKnowledgeBase = useCallback(async (entries: ComicKnowledge[]) => {
     const map = new Map<string, ComicKnowledge>();
@@ -146,7 +144,6 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
   /**
    * Add or update a single series entry in the knowledge base
    * Merges with existing entries to prevent duplicates
-   * @param newEntry - The ComicKnowledge entry to add or update.
    */
   const addToKnowledgeBase = useCallback((newEntry: ComicKnowledge) => {
     setKnowledgeBase(prev => {
@@ -198,7 +195,6 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
   /**
    * Add new creators to the knowledge base
    * Skips duplicates based on name
-   * @param newCreators - An array of Creator objects to add.
    */
   const addCreatorsToKnowledgeBase = useCallback((newCreators: Creator[]) => {
     if (!newCreators || newCreators.length === 0) return;
@@ -235,7 +231,6 @@ export const KnowledgeBaseProvider = ({ children }: { children: ReactNode }) => 
   /**
    * Replace the entire creators knowledge base
    * Deduplicates and normalizes entries before saving
-   * @param creators - An array of CreatorKnowledge entries to replace the existing ones.
    */
   const replaceCreators = useCallback(async (creators: CreatorKnowledge[]) => {
     const map = new Map<string, CreatorKnowledge>();

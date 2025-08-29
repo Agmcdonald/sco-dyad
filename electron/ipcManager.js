@@ -4,30 +4,6 @@ const fs = require('fs');
 const fsPromises = fs.promises;
 const { pathToFileURL } = require('url');
 
-// Helper functions for path formatting (duplicated from src/lib/formatter.ts to avoid TS/module issues)
-const sanitize = (name) => {
-  return String(name).replace(/[<>:"/\\|?*]/g, '');
-};
-
-const formatPath = (format, comicData) => {
-  let pathStr = format;
-  const replacements = {
-    '{series}': comicData.series,
-    '{issue}': comicData.issue,
-    '{year}': comicData.year,
-    '{publisher}': comicData.publisher,
-    '{volume}': comicData.volume,
-  };
-
-  for (const placeholder in replacements) {
-    const value = replacements[placeholder];
-    if (value !== null && value !== undefined) {
-      pathStr = pathStr.replace(new RegExp(placeholder.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g'), sanitize(value));
-    }
-  }
-  return pathStr;
-};
-
 function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBasePath, publicCoversDir }) {
   // App info
   ipcMain.handle('get-app-version', () => app.getVersion());
@@ -244,39 +220,6 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
-  ipcMain.handle('fs:get-new-path', (event, comicData, oldPath) => {
-    try {
-        const settings = database.getAllSettings();
-        const libraryRoot = settings.libraryPath || path.join(app.getPath('documents'), 'Comic Organizer Library');
-        const fileExtension = path.extname(oldPath);
-
-        const folderPart = formatPath(settings.folderNameFormat, comicData);
-        const filePart = formatPath(settings.fileNameFormat, comicData) + fileExtension;
-        
-        const newPath = path.join(libraryRoot, folderPart, filePart);
-        return path.normalize(newPath);
-    } catch (error) {
-        console.error('Error getting new path:', error);
-        throw error;
-    }
-  });
-
-  ipcMain.handle('fs:move-file', async (event, oldPath, newPath) => {
-    try {
-        // Ensure the destination directory exists
-        await fsPromises.mkdir(path.dirname(newPath), { recursive: true });
-        
-        // Use copy + unlink for a more robust move operation that works across devices/drives
-        await fsPromises.copyFile(oldPath, newPath);
-        await fsPromises.unlink(oldPath);
-        
-        return { success: true, newPath: newPath };
-    } catch (error) {
-        console.error('Error moving file:', error);
-        return { success: false, error: error.message };
-    }
-  });
-
   // Comic Reader operations
   ipcMain.handle('get-comic-pages', (event, filePath) => fileHandler.getPages(filePath));
   ipcMain.handle('get-comic-page-data-url', (event, filePath, pageName) => fileHandler.extractPageAsDataUrl(filePath, pageName));
@@ -310,7 +253,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
               copy.coverUrl = pathToFileURL(url).href;
             } else if (url === '/placeholder.svg' || url.includes('placeholder')) {
               // FIXED: Use a data URL for placeholder instead of file path
-              copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaGyPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K';
+              copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K';
             }
           } else {
             // No cover URL - use placeholder

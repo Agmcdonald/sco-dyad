@@ -1,21 +1,3 @@
-/**
- * Main Application Context (AppContext)
- * 
- * This is the central state management hub for the entire application. It orchestrates
- * state and actions related to the file queue, comic library, user actions, reading lists,
- * and interactions with backend services (like the Electron main process).
- * 
- * By consolidating these concerns here, we provide a single, consistent source of truth
- * for the rest of the application to consume.
- * 
- * It uses a combination of custom hooks to modularize state management for:
- * - File Queue (`useFileQueue`): Manages files waiting to be processed.
- * - Comic Library (`useComicLibrary`): Manages the user's collection of comics.
- * - Action Log (`useActionLog`): Keeps a history of user actions for display and undo functionality.
- * - Reading List (`useReadingList`): Manages the user's list of comics to read.
- * - Recently Read (`useRecentlyRead`): Tracks comics that have been recently opened.
- */
-
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { QueuedFile, Comic, NewComic, UndoPayload } from '@/types';
 import { useElectronDatabaseService } from '@/services/electronDatabaseService';
@@ -40,10 +22,6 @@ interface FileLoadStatus {
   currentFile: string;
 }
 
-/**
- * Defines the shape of the context provided to the application.
- * Includes all state and action dispatchers.
- */
 interface AppContextType {
   files: QueuedFile[];
   addFile: (file: QueuedFile) => void;
@@ -62,7 +40,6 @@ interface AppContextType {
   addMockFiles: () => void;
   triggerSelectFiles: () => void;
   triggerScanFolder: () => void;
-  triggerQuickAdd: () => void;
   addFilesFromDrop: (droppedFiles: File[]) => void;
   addFilesFromPaths: (paths: string[]) => Promise<void>;
   quickAddFiles: (files: QueuedFile[]) => Promise<void>;
@@ -75,10 +52,9 @@ interface AppContextType {
   setReadingItemPriority: (itemId: string, priority: 'low' | 'medium' | 'high') => void;
   setReadingItemRating: (itemId: string, rating: number) => void;
   recentlyRead: any[];
-  updateReadingHistory: (comic: Comic, lastReadPage: number, totalPages: number) => void;
+  addToRecentlyRead: (comic: Comic, rating?: number) => void;
   updateRecentRating: (comicId: string, rating: number) => void;
   updateComicRating: (comicId: string, rating: number) => Promise<void>;
-  updateComicProgress: (comicId: string, lastReadPage: number, totalPages: number) => Promise<void>;
   refreshComics: () => Promise<void>;
   importComics: (comicsToImport: Comic[]) => Promise<{ added: number; skipped: number } | null>;
   isScanningMetadata: boolean;
@@ -95,9 +71,6 @@ const isMockFile = (filePath: string): boolean => {
   return filePath.startsWith('mock://');
 };
 
-/**
- * The main provider component that wraps the application and provides the AppContext.
- */
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { actions, logAction, setActions } = useActionLog();
   const { files, setFiles, addFile, addFiles, removeFile, updateFile } = useFileQueue();
@@ -115,7 +88,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { 
     recentlyRead, 
     setRecentlyRead, 
-    updateReadingHistory, 
+    addToRecentlyRead, 
     updateRecentRating
   } = useRecentlyRead();
   
@@ -133,10 +106,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const gcdDbService = useGcdDatabaseService();
   const { addToKnowledgeBase } = useKnowledgeBase();
 
-  /**
-   * Processes an array of file paths, reads their basic info, and adds them to the processing queue.
-   * @param paths - An array of absolute file paths.
-   */
   const addFilesFromPaths = useCallback(async (paths: string[]) => {
     if (paths.length === 0) return;
 
@@ -179,12 +148,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setFileLoadStatus({ isLoading: false, progress: 0, total: 0, currentFile: "" });
   }, [addFiles, isElectron, electronAPI]);
 
-  /**
-   * Adds a processed comic to the library. This involves organizing the file,
-   * extracting the cover, saving to the database, and updating the UI state.
-   * @param comicData - The metadata for the new comic.
-   * @param originalFile - The file from the queue that this comic was created from.
-   */
   const addComic = useCallback(async (comicData: NewComic, originalFile: QueuedFile) => {
     addToKnowledgeBase({
       series: comicData.series,
@@ -281,11 +244,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isElectron, electronAPI, databaseService, settings, logAction, refreshComics, setComics, addToKnowledgeBase]);
 
-  /**
-   * A streamlined version of `addComic` that uses parsed filename data directly,
-   * intended for quick, bulk additions where manual verification is not needed.
-   * @param filesToQuickAdd - An array of files from the queue to be added.
-   */
   const quickAddFiles = useCallback(async (filesToQuickAdd: QueuedFile[]) => {
     let addedCount = 0;
     for (const file of filesToQuickAdd) {
@@ -314,132 +272,34 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [addComic, removeFile]);
 
-  /**
-   * Triggers the file selection dialog for the "Quick Add" feature.
-   */
-  const triggerQuickAdd = useCallback(async () => {
-    if (!isElectron || !electronAPI) {
-      showError("This feature is only available in the desktop app.");
-      return;
-    }
-    try {
-      const filePaths = await electronAPI.selectFilesDialog();
-      if (filePaths && filePaths.length > 0) {
-        const filesToQuickAdd: QueuedFile[] = filePaths.map((filePath, index) => ({
-          id: `quick-add-file-${Date.now()}-${index}`,
-          name: filePath.split(/[\\/]/).pop() || 'Unknown File',
-          path: filePath,
-          series: null,
-          issue: null,
-          year: null,
-          publisher: null,
-          confidence: null,
-          status: 'Pending',
-        }));
-        await quickAddFiles(filesToQuickAdd);
-      }
-    } catch (error) {
-      showError("Could not select files for Quick Add.");
-      console.error("Quick Add error:", error);
-    }
-  }, [isElectron, electronAPI, quickAddFiles]);
-
-  /**
-   * Updates an existing comic's metadata in the library. If metadata changes
-   * affect its file path (e.g., series name), it will also relocate the file.
-   * @param updatedComic - The comic object with updated information.
-   */
   const updateComic = useCallback(async (updatedComic: Comic) => {
-    const originalComic = comics.find(c => c.id === updatedComic.id);
-    if (!originalComic) {
-        showError("Could not find original comic to update.");
-        return;
-    }
-
-    // Check if path-related properties have changed
-    const hasPathChanged = 
-        originalComic.series !== updatedComic.series ||
-        originalComic.issue !== updatedComic.issue ||
-        originalComic.year !== updatedComic.year ||
-        originalComic.publisher !== updatedComic.publisher ||
-        originalComic.volume !== updatedComic.volume;
-
-    const oldPath = originalComic.filePath;
-    let newPath = oldPath;
-
-    // Only attempt to move the file if path-related data has changed
-    if (isElectron && electronAPI && oldPath && !isMockFile(oldPath) && hasPathChanged) {
-        try {
-            const potentialNewPath = await electronAPI.getNewComicPath(updatedComic, oldPath);
-
-            if (potentialNewPath && potentialNewPath !== oldPath) {
-                console.log(`[UPDATE-COMIC] Moving file from ${oldPath} to ${potentialNewPath}`);
-                const moveResult = await electronAPI.moveComicFile(oldPath, potentialNewPath);
-                if (moveResult.success) {
-                    newPath = moveResult.newPath;
-                    logAction('info', `Relocated file for '${updatedComic.series} #${updatedComic.issue}'`);
-                } else {
-                    showError(`Metadata updated, but failed to move file: ${moveResult.error}`);
-                    logAction('error', `Failed to relocate file for '${updatedComic.series} #${updatedComic.issue}'`);
-                }
-            }
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            showError(`Metadata updated, but an error occurred during file relocation: ${errorMessage}`);
-            logAction('error', `Error during file relocation: ${errorMessage}`);
-        }
-    }
-
-    const finalUpdatedComic = { ...updatedComic, filePath: newPath };
-
+    console.log('[APP-CONTEXT] Updating comic:', updatedComic.series, 'with rating:', updatedComic.rating);
+    
     if (databaseService) {
-        try {
-            await databaseService.updateComic({
-                ...finalUpdatedComic,
-                filePath: finalUpdatedComic.filePath || '',
-                fileSize: originalComic.fileSize || 0,
-                dateAdded: finalUpdatedComic.dateAdded.toISOString(),
-                lastModified: new Date().toISOString()
-            });
-            await refreshComics();
-        } catch (error) {
-            console.error('Error updating comic in database:', error);
-        }
-    } else {
-        setComics(prev => prev.map(c => c.id === finalUpdatedComic.id ? finalUpdatedComic : c));
+      try {
+        await databaseService.updateComic({
+          ...updatedComic,
+          filePath: updatedComic.filePath || '',
+          fileSize: 0,
+          dateAdded: updatedComic.dateAdded.toISOString(),
+          lastModified: new Date().toISOString()
+        });
+        await refreshComics();
+      } catch (error) {
+        console.error('Error updating comic in database:', error);
+      }
     }
-
-    logAction('info', `Updated metadata for '${finalUpdatedComic.series} #${finalUpdatedComic.issue}'`);
+    setComics(prev => prev.map(c => c.id === updatedComic.id ? updatedComic : c));
+    logAction('info', `Updated metadata for '${updatedComic.series} #${updatedComic.issue}'`);
     
     addToKnowledgeBase({
-        series: finalUpdatedComic.series,
-        publisher: finalUpdatedComic.publisher,
-        startYear: finalUpdatedComic.year,
-        volumes: [{ volume: finalUpdatedComic.volume, year: finalUpdatedComic.year }]
+      series: updatedComic.series,
+      publisher: updatedComic.publisher,
+      startYear: updatedComic.year,
+      volumes: [{ volume: updatedComic.volume, year: updatedComic.year }]
     });
-  }, [comics, isElectron, electronAPI, databaseService, settings, logAction, refreshComics, setComics, addToKnowledgeBase]);
+  }, [databaseService, logAction, refreshComics, setComics, addToKnowledgeBase]);
 
-  /**
-   * Updates the reading progress for a specific comic.
-   * @param comicId - The ID of the comic to update.
-   * @param lastReadPage - The page number the user was last on.
-   * @param totalPages - The total number of pages in the comic.
-   */
-  const updateComicProgress = useCallback(async (comicId: string, lastReadPage: number, totalPages: number) => {
-    const comicToUpdate = comics.find(c => c.id === comicId);
-    if (!comicToUpdate) return;
-
-    const readProgress = totalPages > 0 ? Math.round((lastReadPage / totalPages) * 100) : 0;
-    const updatedComic = { ...comicToUpdate, lastReadPage, readProgress };
-    
-    await updateComic(updatedComic);
-  }, [comics, updateComic]);
-
-  /**
-   * Updates the rating for a comic and syncs it across the reading list and recently read list.
-   * @param comicId - The ID of the comic to rate.
-   * @param rating - The new rating (0-6).
-   */
   const updateComicRating = useCallback(async (comicId: string, rating: number) => {
     console.log('[APP-CONTEXT] updateComicRating called for comic:', comicId, 'rating:', rating);
     
@@ -466,11 +326,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     console.log('[APP-CONTEXT] Rating update complete');
   }, [comics, updateComic, setReadingList, setRecentlyRead]);
 
-  /**
-   * Removes a comic from the library. Can optionally delete the associated file from disk.
-   * @param id - The ID of the comic to remove.
-   * @param deleteFile - If true, the comic file will be permanently deleted.
-   */
   const removeComic = useCallback(async (id: string, deleteFile: boolean = false) => {
     const comicToRemove = comics.find(c => c.id === id);
     if (!comicToRemove) return;
@@ -709,14 +564,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AppContext.Provider value={{ 
       files, addFile, addFiles, removeFile, updateFile, skipFile,
-      comics, addComic, updateComic, removeComic, updateComicRating, updateComicProgress,
+      comics, addComic, updateComic, removeComic, updateComicRating,
       actions, logAction, lastUndoableAction, undoLastAction,
-      addMockFiles, triggerSelectFiles, triggerScanFolder, triggerQuickAdd, addFilesFromDrop,
+      addMockFiles, triggerSelectFiles, triggerScanFolder, addFilesFromDrop,
       addFilesFromPaths, quickAddFiles, fileLoadStatus,
       readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted,
       toggleComicReadStatus,
       setReadingItemPriority, setReadingItemRating,
-      recentlyRead, updateReadingHistory, updateRecentRating,
+      recentlyRead, addToRecentlyRead, updateRecentRating,
       refreshComics,
       importComics,
       isScanningMetadata,
