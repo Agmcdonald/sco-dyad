@@ -356,10 +356,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         return;
     }
 
+    // Check if path-related properties have changed
+    const hasPathChanged = 
+        originalComic.series !== updatedComic.series ||
+        originalComic.issue !== updatedComic.issue ||
+        originalComic.year !== updatedComic.year ||
+        originalComic.publisher !== updatedComic.publisher ||
+        originalComic.volume !== updatedComic.volume;
+
     const oldPath = originalComic.filePath;
     let newPath = oldPath;
 
-    if (isElectron && electronAPI && oldPath && !isMockFile(oldPath)) {
+    // Only attempt to move the file if path-related data has changed
+    if (isElectron && electronAPI && oldPath && !isMockFile(oldPath) && hasPathChanged) {
         try {
             const potentialNewPath = await electronAPI.getNewComicPath(updatedComic, oldPath);
 
