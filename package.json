@@ -107,6 +107,7 @@
       "dist/**/*",
       "electron/**/*"
     ],
+    "asar": false,
     "asarUnpack": [
       "**/node_modules/sharp/**",
       "**/node_modules/unrar-promise/**"
