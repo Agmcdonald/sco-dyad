@@ -1,8 +1,23 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
+import useLocalStorage from '@/hooks/useLocalStorage';
 import { RecentlyReadComic, Comic } from '@/types';
 
 export const useRecentlyRead = () => {
-  const [recentlyRead, setRecentlyRead] = useState<RecentlyReadComic[]>([]);
+  const [recentlyRead, setRecentlyRead] = useLocalStorage<RecentlyReadComic[]>('recentlyReadList', []);
+
+  // This effect runs once on mount to parse date strings from localStorage
+  useEffect(() => {
+    const hasDateStrings = recentlyRead.some(item => typeof item.dateRead === 'string');
+    if (hasDateStrings) {
+      setRecentlyRead(prev => 
+        prev.map(item => ({
+          ...item,
+          dateRead: new Date(item.dateRead), // Convert string back to Date object
+        }))
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array ensures it runs only once after initial load
 
   const addToRecentlyRead = (comic: Comic, rating?: number) => {
     const recentItem: RecentlyReadComic = {
@@ -15,13 +30,16 @@ export const useRecentlyRead = () => {
       year: comic.year,
       coverUrl: comic.coverUrl,
       dateRead: new Date(),
-      rating: rating || comic.rating // Use provided rating or comic's current rating
+      rating: rating || comic.rating
     };
 
     setRecentlyRead(prev => {
-      // Remove if already exists
-      const filtered = prev.filter(item => item.comicId !== comic.id);
-      // Add to front and keep only last 10
+      // Ensure all dates in the previous state are Date objects before filtering
+      const parsedPrev = prev.map(item => ({
+        ...item,
+        dateRead: item.dateRead instanceof Date ? item.dateRead : new Date(item.dateRead),
+      }));
+      const filtered = parsedPrev.filter(item => item.comicId !== comic.id);
       return [recentItem, ...filtered].slice(0, 10);
     });
   };
