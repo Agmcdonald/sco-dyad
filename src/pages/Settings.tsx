@@ -24,7 +24,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { useElectron } from "@/hooks/useElectron";
 import { showError, showSuccess } from "@/utils/toast";
 import { testApiConnection, testMarvelApiConnection } from "@/lib/scraper";
-import { Loader2, FolderOpen, Sun, Moon } from "lucide-react";
+import { Loader2, FolderOpen, Sun, Moon, Keyboard } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 const Settings = () => {
@@ -108,7 +108,7 @@ const Settings = () => {
           <TabsTrigger value="scrapers">Scrapers</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="general">
+        <TabsContent value="general" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Appearance</CardTitle>
@@ -125,6 +125,34 @@ const Settings = () => {
                   <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                   <span className="sr-only">Toggle theme</span>
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Keyboard className="h-5 w-5" />
+                Keyboard Shortcuts
+              </CardTitle>
+              <CardDescription>Quickly navigate and perform actions using your keyboard.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h4 className="font-semibold mb-2">Comic Reader</h4>
+                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+                  <li><kbd>Right Arrow</kbd> / <kbd>Space</kbd> - Next Page</li>
+                  <li><kbd>Left Arrow</kbd> - Previous Page</li>
+                  <li><kbd>R</kbd> - Mark as Read/Unread</li>
+                  <li><kbd>Esc</kbd> - Close Reader</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2">Knowledge Base Editor</h4>
+                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+                  <li><kbd>N</kbd> / <kbd>J</kbd> - Jump to next search result</li>
+                  <li><kbd>P</kbd> / <kbd>K</kbd> - Jump to previous search result</li>
+                </ul>
               </div>
             </CardContent>
           </Card>

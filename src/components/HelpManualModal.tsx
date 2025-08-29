@@ -54,9 +54,10 @@ const HelpManualModal = ({ isOpen, onClose }: HelpManualModalProps) => {
                 <div className="space-y-2">
                   <p>The Library is where you can browse, search, and manage your organized comic collection.</p>
                   <ul className="list-disc pl-5 space-y-1 text-sm">
-                    <li><strong>Search & Filter:</strong> Use the search bar to find comics by series or publisher. Use the dropdowns to sort your collection in various ways.</li>
+                    <li><strong>Search & Filter:</strong> Use the search bar to find comics by series or publisher. Use the dropdowns to sort your collection, filter by read/unread status, or filter by rating.</li>
                     <li><strong>View Modes:</strong> Switch between Grid, Series, and Publisher views to organize your browsing experience.</li>
                     <li><strong>Cover Size:</strong> Use the slider to adjust the size of the comic covers in the grid view.</li>
+                    <li><strong>Quick Read:</strong> Hover over a comic cover to reveal a "Read" button for quick access to the comic reader.</li>
                     <li><strong>Inspector Panel:</strong> Click on a comic to view its detailed information in the Inspector panel on the right. From there, you can edit details, read the comic, or delete it.</li>
                     <li><strong>Bulk Actions:</strong> Enable "Selection Mode" to select multiple comics and perform actions like bulk editing or adding to your reading list.</li>
                   </ul>
@@ -103,6 +104,7 @@ const HelpManualModal = ({ isOpen, onClose }: HelpManualModalProps) => {
                     <li><strong>Series & Publishers:</strong> View, edit, and add new comic series information. This helps the processor correctly identify series and their associated publishers and volumes.</li>
                     <li><strong>Creators:</strong> Manage a list of creators (writers, artists, etc.). This data is used to enrich comic details.</li>
                     <li><strong>Manual Edits:</strong> You can manually fine-tune the data to improve the accuracy of the automated processing.</li>
+                    <li><strong>Keyboard Navigation:</strong> When searching, use <kbd>N</kbd> or <kbd>J</kbd> to jump to the next match, and <kbd>P</kbd> or <kbd>K</kbd> for the previous match.</li>
                   </ul>
                 </div>
               </AccordionContent>
@@ -128,7 +130,7 @@ const HelpManualModal = ({ isOpen, onClose }: HelpManualModalProps) => {
                 <div className="space-y-2">
                   <p>Configure the application to suit your preferences.</p>
                   <ul className="list-disc pl-5 space-y-1 text-sm">
-                    <li><strong>General:</strong> Change the application's theme (light/dark mode).</li>
+                    <li><strong>General:</strong> Change the application's theme (light/dark mode) and view keyboard shortcuts.</li>
                     <li>
                       <strong>Library:</strong> Set the root folder where your organized comics are stored and configure how original files are handled.
                       <div className="pl-4 mt-2 text-xs space-y-1 text-muted-foreground bg-muted/50 p-2 rounded-md">
@@ -137,6 +139,29 @@ const HelpManualModal = ({ isOpen, onClose }: HelpManualModalProps) => {
                       </div>
                     </li>
                     <li><strong>Scrapers:</strong> (Coming Soon) Enter API keys for online databases like Comic Vine to enhance metadata fetching.</li>
+                  </ul>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="comic-reader">
+              <AccordionTrigger>Comic Reader</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2">
+                  <p>The Comic Reader provides an immersive experience for reading your comics.</p>
+                  <ul className="list-disc pl-5 space-y-1 text-sm">
+                    <li><strong>Auto-hiding Controls:</strong> The top and bottom control bars will automatically disappear after 2 seconds of mouse inactivity to provide a clean reading view. Move the mouse to bring them back.</li>
+                    <li><strong>Navigation:</strong> Use the arrow buttons or your keyboard's arrow keys to turn pages.</li>
+                    <li><strong>View Modes:</strong> Switch between single-page and double-page (two-page spread) views.</li>
+                    <li><strong>Rating:</strong> Quickly rate the comic you're reading from the bottom control bar.</li>
+                    <li><strong>Keyboard Shortcuts:</strong>
+                      <ul className="list-disc pl-5 mt-1">
+                        <li><kbd>Right Arrow</kbd> / <kbd>Spacebar</kbd>: Next page</li>
+                        <li><kbd>Left Arrow</kbd>: Previous page</li>
+                        <li><kbd>R</kbd>: Mark as Read/Unread</li>
+                        <li><kbd>Esc</kbd>: Close reader</li>
+                      </ul>
+                    </li>
                   </ul>
                 </div>
               </AccordionContent>
