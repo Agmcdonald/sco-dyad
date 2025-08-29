@@ -493,29 +493,50 @@ class ComicFileHandler {
    */
   async getPages(filePath) {
     const ext = path.extname(filePath).toLowerCase();
-    if (ext === '.cbz') {
-      let zip;
-      try {
-        zip = new StreamZip.async({ file: filePath });
-        const entries = await zip.entries();
-        return Object.values(entries)
-          .filter(e => !e.isDirectory && this.isImageFile(e.name))
-          .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
-          .map(e => e.name);
-      } finally {
-        if (zip) await zip.close().catch(() => {});
+
+    switch (ext) {
+      case '.cbz': {
+        let zip;
+        try {
+          zip = new StreamZip.async({ file: filePath });
+          const entries = await zip.entries();
+          return Object.values(entries)
+            .filter(e => !e.isDirectory && this.isImageFile(e.name))
+            .sort((a, b) => a.name.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))
+            .map(e => e.name);
+        } catch (error) {
+          console.error(`Error reading CBZ file ${filePath}:`, error);
+          throw new Error(`Failed to read CBZ file: ${error.message}`);
+        } finally {
+          if (zip) await zip.close().catch(() => {});
+        }
       }
+      
+      case '.cbr':
+        // For CBR files, the entire archive is extracted to a temporary directory for reading.
+        // The list of pages is generated during that process by `prepareCbrForReading`.
+        // This `getPages` method is for quick info and doesn't perform a full extraction.
+        // The ComicReader component handles this by calling prepareCbrForReading directly.
+        // We throw here to indicate that a different method is required for CBR page lists.
+        throw new Error('Use prepareCbrForReading for CBR page lists');
+      
+      case '.pdf': {
+        if (!this.pdfjsAvailable) {
+          console.error('Attempted to get pages for a PDF, but PDF processing is disabled.');
+          throw new Error('PDF processing is disabled. Cannot get pages from PDF.');
+        }
+        try {
+          const pageCount = await this.getPageCount(filePath);
+          return Array.from({ length: pageCount }, (_, i) => String(i + 1));
+        } catch (error) {
+          console.error(`Error getting pages from PDF ${filePath}:`, error);
+          throw new Error(`Failed to get pages from PDF: ${error.message}`);
+        }
+      }
+
+      default:
+        throw new Error(`Unsupported file type for page extraction: ${ext}`);
     }
-    if (ext === '.cbr') {
-      // CBR reading for pages is handled by prepareCbrForReading
-      throw new Error('Use prepareCbrForReading for CBR page lists');
-    }
-    if (ext === '.pdf') {
-      if (!this.pdfjsAvailable) throw new Error('PDF processing is disabled.');
-      const pageCount = await this.getPageCount(filePath);
-      return Array.from({ length: pageCount }, (_, i) => String(i + 1));
-    }
-    throw new Error(`Unsupported file type for page extraction: ${ext}`);
   }
 
   /**
