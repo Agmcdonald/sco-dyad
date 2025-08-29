@@ -1,19 +1,4 @@
 {
-  "name": "super-comic-organizer",
-  "version": "1.0.0",
-  "description": "A comprehensive comic book collection management application.",
-  "author": "Dyad",
-  "main": "electron/main.js",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview",
-    "electron": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
-    "clean:covers": "rimraf public/covers",
-    "package": "npm run clean:covers && npm run build && electron-builder",
-    "package:win": "npm run clean:covers && npm run build && electron-builder --win"
-  },
   "dependencies": {
     "@capacitor/android": "^7.4.3",
     "@capacitor/cli": "^7.4.3",
@@ -107,15 +92,16 @@
       "dist/**/*",
       "electron/**/*"
     ],
-    "asar": false,
-    "asarUnpack": [
-      "**/node_modules/sharp/**",
-      "**/node_modules/unrar-promise/**"
-    ],
     "directories": {
-      "buildResources": "assets",
+      "buildResources": "build",
       "output": "release"
     },
+    "extraResources": [
+      {
+        "from": "src/data",
+        "to": "app.asar.unpacked/src/data"
+      }
+    ],
     "win": {
       "target": "nsis"
     },
