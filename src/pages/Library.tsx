@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,12 +33,14 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
   const { comics } = useAppContext();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortOption, setSortOption] = useState("issue-asc");
-  const [secondarySort, setSecondarySort] = useState("series-asc");
-  const [viewMode, setViewMode] = useState<LibraryViewMode>("grid");
+  const [sortOption, setSortOption] = useLocalStorage("library-sort-option", "issue-asc");
+  const [secondarySort, setSecondarySort] = useLocalStorage("library-secondary-sort", "series-asc");
+  const [viewMode, setViewMode] = useLocalStorage<LibraryViewMode>("library-view-mode", "grid");
   const [coverSize, setCoverSize] = useLocalStorage("library-cover-size", 3);
   const [isDrilledDown, setIsDrilledDown] = useState(false);
   const [ratingFilter, setRatingFilter] = useState<string>("all");
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle search from sidebar
   useEffect(() => {
@@ -48,6 +50,30 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
+
+  // Restore scroll position on mount
+  useEffect(() => {
+    const savedScrollPosition = sessionStorage.getItem("library-scroll-position");
+    if (savedScrollPosition && scrollContainerRef.current) {
+      // Use a small timeout to ensure content is rendered before scrolling
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = parseInt(savedScrollPosition, 10);
+        }
+      }, 100);
+    }
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      if (scrollContainerRef.current) {
+        sessionStorage.setItem("library-scroll-position", String(scrollContainerRef.current.scrollTop));
+      }
+    }, 200); // Debounce scroll saving
+  }, []);
 
   const filteredComics = useMemo(() => {
     let filtered = comics.filter((comic) => {
@@ -331,7 +357,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
             </div>
           </div>
         </div>
-        <div className="flex-1 overflow-auto pb-4 pr-4">
+        <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-auto pb-4 pr-4">
           {viewMode === "grid" ? (
             <LibraryGrid 
               comics={sortedAndGroupedComics} 
