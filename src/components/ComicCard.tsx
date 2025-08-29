@@ -1,5 +1,6 @@
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Card, CardFooter } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useSelection } from "@/context/SelectionContext";
 import { Comic } from "@/types";
 import { cn } from "@/lib/utils";
@@ -10,26 +11,36 @@ interface ComicCardProps {
   comic: Comic;
   onDoubleClick?: (seriesName: string) => void;
   onToggleInspector?: () => void;
+  selectionMode?: boolean;
+  isSelectedForBulk?: boolean;
+  onBulkSelect?: () => void;
 }
 
-const ComicCard = ({ comic, onDoubleClick, onToggleInspector }: ComicCardProps) => {
+const ComicCard = ({ 
+  comic, 
+  onDoubleClick, 
+  onToggleInspector,
+  selectionMode = false,
+  isSelectedForBulk = false,
+  onBulkSelect
+}: ComicCardProps) => {
   const { selectedItem, setSelectedItem } = useSelection();
   const [imageError, setImageError] = useState(false);
 
-  const isSelected = selectedItem?.type === 'comic' && selectedItem.id === comic.id;
+  const isSelectedForInspector = selectedItem?.type === 'comic' && selectedItem.id === comic.id;
 
   const handleClick = () => {
-    // Single click always selects the comic
-    setSelectedItem({ ...comic, type: 'comic' });
+    if (selectionMode) {
+      onBulkSelect?.();
+    } else {
+      setSelectedItem({ ...comic, type: 'comic' });
+    }
   };
 
   const handleDoubleClick = () => {
-    // Double click behavior depends on context
     if (onDoubleClick) {
-      // In series view, drill down to show issues
       onDoubleClick(comic.series);
     } else if (onToggleInspector) {
-      // In regular grid view, toggle the inspector
       setSelectedItem({ ...comic, type: 'comic' });
       onToggleInspector();
     }
@@ -49,12 +60,21 @@ const ComicCard = ({ comic, onDoubleClick, onToggleInspector }: ComicCardProps) 
   return (
     <Card 
       className={cn(
-        "overflow-hidden transition-all duration-200 hover:scale-105 hover:shadow-lg cursor-pointer",
-        isSelected && "ring-2 ring-primary shadow-lg scale-105"
+        "overflow-hidden transition-all duration-200 hover:scale-105 hover:shadow-lg cursor-pointer relative",
+        isSelectedForInspector && !selectionMode && "ring-2 ring-primary shadow-lg scale-105",
+        isSelectedForBulk && "ring-2 ring-primary shadow-lg scale-105"
       )}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
     >
+      {selectionMode && (
+        <div className="absolute top-2 left-2 z-10 pointer-events-none">
+          <Checkbox
+            checked={isSelectedForBulk}
+            className="bg-background border-2 shadow-sm"
+          />
+        </div>
+      )}
       <AspectRatio ratio={2 / 3}>
         {!imageError ? (
           <img

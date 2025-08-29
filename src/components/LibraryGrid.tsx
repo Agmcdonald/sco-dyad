@@ -110,7 +110,7 @@ const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onTog
 
       {/* Comics Grid with Publisher Headers */}
       <div className="space-y-6">
-        {groupedComics.map(({ publisher, comics: groupComics }, groupIndex) => (
+        {groupedComics.map(({ publisher, comics: groupComics }) => (
           <div key={publisher || 'all'} className="space-y-4">
             {/* Publisher Header - only show when sorting by publisher */}
             {publisher && sortOption.startsWith('publisher-') && (
@@ -125,22 +125,15 @@ const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onTog
             {/* Comics Grid */}
             <div className={`grid ${gridClass} gap-4`}>
               {groupComics.map((comic) => (
-                <div key={comic.id} className="relative">
-                  {selectionMode && (
-                    <div className="absolute top-2 left-2 z-10">
-                      <Checkbox
-                        checked={selectedComics.includes(comic.id)}
-                        onCheckedChange={(checked) => handleComicSelection(comic.id, Boolean(checked))}
-                        className="bg-background border-2 shadow-sm"
-                      />
-                    </div>
-                  )}
-                  <ComicCard 
-                    comic={comic} 
-                    onDoubleClick={onSeriesDoubleClick}
-                    onToggleInspector={onToggleInspector}
-                  />
-                </div>
+                <ComicCard 
+                  key={comic.id}
+                  comic={comic} 
+                  onDoubleClick={onSeriesDoubleClick}
+                  onToggleInspector={onToggleInspector}
+                  selectionMode={selectionMode}
+                  isSelectedForBulk={selectedComics.includes(comic.id)}
+                  onBulkSelect={() => handleComicSelection(comic.id, !selectedComics.includes(comic.id))}
+                />
               ))}
             </div>
           </div>
