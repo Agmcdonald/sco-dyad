@@ -202,6 +202,13 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
     }
   };
 
+  // Automatically mark as read when reaching the last page
+  useEffect(() => {
+    if (currentPage === totalPages && totalPages > 0 && !isMarkedAsRead) {
+      toggleComicReadStatus(comic);
+    }
+  }, [currentPage, totalPages, isMarkedAsRead, toggleComicReadStatus, comic]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === " ") nextPage();
