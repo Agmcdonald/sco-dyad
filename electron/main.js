@@ -36,7 +36,7 @@ let publicCoversDir;
 
 /**
  * Create Main Window
- * Creates and configures the main browser window for the application
+ * Creates and- configures the main browser window for the application
  */
 function createWindow() {
   mainWindow = new BrowserWindow({
