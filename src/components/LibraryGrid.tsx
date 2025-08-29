@@ -11,9 +11,10 @@ interface LibraryGridProps {
   sortOption: string;
   onSeriesDoubleClick?: (seriesName: string) => void;
   onToggleInspector?: () => void;
+  onRead: (comic: Comic) => void;
 }
 
-const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onToggleInspector }: LibraryGridProps) => {
+const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onToggleInspector, onRead }: LibraryGridProps) => {
   const [selectedComics, setSelectedComics] = useState<string[]>([]);
   const [selectionMode, setSelectionMode] = useState(false);
 
@@ -152,6 +153,7 @@ const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onTog
                     onToggleInspector={onToggleInspector}
                     selectionMode={selectionMode}
                     onToggleSelection={handleToggleSelection}
+                    onRead={onRead}
                   />
                 </div>
               ))}

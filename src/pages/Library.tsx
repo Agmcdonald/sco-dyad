@@ -20,6 +20,7 @@ import { Search, Grid3X3, List, ZoomIn, ArrowLeft, Building } from "lucide-react
 import LibraryGrid from "@/components/LibraryGrid";
 import SeriesView from "@/components/SeriesView";
 import PublisherView from "@/components/PublisherView";
+import ComicReader from "@/components/ComicReader";
 import { useAppContext } from "@/context/AppContext";
 import { useLibraryContext } from "@/context/LibraryContext";
 import useLocalStorage from "@/hooks/useLocalStorage";
@@ -42,6 +43,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
   const [coverSize, setCoverSize] = useLocalStorage("library-cover-size", 3);
   const [isDrilledDown, setIsDrilledDown] = useState(false);
   const [ratingFilter, setRatingFilter] = useLocalStorage("library-rating-filter", "all");
+  const [readingComic, setReadingComic] = useState<Comic | null>(null);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [scrollPosition, setScrollPosition] = useSessionStorage('library-scroll-position', 0);
@@ -89,6 +91,10 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
   const handleRatingFilterChange = (value: string) => {
     setRatingFilter(value);
     resetScrollPosition();
+  };
+
+  const handleReadComic = (comic: Comic) => {
+    setReadingComic(comic);
   };
 
   const filteredComics = useMemo(() => {
@@ -319,14 +325,23 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
               sortOption={sortOption}
               onSeriesDoubleClick={sortOption.startsWith('series-') ? handleSeriesDoubleClick : undefined}
               onToggleInspector={onToggleInspector}
+              onRead={handleReadComic}
             />
           ) : viewMode === "series" ? (
-            <SeriesView comics={sortedComicsForContext} sortOption={sortOption} />
+            <SeriesView comics={sortedComicsForContext} sortOption={sortOption} onRead={handleReadComic} />
           ) : (
-            <PublisherView comics={filteredComics} />
+            <PublisherView comics={filteredComics} onRead={handleReadComic} />
           )}
         </div>
       </div>
+      {readingComic && (
+        <ComicReader
+          comic={readingComic}
+          onClose={() => setReadingComic(null)}
+          comicList={sortedComicsForContext}
+          currentIndex={sortedComicsForContext.findIndex(c => c.id === readingComic.id)}
+        />
+      )}
     </TooltipProvider>
   );
 };

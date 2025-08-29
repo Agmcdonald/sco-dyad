@@ -17,10 +17,11 @@ interface SeriesGroup {
 
 interface SeriesViewProps {
   comics: Comic[];
-  sortOption: string; // Add sortOption prop
+  sortOption: string;
+  onRead: (comic: Comic) => void;
 }
 
-const SeriesView = ({ comics, sortOption }: SeriesViewProps) => {
+const SeriesView = ({ comics, sortOption, onRead }: SeriesViewProps) => {
   const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set());
 
   // Group comics by series, then optionally by publisher
@@ -168,7 +169,7 @@ const SeriesView = ({ comics, sortOption }: SeriesViewProps) => {
                     <CardContent className="pt-0">
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
                         {group.comics.map((comic) => (
-                          <ComicCard key={comic.id} comic={comic} />
+                          <ComicCard key={comic.id} comic={comic} onRead={onRead} />
                         ))}
                       </div>
                     </CardContent>

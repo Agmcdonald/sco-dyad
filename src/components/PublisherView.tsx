@@ -21,9 +21,10 @@ interface SeriesGroup {
 
 interface PublisherViewProps {
   comics: Comic[];
+  onRead: (comic: Comic) => void;
 }
 
-const PublisherView = ({ comics }: PublisherViewProps) => {
+const PublisherView = ({ comics, onRead }: PublisherViewProps) => {
   const [expandedPublishers, setExpandedPublishers] = useState<Set<string>>(new Set());
   const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set());
 
@@ -187,7 +188,7 @@ const PublisherView = ({ comics }: PublisherViewProps) => {
                           <div className="p-3 pt-0">
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
                               {seriesGroup.comics.map((comic) => (
-                                <ComicCard key={comic.id} comic={comic} />
+                                <ComicCard key={comic.id} comic={comic} onRead={onRead} />
                               ))}
                             </div>
                           </div>
