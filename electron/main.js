@@ -230,6 +230,21 @@ app.on('window-all-closed', () => {
 });
 
 /**
+ * Graceful Shutdown
+ * Listen for termination signals to ensure the app quits properly.
+ * This can help prevent file locking issues during rebuilds.
+ */
+process.on('SIGTERM', () => {
+  console.log('Received SIGTERM, quitting application.');
+  app.quit();
+});
+
+process.on('SIGINT', () => {
+  console.log('Received SIGINT, quitting application.');
+  app.quit();
+});
+
+/**
  * Security: Web Contents Created
  * This event is fired when a new web contents is created
  * Used to enforce security policies
