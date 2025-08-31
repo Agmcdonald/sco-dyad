@@ -2,7 +2,9 @@
 
 A comprehensive comic book collection management application that automatically organizes digital comic files by parsing filenames, detecting metadata, and cataloging them into a structured library.
 
-![Super Comic Organizer Dashboard](public/placeholder.svg)
+<img width="1895" height="1212" alt="Screenshot 2025-08-27 235825" src="https://github.com/user-attachments/assets/5e141963-e980-4759-9a59-b86415561f14" />
+<img width="1886" height="1214" alt="Screenshot 2025-08-27 235851" src="https://github.com/user-attachments/assets/166447ff-33ca-4b05-8939-2c6d494834a0" />
+<img width="1890" height="1210" alt="Screenshot 2025-08-27 235931" src="https://github.com/user-attachments/assets/092dfc28-f1ac-4c9c-8fff-230b5d624adf" />
 
 ## Features
 
