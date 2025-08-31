@@ -35,6 +35,7 @@ Before you begin, ensure you have the following installed on your system:
 
 - **Node.js** (version 18.0 or higher)
 - **npm** (comes with Node.js)
+- **Optional:** a canvas module like [`@napi-rs/canvas`](https://www.npmjs.com/package/@napi-rs/canvas) or [`canvas`](https://www.npmjs.com/package/canvas) for viewing PDF comics
 
 ### Installing Node.js
 

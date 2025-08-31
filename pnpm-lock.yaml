@@ -11,6 +11,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^3.9.0
         version: 3.10.0(react-hook-form@7.62.0(react@18.3.1))
+      '@napi-rs/canvas':
+        specifier: ^0.1.78
+        version: 0.1.78
       '@radix-ui/react-accordion':
         specifier: ^1.2.0
         version: 1.2.12(@types/react-dom@18.3.7(@types/react@18.3.24))(@types/react@18.3.24)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -4246,7 +4249,6 @@ snapshots:
       '@napi-rs/canvas-linux-x64-gnu': 0.1.78
       '@napi-rs/canvas-linux-x64-musl': 0.1.78
       '@napi-rs/canvas-win32-x64-msvc': 0.1.78
-    optional: true
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:

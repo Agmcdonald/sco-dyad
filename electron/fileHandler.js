@@ -19,51 +19,82 @@ const path = require('path');
 const StreamZip = require('node-stream-zip');
 const sharp = require('sharp');
 const os = require('os');
+const { BrowserWindow, app } = require('electron');
 
-// --- Canvas Module Conditional Loading ---
+let pdfjs, getDocument, GlobalWorkerOptions;
+let pdfjsAvailable = false;
 let createCanvas;
 let canvasAvailable = false;
 
+// Broadcast PDF support status to renderer windows
+let pendingPdfStatus = null;
+const broadcastPdfStatus = (extra = {}) => {
+  const payload = {
+    pdfjsAvailable,
+    canvasAvailable,
+    ...extra
+  };
+  pendingPdfStatus = payload;
+  BrowserWindow.getAllWindows().forEach(win => {
+    try {
+      win.webContents.send('pdfjs-status', payload);
+    } catch (err) {
+      console.warn('Failed to send pdfjs-status IPC:', err.message);
+    }
+  });
+};
+
+// Ensure new windows also receive status
+app.on('browser-window-created', (_, win) => {
+  if (pendingPdfStatus) {
+    win.webContents.once('did-finish-load', () => {
+      try {
+        win.webContents.send('pdfjs-status', pendingPdfStatus);
+      } catch (err) {
+        console.warn('Failed to send pending pdfjs-status IPC:', err.message);
+      }
+    });
+  }
+});
+
+// --- Canvas Module Conditional Loading ---
+
 try {
-  // Try to load canvas module. This may fail if native bindings are not built for Electron.
-  const canvasModule = require('canvas');
+  // Prefer @napi-rs/canvas for prebuilt binaries, fall back to node-canvas
+  let canvasModule;
+  try {
+    canvasModule = require('@napi-rs/canvas');
+  } catch (napiErr) {
+    canvasModule = require('canvas');
+  }
   createCanvas = canvasModule.createCanvas;
   canvasAvailable = true;
   console.log('Canvas module loaded successfully. PDF rendering is enabled.');
 } catch (error) {
   console.warn('Canvas module not available. PDF rendering will use a placeholder fallback.', error.message);
   // canvasAvailable remains false, allowing the app to run without crashing.
+  broadcastPdfStatus({ warning: 'Canvas module not available; PDF viewing disabled.' });
 }
 
 // --- Robust PDF.js Initialization ---
-let pdfjs, getDocument, GlobalWorkerOptions;
-let pdfjsAvailable = false;
-
 try {
-  // Dynamically resolve the path to the installed pdfjs-dist package
-  const pdfjsDistPath = path.dirname(require.resolve('pdfjs-dist/package.json'));
-  
-  // Construct the full paths to the required legacy build files
-  const pdfjsLegacyPath = path.join(pdfjsDistPath, 'legacy', 'build', 'pdf.js');
-  const pdfjsWorkerPath = path.join(pdfjsDistPath, 'legacy', 'build', 'pdf.worker.js');
+  const pdfjsLegacyPath = require.resolve('pdfjs-dist/legacy/build/pdf.js');
+  const pdfjsWorkerPath = require.resolve('pdfjs-dist/legacy/build/pdf.worker.js');
 
-  // Verify that both files exist before attempting to use them
-  require('fs').accessSync(pdfjsLegacyPath);
-  require('fs').accessSync(pdfjsWorkerPath);
-
-  // If they exist, require the main module and configure the worker
   const pdfjsModule = require(pdfjsLegacyPath);
   pdfjs = pdfjsModule;
   getDocument = pdfjsModule.getDocument;
   GlobalWorkerOptions = pdfjsModule.GlobalWorkerOptions;
-  
+
   GlobalWorkerOptions.workerSrc = pdfjsWorkerPath;
-  
+
   pdfjsAvailable = true;
   console.log('PDF.js initialized successfully from:', pdfjsLegacyPath);
+  broadcastPdfStatus(canvasAvailable ? {} : { warning: 'Canvas module not available; PDF viewing disabled.' });
 
 } catch (error) {
   console.error('Failed to initialize PDF.js. PDF functionality will be disabled.', error.message);
+  broadcastPdfStatus({ error: 'PDF.js failed to initialize: ' + error.message });
   // pdfjsAvailable remains false, allowing the app to run without PDF support
 }
 // --- End of PDF.js Initialization ---
