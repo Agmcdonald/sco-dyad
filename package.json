@@ -1,27 +1,85 @@
 {
   "name": "super-comic-organizer",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "1.0.0",
+  "description": "A comprehensive comic book collection management application",
+  "author": "Super Comic Organizer Team",
   "main": "electron/main.js",
   "homepage": "./",
   "scripts": {
-    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
-    "dev:vite": "npx vite",
-    "dev:electron": "wait-on tcp:5173 && electron .",
-    "electron": "wait-on tcp:5173 && electron .",
-    "build": "npx vite build && electron-builder",
-    "build:vite": "npx vite build",
-    "build:electron": "electron-builder --config electron.config.js",
-    "preview": "npx vite preview",
-    "clean": "rimraf node_modules dist .vite electron-dist",
-    "clean:cache": "rimraf node_modules/.cache node_modules/.vite node_modules/.ignored_electron",
-    "clean:all": "npm run clean && npm run clean:cache",
-    "reinstall": "npm run clean:all && npm install",
-    "force-clean": "nuclear-clean.bat"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron . --inspect=5858\"",
+    "package": "npm run build && electron-builder",
+    "package:win": "npm run build && electron-builder --win",
+    "package:mac": "npm run build && electron-builder --mac",
+    "package:linux": "npm run build && electron-builder --linux",
+    "package:clean": "npm run clean && npm run package",
+    "clean": "rimraf dist release",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "build": {
-    "extends": "./electron.config.js"
+    "appId": "com.supercomicorganizer.app",
+    "productName": "Super Comic Organizer",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "src/data",
+        "to": "app.asar.unpacked/src/data"
+      }
+    ],
+    "asarUnpack": [
+      "src/data/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "publisherName": "Super Comic Organizer Team"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -55,7 +113,7 @@
     "@tailwindcss/aspect-ratio": "^0.4.2",
     "@tanstack/react-query": "^5.56.2",
     "archiver": "^7.0.1",
-    "canvas": "^2.11.2",
+    "canvas": "^3.2.0",
     "chokidar": "^3.5.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -67,7 +125,7 @@
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
     "node-stream-zip": "^1.1.5",
-    "pdfjs-dist": "^4.5.136",
+    "pdfjs-dist": "^5.4.54",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
@@ -100,7 +158,7 @@
     "eslint-plugin-react-refresh": "^0.4.9",
     "globals": "^15.9.0",
     "postcss": "^8.4.47",
-    "rimraf": "^5.0.10",
+    "rimraf": "^3.0.2",
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",

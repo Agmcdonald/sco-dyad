@@ -17,6 +17,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const StreamZip = require('node-stream-zip');
+const sharp = require('sharp');
 const os = require('os');
 
 // --- Canvas Module Conditional Loading ---
@@ -39,23 +40,27 @@ let pdfjs, getDocument, GlobalWorkerOptions;
 let pdfjsAvailable = false;
 
 try {
-  // pdfjs-dist is a CommonJS module, so we can require it directly.
-  pdfjs = require('pdfjs-dist');
-  getDocument = pdfjs.getDocument;
-  GlobalWorkerOptions = pdfjs.GlobalWorkerOptions;
-
-  // The workerSrc needs to be set to the path of the worker file.
-  // We can find the package root and construct the path to the worker.
+  // Dynamically resolve the path to the installed pdfjs-dist package
   const pdfjsDistPath = path.dirname(require.resolve('pdfjs-dist/package.json'));
-  const workerPath = path.join(pdfjsDistPath, 'build', 'pdf.worker.js');
-
-  // Verify that the worker file exists before setting it.
-  require('fs').accessSync(workerPath);
   
-  GlobalWorkerOptions.workerSrc = workerPath;
+  // Construct the full paths to the required legacy build files
+  const pdfjsLegacyPath = path.join(pdfjsDistPath, 'legacy', 'build', 'pdf.js');
+  const pdfjsWorkerPath = path.join(pdfjsDistPath, 'legacy', 'build', 'pdf.worker.js');
+
+  // Verify that both files exist before attempting to use them
+  require('fs').accessSync(pdfjsLegacyPath);
+  require('fs').accessSync(pdfjsWorkerPath);
+
+  // If they exist, require the main module and configure the worker
+  const pdfjsModule = require(pdfjsLegacyPath);
+  pdfjs = pdfjsModule;
+  getDocument = pdfjsModule.getDocument;
+  GlobalWorkerOptions = pdfjsModule.GlobalWorkerOptions;
+  
+  GlobalWorkerOptions.workerSrc = pdfjsWorkerPath;
   
   pdfjsAvailable = true;
-  console.log('PDF.js initialized successfully.');
+  console.log('PDF.js initialized successfully from:', pdfjsLegacyPath);
 
 } catch (error) {
   console.error('Failed to initialize PDF.js. PDF functionality will be disabled.', error.message);
@@ -315,9 +320,10 @@ class ComicFileHandler {
       const outputPath = path.join(outputDir, `${path.basename(filePath, '.cbz')}_cover.jpg`);
       
       await fs.mkdir(outputDir, { recursive: true });
-      
-      // Since we removed sharp, just copy the original image
-      await fs.writeFile(outputPath, coverData);
+      await sharp(coverData)
+        .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toFile(outputPath);
       
       return outputPath;
     } finally {
@@ -350,9 +356,10 @@ class ComicFileHandler {
 
       const outputPath = path.join(outputDir, `${path.basename(filePath, '.cbr')}_cover.jpg`);
       await fs.mkdir(outputDir, { recursive: true });
-      
-      // Copy the first image as cover
-      await fs.copyFile(imageFiles[0], outputPath);
+      await sharp(imageFiles[0])
+        .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toFile(outputPath);
         
       return outputPath;
     } finally {
@@ -388,9 +395,13 @@ class ComicFileHandler {
       await page.render({ canvasContext: context, viewport }).promise;
 
       const buffer = canvas.toBuffer('image/jpeg');
-      await fs.writeFile(outputPath, buffer);
+      await sharp(buffer)
+        .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toFile(outputPath);
     } else {
-      // Alternative: Create a simple placeholder cover
+      // Alternative: Create a placeholder cover or extract embedded images
+      // For now, we'll create a simple placeholder with PDF metadata
       console.warn('Canvas not available. Creating placeholder cover for PDF.');
       
       const data = new Uint8Array(await fs.readFile(filePath));
@@ -400,7 +411,12 @@ class ComicFileHandler {
         throw new Error('PDF has no pages');
       }
 
-      // Create a simple SVG placeholder
+      // Try to get the first page's text content as metadata
+      const page = await pdf.getPage(1);
+      const textContent = await page.getTextContent();
+      const text = textContent.items.map(item => item.str).join(' ').slice(0, 100);
+
+      // Create a simple placeholder image with sharp
       const svg = `
         <svg width="400" height="600" xmlns="http://www.w3.org/2000/svg">
           <rect width="400" height="600" fill="#f0f0f0"/>
@@ -410,7 +426,9 @@ class ComicFileHandler {
         </svg>
       `;
 
-      await fs.writeFile(outputPath, Buffer.from(svg));
+      await sharp(Buffer.from(svg))
+        .jpeg({ quality: 85 })
+        .toFile(outputPath);
     }
 
     return outputPath;

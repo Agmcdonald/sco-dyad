@@ -224,8 +224,8 @@ app.whenReady().then(async () => {
  * Application Lifecycle: Window All Closed
  * This event is fired when all windows have been closed
  */
-app.on('window-all-closed', async () => {
-  if (database) await database.close();
+app.on('window-all-closed', () => {
+  if (database) database.close();
   if (process.platform !== 'darwin') app.quit(); // Quit on Windows/Linux
 });
 
@@ -233,32 +233,12 @@ app.on('window-all-closed', async () => {
  * Forceful Shutdown
  * This helps prevent file locking issues during rebuilds in development.
  */
-const forceQuit = async () => {
+const forceQuit = () => {
   console.log('Force quitting application to release file locks for rebuild.');
-  
-  try {
-    // Close database first
-    if (database) {
-      await database.close();
-    }
-    
-    // Destroy all windows
-    const allWindows = BrowserWindow.getAllWindows();
-    allWindows.forEach((win) => {
-      if (win && !win.isDestroyed()) {
-        win.destroy();
-      }
-    });
-    
-    // Force exit after a short delay
-    setTimeout(() => {
-      process.exit(0);
-    }, 100);
-    
-  } catch (error) {
-    console.error('Error during force quit:', error);
-    process.exit(1);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.destroy(); // Use destroy() to bypass confirmation dialogs
   }
+  app.exit(); // Force exit the process
 };
 
 process.on('SIGTERM', forceQuit);
