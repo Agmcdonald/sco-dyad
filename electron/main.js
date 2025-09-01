@@ -224,8 +224,8 @@ app.whenReady().then(async () => {
  * Application Lifecycle: Window All Closed
  * This event is fired when all windows have been closed
  */
-app.on('window-all-closed', () => {
-  if (database) database.close();
+app.on('window-all-closed', async () => {
+  if (database) await database.close();
   if (process.platform !== 'darwin') app.quit(); // Quit on Windows/Linux
 });
 
@@ -235,16 +235,13 @@ app.on('window-all-closed', () => {
  */
 const forceQuit = () => {
   console.log('Force quitting application to release file locks for rebuild.');
-  if (database) database.close();
-  
-  // Destroy all open windows, not just the main one
-  BrowserWindow.getAllWindows().forEach((win) => {
-    if (win && !win.isDestroyed()) {
-      win.destroy();
-    }
-  });
-
-  app.exit(); // Force exit the process
+  if (database) {
+    database.close().finally(() => {
+      app.exit();
+    });
+  } else {
+    app.exit();
+  }
 };
 
 process.on('SIGTERM', forceQuit);

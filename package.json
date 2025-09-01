@@ -1,4 +1,12 @@
 {
+  "scripts": {
+    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
+    "dev:vite": "vite",
+    "dev:electron": "wait-on tcp:5173 && electron .",
+    "electron": "wait-on tcp:5173 && electron .",
+    "build": "vite build && electron-builder",
+    "preview": "vite preview"
+  },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-accordion": "^1.2.0",
