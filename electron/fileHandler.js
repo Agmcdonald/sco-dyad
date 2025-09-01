@@ -17,7 +17,6 @@
 const fs = require('fs').promises;
 const path = require('path');
 const StreamZip = require('node-stream-zip');
-const sharp = require('sharp');
 const os = require('os');
 
 // --- Canvas Module Conditional Loading ---
@@ -316,10 +315,9 @@ class ComicFileHandler {
       const outputPath = path.join(outputDir, `${path.basename(filePath, '.cbz')}_cover.jpg`);
       
       await fs.mkdir(outputDir, { recursive: true });
-      await sharp(coverData)
-        .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 85 })
-        .toFile(outputPath);
+      
+      // Since we removed sharp, just copy the original image
+      await fs.writeFile(outputPath, coverData);
       
       return outputPath;
     } finally {
@@ -352,10 +350,9 @@ class ComicFileHandler {
 
       const outputPath = path.join(outputDir, `${path.basename(filePath, '.cbr')}_cover.jpg`);
       await fs.mkdir(outputDir, { recursive: true });
-      await sharp(imageFiles[0])
-        .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 85 })
-        .toFile(outputPath);
+      
+      // Copy the first image as cover
+      await fs.copyFile(imageFiles[0], outputPath);
         
       return outputPath;
     } finally {
@@ -391,13 +388,9 @@ class ComicFileHandler {
       await page.render({ canvasContext: context, viewport }).promise;
 
       const buffer = canvas.toBuffer('image/jpeg');
-      await sharp(buffer)
-        .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 85 })
-        .toFile(outputPath);
+      await fs.writeFile(outputPath, buffer);
     } else {
-      // Alternative: Create a placeholder cover or extract embedded images
-      // For now, we'll create a simple placeholder with PDF metadata
+      // Alternative: Create a simple placeholder cover
       console.warn('Canvas not available. Creating placeholder cover for PDF.');
       
       const data = new Uint8Array(await fs.readFile(filePath));
@@ -407,12 +400,7 @@ class ComicFileHandler {
         throw new Error('PDF has no pages');
       }
 
-      // Try to get the first page's text content as metadata
-      const page = await pdf.getPage(1);
-      const textContent = await page.getTextContent();
-      const text = textContent.items.map(item => item.str).join(' ').slice(0, 100);
-
-      // Create a simple placeholder image with sharp
+      // Create a simple SVG placeholder
       const svg = `
         <svg width="400" height="600" xmlns="http://www.w3.org/2000/svg">
           <rect width="400" height="600" fill="#f0f0f0"/>
@@ -422,9 +410,7 @@ class ComicFileHandler {
         </svg>
       `;
 
-      await sharp(Buffer.from(svg))
-        .jpeg({ quality: 85 })
-        .toFile(outputPath);
+      await fs.writeFile(outputPath, Buffer.from(svg));
     }
 
     return outputPath;
