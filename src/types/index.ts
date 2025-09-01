@@ -74,6 +74,7 @@ export interface QueuedFile {
   year: number | null;
   publisher: string | null;
   volume?: string | null;
+  ofTotal?: string | null; // New field to store the 'of #' part
   confidence: Confidence | null;
   status: FileStatus;
   pageCount?: number;

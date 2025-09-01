@@ -128,15 +128,18 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       
       setFileLoadStatus(prev => ({ ...prev, progress: i + 1, currentFile: fileName }));
 
+      const parsed = parseFilename(filePath);
+
       const newFile: QueuedFile = {
         id: `file-${fileIdCounter++}`,
         name: fileName,
         path: filePath || '',
-        series: null,
-        issue: null,
-        year: null,
-        publisher: null,
-        volume: null,
+        series: parsed.series,
+        issue: parsed.issue,
+        year: parsed.year,
+        publisher: parsed.publisher,
+        volume: parsed.volume,
+        ofTotal: parsed.ofTotal, // Populate ofTotal from parser
         confidence: null,
         status: 'Pending',
       };
@@ -166,12 +169,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       volumes: [{ volume: comicData.volume, year: comicData.year }]
     });
 
+    const baseSummary = comicData.summary || '';
+    const finalSummary = originalFile.ofTotal ? `${baseSummary} (of ${originalFile.ofTotal})` : baseSummary;
+
     if (isMockFile(originalFile.path)) {
       const newComic: Comic = {
         ...comicData,
         id: `comic-${comicIdCounter++}`,
         coverUrl: '/placeholder.svg',
         dateAdded: new Date(),
+        summary: finalSummary, // Use the final summary
       };
       setComics(prev => [newComic, ...prev]);
       logAction('success', `(Demo Mode) Added '${newComic.series} #${newComic.issue}' to library`, {
@@ -224,7 +231,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           ...comicData, 
           filePath: organizeResult.newPath || originalFile.path, 
           fileSize,
-          coverUrl
+          coverUrl,
+          summary: finalSummary // Use the final summary
         };
         
         console.log(`[ADD-COMIC] Saving comic to database:`, comicToSave);
@@ -244,7 +252,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         logAction('error', `Error organizing ${originalFile.name}: ${errorMessage}`);
       }
     } else {
-      const newComic: Comic = { ...comicData, id: `comic-${comicIdCounter++}`, coverUrl: '/placeholder.svg', dateAdded: new Date() };
+      const newComic: Comic = { ...comicData, id: `comic-${comicIdCounter++}`, coverUrl: '/placeholder.svg', dateAdded: new Date(), summary: finalSummary }; // Use the final summary
       setComics(prev => [newComic, ...prev]);
       logAction('success', `(Web Mode) Added '${newComic.series} #${newComic.issue}' to library`, {
         type: 'ADD_COMIC',
@@ -257,7 +265,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const quickAddFiles = useCallback(async (filesToQuickAdd: QueuedFile[]) => {
     let addedCount = 0;
     for (const file of filesToQuickAdd) {
-      const parsed = parseFilename(file.path);
+      // The 'file' object passed here already has 'ofTotal' if it came from addFilesFromPaths or triggerQuickAddFiles
+      // The summary will be constructed in addComic based on originalFile.ofTotal
+      const parsed = parseFilename(file.path); // Re-parse to ensure 'parsed' has 'ofTotal' if 'file' didn't
 
       if (!parsed.series || !parsed.issue) {
         showError(`Could not quick add "${file.name}": Missing series or issue number.`);
@@ -273,7 +283,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         summary: `Quick added from file: ${file.name}`
       };
 
-      await addComic(comicData, file);
+      // Ensure the 'file' object passed to addComic has the 'ofTotal' from parsing
+      const fileWithOfTotal: QueuedFile = { ...file, ofTotal: parsed.ofTotal };
+
+      await addComic(comicData, fileWithOfTotal);
       removeFile(file.id);
       addedCount++;
     }
@@ -469,20 +482,28 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
       for (const path of filePaths) {
         const name = path.split(/[\\/]/).pop() || 'Unknown File';
-        const tempFile: QueuedFile = {
-          id: `quick-add-${Date.now()}-${Math.random()}`,
-          name,
-          path,
-          series: null, issue: null, year: null, publisher: null, confidence: null, status: 'Pending'
-        };
-
-        const parsed = parseFilename(path);
+        
+        const parsed = parseFilename(path); // Parsing happens here
 
         if (!parsed.series || !parsed.issue) {
           showError(`Could not quick add "${name}": Missing series or issue number.`);
           failedCount++;
           continue;
         }
+
+        const tempFile: QueuedFile = {
+          id: `quick-add-${Date.now()}-${Math.random()}`,
+          name,
+          path,
+          series: parsed.series,
+          issue: parsed.issue,
+          year: parsed.year,
+          publisher: parsed.publisher,
+          volume: parsed.volume,
+          ofTotal: parsed.ofTotal, // Add ofTotal to tempFile
+          confidence: null,
+          status: 'Pending'
+        };
 
         const comicData: NewComic = {
           series: parsed.series,
@@ -493,7 +514,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           summary: `Quick added from file: ${name}`
         };
 
-        await addComic(comicData, tempFile);
+        await addComic(comicData, tempFile); // tempFile now has ofTotal
         addedCount++;
       }
 
@@ -523,17 +544,22 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    const mockFiles = comicFiles.map((file, index) => ({
-      id: `web-drop-${Date.now()}-${index}`,
-      name: file.name,
-      path: `mock://web-drop/${file.name}`,
-      series: null,
-      issue: null,
-      year: null,
-      publisher: null,
-      confidence: null as any,
-      status: 'Pending' as any
-    }));
+    const mockFiles = comicFiles.map((file, index) => {
+      const parsed = parseFilename(file.name); // Parse dropped file name
+      return {
+        id: `web-drop-${Date.now()}-${index}`,
+        name: file.name,
+        path: `mock://web-drop/${file.name}`,
+        series: parsed.series,
+        issue: parsed.issue,
+        year: parsed.year,
+        publisher: parsed.publisher,
+        volume: parsed.volume,
+        ofTotal: parsed.ofTotal, // Add ofTotal
+        confidence: null as any,
+        status: 'Pending' as any
+      };
+    });
     addFiles(mockFiles);
     showSuccess(`Added ${mockFiles.length} files (web demo mode)`);
   }, [addFiles]);
@@ -583,7 +609,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         year: comic.year,
         publisher: comic.publisher,
         status: 'Pending',
-        confidence: null
+        confidence: null,
+        // ofTotal is not directly part of Comic, so we don't set it here for metadata scan
       };
 
       const result = await processComicFile(

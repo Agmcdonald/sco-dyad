@@ -4,6 +4,7 @@ export interface ParsedComicInfo {
   year: number | null;
   volume: string | null;
   publisher?: string | null;
+  ofTotal?: string | null; // New field for 'of #' total
 }
 
 // Character to publisher mapping
@@ -15,15 +16,10 @@ const characterPublisherMap: Record<string, string> = {
 };
 
 // Patterns to remove common metadata that clutters series names
+// Note: (of #) patterns are handled separately before these general patterns.
 const metadataPatterns = [
     /\(digital\)/gi, /\(web-rip\)/gi, /\(webrip\)/gi, /\(scan\)/gi, /\(cbr\)/gi, /\(cbz\)/gi, /\(pdf\)/gi, /\([^)]*-[^)]*\)/gi, /\([^)]*rip[^)]*\)/gi, /\([^)]*scan[^)]*\)/gi, /\(dcp\)/gi, /\(empire\)/gi, /\(son of ultron-empire\)/gi, /\(the last kryptonian-dcp\)/gi, /\(\d+\s*covers?\)/gi, /\(annual\)/gi, /\(one-shot\)/gi,
 ];
-
-const clean = (name: string): string => {
-  let cleaned = name.replace(/_/g, ' ').replace(/\.[^/.]+$/, "").trim();
-  metadataPatterns.forEach(pattern => { cleaned = cleaned.replace(pattern, ''); });
-  return cleaned.replace(/\s+/g, ' ').trim();
-};
 
 const detectPublisherFromCharacters = (seriesName: string): string | null => {
   if (!seriesName) return null;
@@ -36,7 +32,19 @@ const detectPublisherFromCharacters = (seriesName: string): string | null => {
 
 export const parseFilename = (path: string): ParsedComicInfo => {
   const filename = path.split(/[\\/]/).pop() || '';
-  let cleaned = clean(filename);
+  let cleaned = filename.replace(/_/g, ' ').replace(/\.[^/.]+$/, "").trim();
+
+  // 0. Extract "of Total" first to prevent it from being removed by other patterns
+  let ofTotal: string | null = null;
+  const ofTotalMatch = cleaned.match(/\(of\s*(\d+)\)/i);
+  if (ofTotalMatch) {
+    ofTotal = ofTotalMatch[1]; // Just the number, e.g., "04"
+    cleaned = cleaned.replace(ofTotalMatch[0], '').trim();
+  }
+
+  // Apply general metadata patterns
+  metadataPatterns.forEach(pattern => { cleaned = cleaned.replace(pattern, ''); });
+  cleaned = cleaned.replace(/\s+/g, ' ').trim(); // Final trim after all replacements
 
   // 1. Extract Year
   let year: number | null = null;
@@ -85,7 +93,8 @@ export const parseFilename = (path: string): ParsedComicInfo => {
     issue: issue ? issue.padStart(3, '0') : null,
     year,
     volume: volume || (year ? String(year) : null),
-    publisher
+    publisher,
+    ofTotal // Include the new field
   };
 };
 
@@ -93,6 +102,7 @@ export const generateSuggestedFilename = (parsed: ParsedComicInfo): string => {
   if (!parsed.series || !parsed.issue) return '';
   let suggested = parsed.series;
   suggested += ` #${parsed.issue}`;
+  if (parsed.ofTotal) suggested += ` (of ${parsed.ofTotal})`; // Add (of #) to suggested filename
   if (parsed.year) suggested += ` (${parsed.year})`;
   return suggested;
 };
