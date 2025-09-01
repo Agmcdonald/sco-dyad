@@ -40,27 +40,23 @@ let pdfjs, getDocument, GlobalWorkerOptions;
 let pdfjsAvailable = false;
 
 try {
-  // Dynamically resolve the path to the installed pdfjs-dist package
+  // pdfjs-dist is a CommonJS module, so we can require it directly.
+  pdfjs = require('pdfjs-dist');
+  getDocument = pdfjs.getDocument;
+  GlobalWorkerOptions = pdfjs.GlobalWorkerOptions;
+
+  // The workerSrc needs to be set to the path of the worker file.
+  // We can find the package root and construct the path to the worker.
   const pdfjsDistPath = path.dirname(require.resolve('pdfjs-dist/package.json'));
-  
-  // Construct the full paths to the required legacy build files
-  const pdfjsLegacyPath = path.join(pdfjsDistPath, 'legacy', 'build', 'pdf.js');
-  const pdfjsWorkerPath = path.join(pdfjsDistPath, 'legacy', 'build', 'pdf.worker.js');
+  const workerPath = path.join(pdfjsDistPath, 'build', 'pdf.worker.js');
 
-  // Verify that both files exist before attempting to use them
-  require('fs').accessSync(pdfjsLegacyPath);
-  require('fs').accessSync(pdfjsWorkerPath);
-
-  // If they exist, require the main module and configure the worker
-  const pdfjsModule = require(pdfjsLegacyPath);
-  pdfjs = pdfjsModule;
-  getDocument = pdfjsModule.getDocument;
-  GlobalWorkerOptions = pdfjsModule.GlobalWorkerOptions;
+  // Verify that the worker file exists before setting it.
+  require('fs').accessSync(workerPath);
   
-  GlobalWorkerOptions.workerSrc = pdfjsWorkerPath;
+  GlobalWorkerOptions.workerSrc = workerPath;
   
   pdfjsAvailable = true;
-  console.log('PDF.js initialized successfully from:', pdfjsLegacyPath);
+  console.log('PDF.js initialized successfully.');
 
 } catch (error) {
   console.error('Failed to initialize PDF.js. PDF functionality will be disabled.', error.message);
