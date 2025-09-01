@@ -333,7 +333,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('save-comic', async (event, comic) => {
     try {
       if (!comic.id) {
-        comic.id = `comic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        throw new Error("Comic must have an ID to be saved.");
       }
       
       // Default to placeholder
