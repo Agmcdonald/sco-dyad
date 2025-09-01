@@ -80,7 +80,7 @@ const isMockFile = (filePath: string): boolean => {
 
 const normalize = (s: string | undefined | null) => (s || "").trim().toLowerCase();
 
-export const AppProvider = ({ children }: { children: ReactNode }) => {
+export const AppProvider = ({ children }: { ReactNode }) => {
   const { actions, logAction, setActions } = useActionLog();
   const { files, setFiles, addFile, addFiles, removeFile, updateFile } = useFileQueue();
   const { comics, setComics, refreshComics } = useComicLibrary(logAction);
@@ -175,7 +175,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     if (isMockFile(originalFile.path)) {
       const newComic: Comic = {
         ...comicData,
-        id: `comic-${comicIdCounter++}`,
+        id: `comic-${comicIdCounter++}`, // Use existing counter for mock files
         coverUrl: '/placeholder.svg',
         dateAdded: new Date(),
         summary: finalSummary, // Use the final summary
@@ -227,8 +227,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
 
-        const comicToSave = { 
+        const comicToSave: NewComic = { 
           ...comicData, 
+          id: crypto.randomUUID(), // Generate a unique ID for the comic
           title: comicData.title || null, // Ensure title is null if undefined
           filePath: organizeResult.newPath || originalFile.path, 
           fileSize,
@@ -276,6 +277,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const comicData: NewComic = {
+        id: crypto.randomUUID(), // Generate ID for quick add
         series: parsed.series,
         issue: parsed.issue,
         year: parsed.year || new Date().getFullYear(),
@@ -507,6 +509,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         };
 
         const comicData: NewComic = {
+          id: crypto.randomUUID(), // Generate ID for quick add
           series: parsed.series,
           issue: parsed.issue,
           year: parsed.year || new Date().getFullYear(),

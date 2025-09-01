@@ -4,6 +4,7 @@ export interface Creator {
 }
 
 export interface NewComic {
+  id: string; // Add id to NewComic
   series: string;
   issue: string;
   year: number;
@@ -23,7 +24,7 @@ export interface NewComic {
 }
 
 export interface Comic extends NewComic {
-  id: string;
+  // id: string; // Already inherited from NewComic
   coverUrl: string;
   dateAdded: Date;
   filePath?: string;
