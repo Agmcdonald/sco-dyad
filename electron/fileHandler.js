@@ -40,31 +40,56 @@ let pdfjs, getDocument, GlobalWorkerOptions;
 let pdfjsAvailable = false;
 
 try {
-  // Dynamically resolve the path to the installed pdfjs-dist package
-  const pdfjsDistPath = path.dirname(require.resolve('pdfjs-dist/package.json'));
+  // Try different possible paths for PDF.js
+  let pdfjsModule, pdfjsWorkerPath;
   
-  // Construct the full paths to the required legacy build files
-  const pdfjsLegacyPath = path.join(pdfjsDistPath, 'legacy', 'build', 'pdf.js');
-  const pdfjsWorkerPath = path.join(pdfjsDistPath, 'legacy', 'build', 'pdf.worker.js');
+  // First try the standard build
+  try {
+    pdfjsModule = require('pdfjs-dist');
+    const pdfjsDistPath = path.dirname(require.resolve('pdfjs-dist/package.json'));
+    pdfjsWorkerPath = path.join(pdfjsDistPath, 'build', 'pdf.worker.js');
+    
+    // Check if worker file exists
+    require('fs').accessSync(pdfjsWorkerPath);
+    
+    pdfjs = pdfjsModule;
+    getDocument = pdfjsModule.getDocument;
+    GlobalWorkerOptions = pdfjsModule.GlobalWorkerOptions;
+    GlobalWorkerOptions.workerSrc = pdfjsWorkerPath;
+    
+    pdfjsAvailable = true;
+    console.log('PDF.js initialized successfully (standard build)');
+  } catch (standardError) {
+    console.log('Standard PDF.js build not found, trying legacy build...');
+    
+    // Try legacy build as fallback
+    try {
+      const pdfjsDistPath = path.dirname(require.resolve('pdfjs-dist/package.json'));
+      const pdfjsLegacyPath = path.join(pdfjsDistPath, 'legacy', 'build', 'pdf.js');
+      pdfjsWorkerPath = path.join(pdfjsDistPath, 'legacy', 'build', 'pdf.worker.js');
 
-  // Verify that both files exist before attempting to use them
-  require('fs').accessSync(pdfjsLegacyPath);
-  require('fs').accessSync(pdfjsWorkerPath);
+      // Verify that both files exist
+      require('fs').accessSync(pdfjsLegacyPath);
+      require('fs').accessSync(pdfjsWorkerPath);
 
-  // If they exist, require the main module and configure the worker
-  const pdfjsModule = require(pdfjsLegacyPath);
-  pdfjs = pdfjsModule;
-  getDocument = pdfjsModule.getDocument;
-  GlobalWorkerOptions = pdfjsModule.GlobalWorkerOptions;
-  
-  GlobalWorkerOptions.workerSrc = pdfjsWorkerPath;
-  
-  pdfjsAvailable = true;
-  console.log('PDF.js initialized successfully from:', pdfjsLegacyPath);
-
+      // Require the legacy module
+      pdfjsModule = require(pdfjsLegacyPath);
+      pdfjs = pdfjsModule;
+      getDocument = pdfjsModule.getDocument;
+      GlobalWorkerOptions = pdfjsModule.GlobalWorkerOptions;
+      GlobalWorkerOptions.workerSrc = pdfjsWorkerPath;
+      
+      pdfjsAvailable = true;
+      console.log('PDF.js initialized successfully (legacy build)');
+    } catch (legacyError) {
+      console.error('Failed to initialize PDF.js with both standard and legacy builds:', {
+        standard: standardError.message,
+        legacy: legacyError.message
+      });
+    }
+  }
 } catch (error) {
   console.error('Failed to initialize PDF.js. PDF functionality will be disabled.', error.message);
-  // pdfjsAvailable remains false, allowing the app to run without PDF support
 }
 // --- End of PDF.js Initialization ---
 

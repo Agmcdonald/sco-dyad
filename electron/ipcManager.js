@@ -449,7 +449,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   });
 
   ipcMain.handle('dialog:load-backup', async () => {
-    const { canceled, filePaths }_ = await dialog.showOpenDialog(mainWindow, {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
       title: 'Import Library Backup',
       properties: ['openFile'],
       filters: [{ name: 'JSON Files', extensions: ['json'] }]
