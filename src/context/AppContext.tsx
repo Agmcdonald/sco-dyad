@@ -229,6 +229,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
         const comicToSave = { 
           ...comicData, 
+          title: comicData.title || null, // Ensure title is null if undefined
           filePath: organizeResult.newPath || originalFile.path, 
           fileSize,
           coverUrl,
@@ -309,7 +310,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           const newFilePart = formatPath(settings.fileNameFormat, updatedComic) + fileExtension;
           const newRelativePath = `${newFolderPart}/${newFilePart}`.replace(/\\/g, '/');
 
-          const moveResult = await electronAPI.moveFile(oldComic.filePath, newRelativePath);
+          const moveResult = await electronAPI.organizeFile(oldComic.filePath, newRelativePath); // Changed from moveFile to organizeFile
 
           if (moveResult.success) {
             updatedComic.filePath = moveResult.newPath;
