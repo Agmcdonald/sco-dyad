@@ -10,7 +10,7 @@ interface NextIssuePreviewProps {
 }
 
 const NextIssuePreview = ({ nextComic, onReadNext }: NextIssuePreviewProps) => {
-  const coverSrc = getCoverUrl(nextComic.coverUrl);
+  const coverSrc = getCoverUrl(nextComic.coverUrl, nextComic.filePath);
 
   return (
     <div className="flex flex-col items-center justify-center h-full text-center p-8">
