@@ -236,9 +236,14 @@ app.on('window-all-closed', () => {
 const forceQuit = () => {
   console.log('Force quitting application to release file locks for rebuild.');
   if (database) database.close();
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.destroy(); // Use destroy() to bypass confirmation dialogs
-  }
+  
+  // Destroy all open windows, not just the main one
+  BrowserWindow.getAllWindows().forEach((win) => {
+    if (win && !win.isDestroyed()) {
+      win.destroy();
+    }
+  });
+
   app.exit(); // Force exit the process
 };
 
