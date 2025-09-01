@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
-import { QueuedFile, Comic, NewComic, UndoPayload } from '@/types';
+import { QueuedFile, Comic, NewComic, UndoPayload, ComicKnowledge } from '@/types';
 import { useElectronDatabaseService } from '@/services/electronDatabaseService';
 import { useElectron } from '@/hooks/useElectron';
 import { useSettings } from '@/context/SettingsContext';
@@ -66,6 +66,7 @@ interface AppContextType {
   readingComic: Comic | null;
   setReadingComic: (comic: Comic | null) => void;
   openComicForReading: (comic: Comic) => void;
+  syncKnowledgeBaseToLibrary: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -76,6 +77,8 @@ let fileIdCounter = 0;
 const isMockFile = (filePath: string): boolean => {
   return filePath.startsWith('mock://');
 };
+
+const normalize = (s: string | undefined | null) => (s || "").trim().toLowerCase();
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { actions, logAction, setActions } = useActionLog();
@@ -111,7 +114,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
   const gcdDbService = useGcdDatabaseService();
-  const { addToKnowledgeBase } = useKnowledgeBase();
+  const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
 
   const addFilesFromPaths = useCallback(async (paths: string[]) => {
     if (paths.length === 0) return;
@@ -712,6 +715,58 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isElectron, electronAPI, addToRecentlyRead]);
 
+  const syncKnowledgeBaseToLibrary = useCallback(async () => {
+    if (!databaseService) {
+      showError("Database service is not available.");
+      return;
+    }
+
+    const toastId = showLoading("Syncing Knowledge Base to library...");
+    try {
+      const { series: kbSeries } = knowledgeBase;
+      const updates: (Partial<Comic> & { id: string })[] = [];
+      const kbMap = new Map<string, ComicKnowledge>();
+      kbSeries.forEach(kb => kbMap.set(normalize(kb.series), kb));
+
+      for (const comic of comics) {
+        const kbEntry = kbMap.get(normalize(comic.series));
+        if (!kbEntry) continue;
+
+        let hasChanged = false;
+        const updatedComic: Partial<Comic> & { id: string } = { id: comic.id };
+
+        if (comic.publisher !== kbEntry.publisher) {
+          updatedComic.publisher = kbEntry.publisher;
+          hasChanged = true;
+        }
+
+        const matchingVolume = (kbEntry.volumes || []).find(v => Number(v.year) === Number(comic.year));
+        if (matchingVolume && comic.volume !== matchingVolume.volume) {
+          updatedComic.volume = matchingVolume.volume;
+          hasChanged = true;
+        }
+
+        if (hasChanged) {
+          updates.push(updatedComic);
+        }
+      }
+
+      if (updates.length > 0) {
+        const updatedCount = await databaseService.batchUpdateComics(updates);
+        await refreshComics();
+        showSuccess(`Sync complete. Updated ${updatedCount} comic(s).`);
+        logAction('success', `Synced Knowledge Base to library, updating ${updatedCount} comics.`);
+      } else {
+        showSuccess("Library is already in sync with the Knowledge Base.");
+      }
+    } catch (error) {
+      console.error("Failed to sync Knowledge Base:", error);
+      showError("An error occurred during the sync.");
+    } finally {
+      dismissToast(toastId);
+    }
+  }, [knowledgeBase, comics, databaseService, refreshComics, logAction]);
+
   return (
     <AppContext.Provider value={{ 
       files, addFile, addFiles, removeFile, updateFile, skipFile,
@@ -731,7 +786,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       updateComicProgress,
       updateReadingHistory,
       readingComic, setReadingComic,
-      openComicForReading
+      openComicForReading,
+      syncKnowledgeBaseToLibrary
     }}>
       {children}
     </AppContext.Provider>

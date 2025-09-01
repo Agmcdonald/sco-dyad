@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus, Save, Search as SearchIcon, ChevronRight } from "lucide-react";
+import { Trash2, Plus, Save, Search as SearchIcon, ChevronRight, RefreshCw } from "lucide-react";
 import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
+import { useAppContext } from "@/context/AppContext";
 import type { ComicKnowledge } from "@/types";
 import { showSuccess, showError } from "@/utils/toast";
 
@@ -21,9 +22,11 @@ const emptyEntry = (): ComicKnowledge => ({
 const normalize = (s: string | undefined | null) => (s || "").trim().toLowerCase();
 
 const KBEditor = () => {
-  const { knowledgeBase, addToKnowledgeBase, replaceKnowledgeBase, saveKnowledgeBase } = useKnowledgeBase();
+  const { knowledgeBase, replaceKnowledgeBase } = useKnowledgeBase();
+  const { comics, syncKnowledgeBaseToLibrary } = useAppContext();
   const [localKB, setLocalKB] = useState<ComicKnowledge[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Search & filters
   const [query, setQuery] = useState("");
@@ -39,6 +42,23 @@ const KBEditor = () => {
   useEffect(() => {
     setLocalKB(knowledgeBase.series.map(k => ({ ...k, volumes: k.volumes ? [...k.volumes] : [] })));
   }, [knowledgeBase.series]);
+
+  const libraryCounts = useMemo(() => {
+    const seriesCounts = new Map<string, number>();
+    const publisherCounts = new Map<string, number>();
+
+    for (const comic of comics) {
+      if (comic.series) {
+        const seriesKey = normalize(comic.series);
+        seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) || 0) + 1);
+      }
+      if (comic.publisher) {
+        const publisherKey = normalize(comic.publisher);
+        publisherCounts.set(publisherKey, (publisherCounts.get(publisherKey) || 0) + 1);
+      }
+    }
+    return { seriesCounts, publisherCounts };
+  }, [comics]);
 
   const updateEntry = (index: number, patch: Partial<ComicKnowledge>) => {
     setLocalKB(prev => {
@@ -232,6 +252,12 @@ const KBEditor = () => {
     }
   };
 
+  const handleSync = async () => {
+    setIsSyncing(true);
+    await syncKnowledgeBaseToLibrary();
+    setIsSyncing(false);
+  };
+
   // Quick results: show top N matches with jump
   const quickResults = filteredOnlyEntries.slice(0, 8).map((entry, i) => {
     const originalIndex = filteredOnlyIndexes[i];
@@ -250,8 +276,11 @@ const KBEditor = () => {
             <Button variant="ghost" onClick={addEntry} size="sm">
               <Plus className="mr-2 h-4 w-4" /> Add Entry
             </Button>
-            <Button onClick={handleSaveAll} size="sm" disabled={isSaving}>
+            <Button onClick={handleSaveAll} size="sm" disabled={isSaving || isSyncing}>
               <Save className="mr-2 h-4 w-4" /> Save All
+            </Button>
+            <Button onClick={handleSync} size="sm" disabled={isSaving || isSyncing} variant="outline">
+              <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} /> Sync to Library
             </Button>
           </div>
         </div>
@@ -275,7 +304,11 @@ const KBEditor = () => {
               className="border rounded px-2 py-1 bg-background text-sm"
             >
               <option value="">All publishers</option>
-              {uniquePublishers.map(pub => <option key={pub} value={pub}>{pub}</option>)}
+              {uniquePublishers.map(pub => (
+                <option key={pub} value={pub}>
+                  {pub} ({libraryCounts.publisherCounts.get(normalize(pub)) || 0})
+                </option>
+              ))}
             </select>
 
             <select
@@ -322,6 +355,7 @@ const KBEditor = () => {
             {localKB.map((entry, idx) => {
               // if query/publisher/year filter excludes, hide entry
               if (!matchesEntry(entry)) return null;
+              const seriesCount = libraryCounts.seriesCounts.get(normalize(entry.series)) || 0;
 
               return (
                 <div
@@ -332,7 +366,10 @@ const KBEditor = () => {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
-                        <label className="text-xs text-muted-foreground">Series</label>
+                        <label className="text-xs text-muted-foreground flex items-center justify-between">
+                          Series
+                          {seriesCount > 0 && <Badge variant="secondary">{seriesCount} in library</Badge>}
+                        </label>
                         <Input value={entry.series} onChange={(e) => updateEntry(idx, { series: e.target.value })} />
                       </div>
                       <div>
@@ -390,8 +427,11 @@ const KBEditor = () => {
         </ScrollArea>
       </CardContent>
 
-      <CardFooter className="flex justify-end">
-        <Button onClick={handleSaveAll} disabled={isSaving}>
+      <CardFooter className="flex justify-end gap-2">
+        <Button onClick={handleSync} disabled={isSaving || isSyncing} variant="outline">
+          <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} /> Sync to Library
+        </Button>
+        <Button onClick={handleSaveAll} disabled={isSaving || isSyncing}>
           <Save className="mr-2 h-4 w-4" /> Save Changes
         </Button>
       </CardFooter>

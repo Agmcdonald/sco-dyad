@@ -316,6 +316,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
 
   ipcMain.handle('update-comic', (event, comic) => database.updateComic(comic));
   ipcMain.handle('db:import-comics', (event, comics) => database.importComics(comics));
+  ipcMain.handle('db:batch-update-comics', (event, updates) => database.batchUpdateComics(updates));
   
   ipcMain.handle('delete-comic', async (event, comicId, filePath) => {
     if (filePath) {

@@ -60,6 +60,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateComic: (comic) => ipcRenderer.invoke('update-comic', comic),
   deleteComic: (comicId, filePath) => ipcRenderer.invoke('delete-comic', comicId, filePath),
   importComics: (comics) => ipcRenderer.invoke('db:import-comics', comics),
+  batchUpdateComics: (updates) => ipcRenderer.invoke('db:batch-update-comics', updates),
   
   // Settings
   getSettings: () => ipcRenderer.invoke('get-settings'),

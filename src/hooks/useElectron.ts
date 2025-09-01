@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ComicKnowledge } from '@/types';
+import { Comic, ComicKnowledge, CreatorKnowledge } from '@/types';
 
 // Type definitions for our Electron API
 interface ElectronAPI {
@@ -18,6 +18,7 @@ interface ElectronAPI {
   saveComic(comic: any): Promise<any>;
   getComics(): Promise<any[]>;
   updateComic(comic: any): Promise<any>;
+  batchUpdateComics(updates: (Partial<Comic> & { id: string })[]): Promise<number>;
   deleteComic(comicId: string): Promise<boolean>;
   getSettings(): Promise<any>;
   saveSettings(settings: any): Promise<void>;
@@ -26,8 +27,8 @@ interface ElectronAPI {
   removeAllListeners(channel: string): void;
   selectFilesDialog(): Promise<string[]>;
   selectFolderDialog(): Promise<string[]>;
-  getKnowledgeBase(): Promise<ComicKnowledge[]>;
-  saveKnowledgeBase(data: ComicKnowledge[]): Promise<void>;
+  getKnowledgeBase(): Promise<{ series: ComicKnowledge[], creators: CreatorKnowledge[] }>;
+  saveKnowledgeBase(data: { series: ComicKnowledge[], creators: CreatorKnowledge[] }): Promise<void>;
 }
 
 declare global {

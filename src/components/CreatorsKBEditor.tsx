@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Trash2, Plus, Save, Search as SearchIcon } from "lucide-react";
 import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
+import { useAppContext } from "@/context/AppContext";
 import type { CreatorKnowledge } from "@/types";
 import { showSuccess, showError } from "@/utils/toast";
 import { MultiSelect } from "./ui/multi-select";
@@ -27,6 +28,7 @@ const roleOptions = creatorRoles.map(role => ({ value: role, label: role }));
 
 const CreatorsKBEditor = () => {
   const { knowledgeBase, replaceCreators } = useKnowledgeBase();
+  const { comics } = useAppContext();
   const [localCreators, setLocalCreators] = useState<CreatorKnowledge[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [query, setQuery] = useState("");
@@ -34,6 +36,19 @@ const CreatorsKBEditor = () => {
   useEffect(() => {
     setLocalCreators(knowledgeBase.creators.map(c => ({ ...c, roles: [...c.roles] })));
   }, [knowledgeBase.creators]);
+
+  const creatorCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const comic of comics) {
+      if (comic.creators) {
+        for (const creator of comic.creators) {
+          const key = normalize(creator.name);
+          counts.set(key, (counts.get(key) || 0) + 1);
+        }
+      }
+    }
+    return counts;
+  }, [comics]);
 
   const updateCreator = (index: number, patch: Partial<CreatorKnowledge>) => {
     setLocalCreators(prev => {
@@ -109,12 +124,16 @@ const CreatorsKBEditor = () => {
 
             {filtered.map((creator, idx) => {
               const originalIndex = localCreators.findIndex(c => c.id === creator.id);
+              const count = creatorCounts.get(normalize(creator.name)) || 0;
               return (
                 <div key={creator.id} className="border rounded-md p-4 bg-background">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-muted-foreground">Creator Name</label>
+                        <label className="text-xs text-muted-foreground flex items-center justify-between">
+                          Creator Name
+                          {count > 0 && <Badge variant="secondary">{count} in library</Badge>}
+                        </label>
                         <Input value={creator.name} onChange={(e) => updateCreator(originalIndex, { name: e.target.value })} />
                       </div>
                       <div>
