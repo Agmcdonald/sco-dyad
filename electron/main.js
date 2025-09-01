@@ -235,6 +235,7 @@ app.on('window-all-closed', () => {
  */
 const forceQuit = () => {
   console.log('Force quitting application to release file locks for rebuild.');
+  if (database) database.close();
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.destroy(); // Use destroy() to bypass confirmation dialogs
   }
