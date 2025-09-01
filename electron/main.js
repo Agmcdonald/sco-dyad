@@ -233,14 +233,31 @@ app.on('window-all-closed', async () => {
  * Forceful Shutdown
  * This helps prevent file locking issues during rebuilds in development.
  */
-const forceQuit = () => {
+const forceQuit = async () => {
   console.log('Force quitting application to release file locks for rebuild.');
-  if (database) {
-    database.close().finally(() => {
-      app.exit();
+  
+  try {
+    // Close database first
+    if (database) {
+      await database.close();
+    }
+    
+    // Destroy all windows
+    const allWindows = BrowserWindow.getAllWindows();
+    allWindows.forEach((win) => {
+      if (win && !win.isDestroyed()) {
+        win.destroy();
+      }
     });
-  } else {
-    app.exit();
+    
+    // Force exit after a short delay
+    setTimeout(() => {
+      process.exit(0);
+    }, 100);
+    
+  } catch (error) {
+    console.error('Error during force quit:', error);
+    process.exit(1);
   }
 };
 

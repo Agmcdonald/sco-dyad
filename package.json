@@ -1,11 +1,27 @@
 {
+  "name": "super-comic-organizer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "electron/main.js",
+  "homepage": "./",
   "scripts": {
     "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
-    "dev:vite": "vite",
+    "dev:vite": "npx vite",
     "dev:electron": "wait-on tcp:5173 && electron .",
     "electron": "wait-on tcp:5173 && electron .",
-    "build": "vite build && electron-builder",
-    "preview": "vite preview"
+    "build": "npx vite build && electron-builder",
+    "build:vite": "npx vite build",
+    "build:electron": "electron-builder --config electron.config.js",
+    "preview": "npx vite preview",
+    "clean": "rimraf node_modules dist .vite electron-dist",
+    "clean:cache": "rimraf node_modules/.cache node_modules/.vite node_modules/.ignored_electron",
+    "clean:all": "npm run clean && npm run clean:cache",
+    "reinstall": "npm run clean:all && npm install",
+    "force-clean": "nuclear-clean.bat"
+  },
+  "build": {
+    "extends": "./electron.config.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

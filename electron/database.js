@@ -152,10 +152,8 @@ class ComicDatabase {
 
   // No close method needed for electron-store
   close() {
-    if (this.db) {
-      console.log('Database connection closed.');
-      return this.db.close();
-    }
+    console.log('Database connection closed.');
+    return Promise.resolve();
   }
 }
 
