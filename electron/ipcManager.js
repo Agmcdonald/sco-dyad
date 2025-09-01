@@ -1,4 +1,4 @@
-const { ipcMain, dialog, app } = require('electron');
+const { ipcMain, dialog, app, BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const fsPromises = fs.promises;
@@ -244,6 +244,28 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('reader:prepare-cbr', (event, filePath) => fileHandler.prepareCbrForReading(filePath));
   ipcMain.handle('reader:get-page-from-temp', (event, tempDir, pageName) => fileHandler.getPageDataUrlFromTemp(tempDir, pageName));
   ipcMain.handle('reader:cleanup-temp-dir', (event, tempDir) => fileHandler.cleanupTempDir(tempDir));
+  ipcMain.handle('reader:open-pdf', async (event, filePath) => {
+    try {
+      const pdfWindow = new BrowserWindow({
+        width: 1024,
+        height: 768,
+        parent: mainWindow,
+        modal: false,
+        autoHideMenuBar: true,
+        title: path.basename(filePath),
+        webPreferences: {
+          plugins: true, // Important for PDF viewer
+        }
+      });
+      
+      await pdfWindow.loadFile(filePath);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to open PDF window:', error);
+      return { success: false, error: error.message };
+    }
+  });
 
   // Database operations
   // FIXED: Normalize cover URLs and provide fallback for missing placeholder
@@ -427,7 +449,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   });
 
   ipcMain.handle('dialog:load-backup', async () => {
-    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    const { canceled, filePaths }_ = await dialog.showOpenDialog(mainWindow, {
       title: 'Import Library Backup',
       properties: ['openFile'],
       filters: [{ name: 'JSON Files', extensions: ['json'] }]

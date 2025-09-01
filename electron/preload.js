@@ -51,6 +51,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   prepareCbrForReading: (filePath) => ipcRenderer.invoke('reader:prepare-cbr', filePath),
   getPageDataUrlFromTemp: (tempDir, pageName) => ipcRenderer.invoke('reader:get-page-from-temp', tempDir, pageName),
   cleanupTempDir: (tempDir) => ipcRenderer.invoke('reader:cleanup-temp-dir', tempDir),
+  openPdf: (filePath) => ipcRenderer.invoke('reader:open-pdf', filePath),
 
   // Database Operations
   initDatabase: () => ipcRenderer.invoke('init-database'),

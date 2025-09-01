@@ -28,7 +28,7 @@ const ComicCard = ({
   onBulkSelect
 }: ComicCardProps) => {
   const { selectedItem, setSelectedItem } = useSelection();
-  const { setReadingComic } = useAppContext();
+  const { openComicForReading } = useAppContext();
   const [imageError, setImageError] = useState(false);
 
   const isSelectedForInspector = selectedItem?.type === 'comic' && selectedItem.id === comic.id;
@@ -102,7 +102,7 @@ const ComicCard = ({
               variant="secondary"
               onClick={(e) => {
                 e.stopPropagation();
-                setReadingComic(comic);
+                openComicForReading(comic);
               }}
             >
               <BookOpen className="h-4 w-4 mr-2" />

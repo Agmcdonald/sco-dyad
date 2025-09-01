@@ -13,6 +13,7 @@ interface ElectronAPI {
   organizeFile(filePath: string, targetPath: string): Promise<{ success: boolean; newPath?: string; error?: string; }>;
   getComicPages(filePath: string): Promise<string[]>;
   getComicPageDataUrl(filePath: string, pageName: string): Promise<string>;
+  openPdf(filePath: string): Promise<{ success: boolean; error?: string }>;
   initDatabase(): Promise<void>;
   saveComic(comic: any): Promise<any>;
   getComics(): Promise<any[]>;

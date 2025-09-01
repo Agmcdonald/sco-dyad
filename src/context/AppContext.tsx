@@ -65,6 +65,7 @@ interface AppContextType {
   updateReadingHistory: (comic: Comic, currentPage: number, totalPages: number) => void;
   readingComic: Comic | null;
   setReadingComic: (comic: Comic | null) => void;
+  openComicForReading: (comic: Comic) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -686,6 +687,31 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [addToRecentlyRead]);
 
+  const openComicForReading = useCallback((comic: Comic) => {
+    const isPdf = comic.filePath?.toLowerCase().endsWith('.pdf');
+
+    if (isElectron && electronAPI && isPdf && comic.filePath) {
+      electronAPI.openPdf(comic.filePath)
+        .then(result => {
+          if (result.success) {
+            addToRecentlyRead(comic);
+            showSuccess(`Opening "${comic.series} #${comic.issue}" in a new window.`);
+          } else {
+            showError(`Failed to open PDF: ${result.error || 'Unknown error'}`);
+          }
+        })
+        .catch(err => {
+          showError(`Failed to open PDF: ${err.message}`);
+        });
+    } else {
+      if (isPdf && !isElectron) {
+        showError("Reading PDFs is only supported in the desktop app.");
+        return;
+      }
+      setReadingComic(comic);
+    }
+  }, [isElectron, electronAPI, addToRecentlyRead]);
+
   return (
     <AppContext.Provider value={{ 
       files, addFile, addFiles, removeFile, updateFile, skipFile,
@@ -704,7 +730,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       startMetadataScan,
       updateComicProgress,
       updateReadingHistory,
-      readingComic, setReadingComic
+      readingComic, setReadingComic,
+      openComicForReading
     }}>
       {children}
     </AppContext.Provider>
