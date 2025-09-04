@@ -16,6 +16,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { useGcdDatabaseService } from "@/services/gcdDatabaseService";
 import { batchProcessFiles, getProcessingStats } from "@/lib/smartProcessor";
 import { showSuccess, showError } from "@/utils/toast";
+import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 
 interface BatchProcessorProps {
   files: QueuedFile[];
@@ -26,6 +27,7 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
   const { updateFile, addComic, removeFile, logAction } = useAppContext();
   const { settings } = useSettings();
   const gcdDbService = useGcdDatabaseService();
+  const { knowledgeBase } = useKnowledgeBase();
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState("");
@@ -66,6 +68,7 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
         settings.marvelPublicKey,
         settings.marvelPrivateKey,
         gcdDbService,
+        knowledgeBase,
         (processed, total, current) => {
           setProgress((processed / total) * 100);
           setCurrentFile(current);

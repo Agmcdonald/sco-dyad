@@ -238,7 +238,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         };
         
         console.log(`[ADD-COMIC] Saving comic to database:`, comicToSave);
-        const savedComic = await databaseService.saveComic(savedComic); // Changed from comicToSave to savedComic
+        const savedComic = await databaseService.saveComic(comicToSave);
         
         await refreshComics();
         
