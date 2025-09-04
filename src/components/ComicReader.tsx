@@ -226,19 +226,21 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
   // Effect for auto-hiding controls
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    const handleMouseMove = () => {
+    const handleActivity = () => {
       setShowControls(true);
       clearTimeout(timer);
-      timer = setTimeout(() => setShowControls(false), 2000); // Hide after 2 seconds
+      timer = setTimeout(() => setShowControls(false), 4000); // Hide after 4 seconds
     };
 
-    // Initially hide controls after 2 seconds
-    timer = setTimeout(() => setShowControls(false), 2000);
+    // Initially show controls and start timer
+    handleActivity();
 
-    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mousemove", handleActivity);
+    window.addEventListener("click", handleActivity);
 
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mousemove", handleActivity);
+      window.removeEventListener("click", handleActivity);
       clearTimeout(timer);
     };
   }, []);
