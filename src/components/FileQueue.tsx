@@ -69,6 +69,7 @@ const FileQueue = ({ files, selectedFiles = [], onSelectionChange, onToggleInspe
             <TableHead>File</TableHead>
             <TableHead>Detected Series</TableHead>
             <TableHead>Issue</TableHead>
+            <TableHead>Publisher</TableHead> {/* Added Publisher column */}
             <TableHead>Year</TableHead>
             <TableHead>Pages</TableHead>
             <TableHead>Confidence</TableHead>
@@ -101,6 +102,7 @@ const FileQueue = ({ files, selectedFiles = [], onSelectionChange, onToggleInspe
                 <TableCell className="font-medium">{file.name}</TableCell>
                 <TableCell>{file.series || "—"}</TableCell>
                 <TableCell>{file.issue || "—"}</TableCell>
+                <TableCell>{file.publisher || "—"}</TableCell> {/* Display Publisher */}
                 <TableCell>{file.year || "—"}</TableCell>
                 <TableCell>{file.pageCount || "—"}</TableCell>
                 <TableCell>
