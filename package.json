@@ -38,9 +38,7 @@
         "to": "data"
       }
     ],
-    "asarUnpack": [
-      "src/data/**/*"
-    ],
+    "asarUnpack": [],
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
