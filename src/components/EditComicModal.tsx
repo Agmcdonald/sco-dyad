@@ -150,41 +150,41 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                   <FormItem><FormLabel>Series</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="issue" render={({ field }) => (
-                  <FormItem><FormLabel>Issue</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormMessage>
+                  <FormItem><FormLabel>Issue</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="title" render={({ field }) => (
-                  <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormMessage>
+                  <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="publisher" render={({ field }) => (
-                  <FormItem><FormLabel>Publisher</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormMessage>
+                  <FormItem><FormLabel>Publisher</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="volume" render={({ field }) => (
-                  <FormItem><FormLabel>Volume</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormMessage>
+                  <FormItem><FormLabel>Volume</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="year" render={({ field }) => (
-                  <FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormMessage>
+                  <FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="publicationDate" render={({ field }) => (
-                  <FormItem><FormLabel>Publication Date</FormLabel><FormControl><Input placeholder="YYYY-MM-DD" {...field} /></FormControl><FormMessage /></FormMessage>
+                  <FormItem><FormLabel>Publication Date</FormLabel><FormControl><Input placeholder="YYYY-MM-DD" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
               </div>
 
               {/* Additional Info */}
               <div className="space-y-4">
                 <FormField control={form.control} name="genre" render={({ field }) => (
-                  <FormItem><FormLabel>Genre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormMessage>
+                  <FormItem><FormLabel>Genre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="price" render={({ field }) => (
-                  <FormItem><FormLabel>Price</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormMessage>
+                  <FormItem><FormLabel>Price</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="barcode" render={({ field }) => (
-                  <FormItem><FormLabel>Barcode</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormMessage>
+                  <FormItem><FormLabel>Barcode</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="languageCode" render={({ field }) => (
-                  <FormItem><FormLabel>Language</FormLabel><FormControl><Input placeholder="e.g., en-US" {...field} /></FormControl><FormMessage /></FormMessage>
+                  <FormItem><FormLabel>Language</FormLabel><FormControl><Input placeholder="e.g., en-US" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="countryCode" render={({ field }) => (
-                  <FormItem><FormLabel>Country</FormLabel><FormControl><Input placeholder="e.g., US" {...field} /></FormControl><FormMessage /></FormMessage>
+                  <FormItem><FormLabel>Country</FormLabel><FormControl><Input placeholder="e.g., US" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField
                   control={form.control}
@@ -216,10 +216,10 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
               {/* Summary & Characters */}
               <div className="space-y-4">
                 <FormField control={form.control} name="summary" render={({ field }) => (
-                  <FormItem><FormLabel>Summary</FormLabel><FormControl><Textarea className="h-32" {...field} /></FormControl><FormMessage /></FormMessage>
+                  <FormItem><FormLabel>Summary</FormLabel><FormControl><Textarea className="h-32" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="characters" render={({ field }) => (
-                  <FormItem><FormLabel>Characters</FormLabel><FormControl><Textarea placeholder="Comma-separated list" {...field} /></FormControl><FormMessage /></FormMessage>
+                  <FormItem><FormLabel>Characters</FormLabel><FormControl><Textarea placeholder="Comma-separated list" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
               </div>
             </div>
@@ -230,7 +230,7 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
               {form.watch("creators")?.map((_, index) => (
                 <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center mb-4">
                   <FormField control={form.control} name={`creators.${index}.name`} render={({ field }) => (
-                    <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormMessage>
+                    <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name={`creators.${index}.role`} render={({ field }) => (
                     <FormItem><FormLabel>Role</FormLabel>
