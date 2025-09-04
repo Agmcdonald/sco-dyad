@@ -84,8 +84,7 @@ const FirstLaunchModal: React.FC = () => {
   const handleSkip = () => savePreference(false);
 
   return (
-    // Removed onOpenChange to make the dialog persistent until a button is clicked
-    <Dialog open={open}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-[580px]">
         <DialogHeader>
           <DialogTitle>Welcome to Super Comic Organizer</DialogTitle>
