@@ -11,51 +11,15 @@ import { useElectron } from "@/hooks/useElectron";
 // Key for storing the first launch preference in localStorage
 const SCO_FIRST_LAUNCH_PREFERENCE = "sco_first_launch_preference";
 
-const FirstLaunchModal: React.FC = () => {
-  const [open, setOpen] = useState(false);
+interface FirstLaunchModalProps {
+  isOpen: boolean;
+  onClose: (shouldNavigateToSettings: boolean) => void;
+}
+
+const FirstLaunchModal: React.FC<FirstLaunchModalProps> = ({ isOpen, onClose }) => {
   const [doNotShowAgain, setDoNotShowAgain] = useState(false);
   const navigate = useNavigate();
   const { isElectron, electronAPI } = useElectron();
-
-  useEffect(() => {
-    const checkFirstLaunch = async () => {
-      try {
-        const storedPreference = localStorage.getItem(SCO_FIRST_LAUNCH_PREFERENCE);
-        let shouldShow = true;
-        let currentAppVersion = "unknown";
-
-        // Get current app version if running in Electron
-        if (isElectron && electronAPI) {
-          currentAppVersion = await electronAPI.getAppVersion();
-        }
-
-        if (storedPreference) {
-          const { shown, version: storedVersion, doNotShowAgain: storedDoNotShowAgain } = JSON.parse(storedPreference);
-
-          if (shown && storedDoNotShowAgain) {
-            // If "don't show again" was checked, only show if the app version has changed
-            if (currentAppVersion !== "unknown" && currentAppVersion === storedVersion) {
-              shouldShow = false;
-            }
-          } else if (shown) {
-            // If it was shown but "don't show again" wasn't checked, don't show again for this session
-            shouldShow = false;
-          }
-        }
-
-        if (shouldShow) {
-          // Show after a short delay to allow UI to render
-          setTimeout(() => setOpen(true), 200);
-        }
-      } catch (e) {
-        console.error("Error checking first launch preference:", e);
-        // If there's an error, default to showing the modal
-        setTimeout(() => setOpen(true), 200);
-      }
-    };
-
-    checkFirstLaunch();
-  }, [isElectron, electronAPI]);
 
   // Function to save the user's preference and close the modal
   const savePreference = async (shouldNavigate: boolean) => {
@@ -74,17 +38,19 @@ const FirstLaunchModal: React.FC = () => {
     } catch (e) {
       console.error("Error saving first launch preference:", e);
     }
-    setOpen(false); // Close the modal
-    if (shouldNavigate) {
-      navigate("/app/settings", { state: { targetTab: "library" } });
-    }
+    onClose(shouldNavigate); // Close the modal and pass navigation intent
   };
 
   const handleGoToSettings = () => savePreference(true);
   const handleSkip = () => savePreference(false);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      // If dialog is being closed by user clicking outside or pressing escape, treat as skip
+      if (!open) {
+        savePreference(false);
+      }
+    }}>
       <DialogContent className="sm:max-w-[580px]">
         <DialogHeader>
           <DialogTitle>Welcome to Super Comic Organizer</DialogTitle>

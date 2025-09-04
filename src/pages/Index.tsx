@@ -5,15 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { BookOpen, FolderPlus, GraduationCap, Library } from "lucide-react";
-import { useElectron } from "@/hooks/useElectron"; // Import useElectron
+import { useElectron } from "@/hooks/useElectron";
+import FirstLaunchModal from "@/components/FirstLaunchModal"; // Import FirstLaunchModal
 
 // Key for storing the welcome screen preference in localStorage
 const SCO_WELCOME_SCREEN_PREFERENCE = "sco_welcome_screen_preference";
+const SCO_FIRST_LAUNCH_PREFERENCE = "sco_first_launch_preference"; // Re-declare for use here
 
 const Index = () => {
   const navigate = useNavigate();
   const { isElectron, electronAPI } = useElectron();
   const [doNotShowWelcome, setDoNotShowWelcome] = useState(false);
+  const [showFirstLaunchModal, setShowFirstLaunchModal] = useState(false);
 
   useEffect(() => {
     const checkWelcomePreference = async () => {
@@ -44,7 +47,7 @@ const Index = () => {
     };
 
     checkWelcomePreference();
-  }, [navigate, isElectron, electronAPI]); // Depend on navigate, isElectron, electronAPI
+  }, [navigate, isElectron, electronAPI]);
 
   const handleGetStarted = async () => {
     try {
@@ -53,16 +56,48 @@ const Index = () => {
         currentAppVersion = await electronAPI.getAppVersion();
       }
 
-      const preference = {
+      // Save preference for the main welcome screen
+      const welcomePreference = {
         shown: true,
         version: currentAppVersion,
         doNotShowWelcome: doNotShowWelcome,
       };
-      localStorage.setItem(SCO_WELCOME_SCREEN_PREFERENCE, JSON.stringify(preference));
+      localStorage.setItem(SCO_WELCOME_SCREEN_PREFERENCE, JSON.stringify(welcomePreference));
+
+      // Now check if the FirstLaunchModal needs to be shown
+      const storedFirstLaunchPreference = localStorage.getItem(SCO_FIRST_LAUNCH_PREFERENCE);
+      let shouldShowFirstLaunchModal = true;
+
+      if (storedFirstLaunchPreference) {
+        const { shown, version: storedVersion, doNotShowAgain: storedDoNotShowAgain } = JSON.parse(storedFirstLaunchPreference);
+        if (shown && storedDoNotShowAgain) {
+          if (currentAppVersion !== "unknown" && currentAppVersion === storedVersion) {
+            shouldShowFirstLaunchModal = false;
+          }
+        } else if (shown) {
+          shouldShowFirstLaunchModal = false;
+        }
+      }
+
+      if (shouldShowFirstLaunchModal) {
+        setShowFirstLaunchModal(true);
+      } else {
+        navigate('/app/dashboard');
+      }
+
     } catch (e) {
-      console.error("Error saving welcome screen preference:", e);
+      console.error("Error saving preferences or checking first launch:", e);
+      navigate('/app/dashboard'); // Fallback to dashboard
     }
-    navigate('/app/dashboard');
+  };
+
+  const handleFirstLaunchModalClose = (shouldNavigateToSettings: boolean) => {
+    setShowFirstLaunchModal(false);
+    if (shouldNavigateToSettings) {
+      navigate("/app/settings", { state: { targetTab: "library" } });
+    } else {
+      navigate('/app/dashboard');
+    }
   };
 
   return (
@@ -140,6 +175,12 @@ const Index = () => {
           </div>
         </div>
       </div>
+      {showFirstLaunchModal && (
+        <FirstLaunchModal
+          isOpen={showFirstLaunchModal}
+          onClose={handleFirstLaunchModalClose}
+        />
+      )}
     </div>
   );
 };
