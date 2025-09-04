@@ -1,9 +1,30 @@
-export const RATING_EMOJIS: Record<number, { emoji: string; label: string }> = {
-  0: { emoji: '🤮', label: 'Trash / Who Approved This' },
-  1: { emoji: '🤬', label: 'What a Waste of Time' },
-  2: { emoji: '😒', label: 'Nothing Special' },
-  3: { emoji: '😐', label: 'Ok' },
-  4: { emoji: '🙂', label: 'I Like It' },
-  5: { emoji: '😁', label: 'Great Issue' },
-  6: { emoji: '🤯', label: 'Holy Cow! My Mind is Blown!' },
+export const RATING_EMOJIS = {
+  6: { emoji: "🤩", label: "Masterpiece" },
+  5: { emoji: "😍", label: "Amazing" },
+  4: { emoji: "😄", label: "Great" },
+  3: { emoji: "🙂", label: "Good" },
+  2: { emoji: "😐", label: "Okay" },
+  1: { emoji: "😕", label: "Bad" },
+  0: { emoji: "🤢", label: "Awful" },
 };
+
+export const CONTENT_RATINGS = {
+  'E': {
+    label: 'Everyone',
+    description: 'All ages; may include cartoon violence or comic mischief.'
+  },
+  'T': {
+    label: 'Teen',
+    description: 'Age 12+, may include mild violence/language/suggestive content.'
+  },
+  'T+': {
+    label: 'Teen Plus',
+    description: 'Age 15+, moderate violence, graphic content.'
+  },
+  'M': {
+    label: 'Mature',
+    description: 'Age 17+, intense violence, explicit themes.'
+  }
+};
+
+export type ContentRating = keyof typeof CONTENT_RATINGS;

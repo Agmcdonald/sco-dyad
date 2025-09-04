@@ -23,7 +23,7 @@ import PublisherView from "@/components/PublisherView";
 import { useAppContext } from "@/context/AppContext";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { Comic, LibraryViewMode } from "@/types";
-import { RATING_EMOJIS } from "@/lib/ratings";
+import { RATING_EMOJIS, CONTENT_RATINGS } from "@/lib/ratings";
 
 interface LibraryProps {
   onToggleInspector?: () => void;
@@ -40,6 +40,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
   const [isDrilledDown, setIsDrilledDown] = useState(false);
   const [ratingFilter, setRatingFilter] = useState<string>("all");
   const [readStatusFilter, setReadStatusFilter] = useState<string>("all");
+  const [contentRatingFilter, setContentRatingFilter] = useState<string>("all");
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -123,8 +124,17 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
       }
     }
 
+    // Apply content rating filter
+    if (contentRatingFilter !== "all") {
+      if (contentRatingFilter === "none") {
+        filtered = filtered.filter(comic => !comic.contentRating);
+      } else {
+        filtered = filtered.filter(comic => comic.contentRating === contentRatingFilter);
+      }
+    }
+
     return filtered;
-  }, [comics, searchTerm, ratingFilter, readStatusFilter, readingList]);
+  }, [comics, searchTerm, ratingFilter, readStatusFilter, contentRatingFilter, readingList]);
 
   const sortedAndGroupedComics = useMemo(() => {
     const comicsToSort = [...filteredComics];
@@ -280,6 +290,20 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                 {Object.entries(RATING_EMOJIS).map(([rating, { emoji }]) => (
                   <SelectItem key={rating} value={rating}>
                     {emoji} {rating}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={contentRatingFilter} onValueChange={setContentRatingFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Content Rating" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Content</SelectItem>
+                <SelectItem value="none">Not Rated</SelectItem>
+                {Object.entries(CONTENT_RATINGS).map(([key, { label }]) => (
+                  <SelectItem key={key} value={key}>
+                    {key} - {label}
                   </SelectItem>
                 ))}
               </SelectContent>

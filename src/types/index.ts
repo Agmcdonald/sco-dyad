@@ -1,3 +1,5 @@
+export type ContentRating = 'E' | 'T' | 'T+' | 'M';
+
 export interface Creator {
   name: string;
   role: string;
@@ -15,6 +17,7 @@ export interface NewComic {
   summary?: string;
   creators?: Creator[];
   rating?: number;
+  contentRating?: ContentRating;
   genre?: string;
   characters?: string;
   price?: string; // Issue price

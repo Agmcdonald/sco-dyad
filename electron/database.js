@@ -50,7 +50,8 @@ class ComicDatabase {
         lastModified TEXT,
         metadataLastChecked TEXT,
         ignoreInScans INTEGER DEFAULT 0,
-        isSeriesCover INTEGER DEFAULT 0
+        isSeriesCover INTEGER DEFAULT 0,
+        contentRating TEXT
       );
 
       CREATE TABLE IF NOT EXISTS creators (
@@ -91,9 +92,9 @@ class ComicDatabase {
   saveComic(comic) {
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO comics (
-        id, series, issue, year, publisher, volume, title, publicationDate, summary, rating, genre, characters, price, barcode, languageCode, countryCode, coverUrl, filePath, fileSize, totalPages, lastReadPage, dateAdded, lastModified, metadataLastChecked, ignoreInScans, isSeriesCover
+        id, series, issue, year, publisher, volume, title, publicationDate, summary, rating, genre, characters, price, barcode, languageCode, countryCode, coverUrl, filePath, fileSize, totalPages, lastReadPage, dateAdded, lastModified, metadataLastChecked, ignoreInScans, isSeriesCover, contentRating
       ) VALUES (
-        @id, @series, @issue, @year, @publisher, @volume, @title, @publicationDate, @summary, @rating, @genre, @characters, @price, @barcode, @languageCode, @countryCode, @coverUrl, @filePath, @fileSize, @totalPages, @lastReadPage, @dateAdded, @lastModified, @metadataLastChecked, @ignoreInScans, @isSeriesCover
+        @id, @series, @issue, @year, @publisher, @volume, @title, @publicationDate, @summary, @rating, @genre, @characters, @price, @barcode, @languageCode, @countryCode, @coverUrl, @filePath, @fileSize, @totalPages, @lastReadPage, @dateAdded, @lastModified, @metadataLastChecked, @ignoreInScans, @isSeriesCover, @contentRating
       )
     `);
     
@@ -130,6 +131,7 @@ class ComicDatabase {
         metadataLastChecked: c.metadataLastChecked || null,
         ignoreInScans: c.ignoreInScans ? 1 : 0,
         isSeriesCover: c.isSeriesCover ? 1 : 0,
+        contentRating: c.contentRating || null,
       };
 
       stmt.run(comicData);

@@ -15,6 +15,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { 
   Tag, 
   BookOpen, 
   PlusCircle, 
@@ -28,7 +34,8 @@ import {
   MapPin,
   Image,
   ImageIcon,
-  CheckCircle
+  CheckCircle,
+  ShieldAlert
 } from "lucide-react";
 import EditComicModal from "./EditComicModal";
 import RatingSelector from "./RatingSelector";
@@ -36,7 +43,7 @@ import FixCoverModal from "./FixCoverModal";
 import { useAppContext } from "@/context/AppContext";
 import { useSelection } from "@/context/SelectionContext";
 import { useElectron } from "@/hooks/useElectron";
-import { RATING_EMOJIS } from "@/lib/ratings";
+import { RATING_EMOJIS, CONTENT_RATINGS } from "@/lib/ratings";
 import { showError, showSuccess } from "@/utils/toast";
 import { getCoverUrl } from "@/lib/cover";
 
@@ -59,6 +66,7 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
   const isInReadingList = !!readingListItem;
   const isMarkedAsRead = readingListItem?.completed || false;
   const rating = comic.rating;
+  const contentRatingInfo = comic.contentRating ? CONTENT_RATINGS[comic.contentRating] : null;
 
   // Check if this comic is currently the series cover
   const isCurrentSeriesCover = comic.isSeriesCover;
@@ -163,35 +171,50 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
           </div>
           
           {/* Basic Details */}
-          <div>
-            <h4 className="font-semibold text-sm mb-2">Basic Information</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground flex items-center"><FileText className="h-3 w-3 mr-1.5" /> Publisher</span>
-                <span>{comic.publisher}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground flex items-center"><BookOpen className="h-3 w-3 mr-1.5" /> Volume</span>
-                <span>{comic.volume}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground flex items-center"><Calendar className="h-3 w-3 mr-1.5" /> Publication Date</span>
-                <span>{comic.publicationDate || comic.year}</span>
-              </div>
-              {comic.genre && (
+          <TooltipProvider>
+            <div>
+              <h4 className="font-semibold text-sm mb-2">Basic Information</h4>
+              <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground flex items-center"><Tag className="h-3 w-3 mr-1.5" /> Genre</span>
-                  <span>{comic.genre}</span>
+                  <span className="text-muted-foreground flex items-center"><FileText className="h-3 w-3 mr-1.5" /> Publisher</span>
+                  <span>{comic.publisher}</span>
                 </div>
-              )}
-              {comic.price && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground flex items-center"><DollarSign className="h-3 w-3 mr-1.5" /> Price</span>
-                  <span>{comic.price}</span>
+                  <span className="text-muted-foreground flex items-center"><BookOpen className="h-3 w-3 mr-1.5" /> Volume</span>
+                  <span>{comic.volume}</span>
                 </div>
-              )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground flex items-center"><Calendar className="h-3 w-3 mr-1.5" /> Publication Date</span>
+                  <span>{comic.publicationDate || comic.year}</span>
+                </div>
+                {comic.genre && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground flex items-center"><Tag className="h-3 w-3 mr-1.5" /> Genre</span>
+                    <span>{comic.genre}</span>
+                  </div>
+                )}
+                {comic.price && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground flex items-center"><DollarSign className="h-3 w-3 mr-1.5" /> Price</span>
+                    <span>{comic.price}</span>
+                  </div>
+                )}
+                {comic.contentRating && contentRatingInfo && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground flex items-center"><ShieldAlert className="h-3 w-3 mr-1.5" /> Content Rating</span>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Badge variant="outline">{comic.contentRating} - {contentRatingInfo.label}</Badge>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{contentRatingInfo.description}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          </TooltipProvider>
 
           {/* Additional Metadata */}
           {(comic.barcode || comic.languageCode || comic.countryCode) && (
