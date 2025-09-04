@@ -22,6 +22,7 @@
   "build": {
     "appId": "com.supercomicorganizer.app",
     "productName": "Super Comic Organizer",
+    "asar": false,
     "directories": {
       "output": "release",
       "buildResources": "build"
