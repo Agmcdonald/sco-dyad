@@ -113,7 +113,7 @@ export const AppProvider = ({ children }: { ReactNode }) => {
   const databaseService = useElectronDatabaseService();
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
-  const gcdDbService = useGcdDatabaseService();
+  const gcdDbService = useGcdDatabaseService(); // This hook likely initializes the service
   const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
 
   const addFilesFromPaths = useCallback(async (paths: string[]) => {
@@ -238,7 +238,7 @@ export const AppProvider = ({ children }: { ReactNode }) => {
         };
         
         console.log(`[ADD-COMIC] Saving comic to database:`, comicToSave);
-        const savedComic = await databaseService.saveComic(comicToSave);
+        const savedComic = await databaseService.saveComic(savedComic); // Changed from comicToSave to savedComic
         
         await refreshComics();
         
@@ -508,14 +508,39 @@ export const AppProvider = ({ children }: { ReactNode }) => {
           status: 'Pending'
         };
 
+        // Use processComicFile to get enriched data for quick add
+        const processedResult = await processComicFile(
+          tempFile,
+          settings.comicVineApiKey,
+          settings.marvelPublicKey,
+          settings.marvelPrivateKey,
+          settings.gcdDbPath ? gcdDbService : null, // Conditionally pass gcdDbService
+          knowledgeBase // Pass knowledgeBase
+        );
+
+        if (!processedResult.success || !processedResult.data) {
+          showError(`Could not quick add "${name}": ${processedResult.error || "Failed to process metadata."}`);
+          failedCount++;
+          continue;
+        }
+
         const comicData: NewComic = {
           id: crypto.randomUUID(), // Generate ID for quick add
-          series: parsed.series,
-          issue: parsed.issue,
-          year: parsed.year || new Date().getFullYear(),
-          publisher: parsed.publisher || "Unknown Publisher",
-          volume: parsed.volume || String(parsed.year || new Date().getFullYear()),
-          summary: `Quick added from file: ${name}`
+          series: processedResult.data.series,
+          issue: processedResult.data.issue,
+          year: processedResult.data.year,
+          publisher: processedResult.data.publisher,
+          volume: processedResult.data.volume,
+          summary: processedResult.data.summary,
+          title: processedResult.data.title,
+          publicationDate: processedResult.data.publicationDate,
+          genre: processedResult.data.genre,
+          characters: processedResult.data.characters,
+          price: processedResult.data.price,
+          barcode: processedResult.data.barcode,
+          languageCode: processedResult.data.languageCode,
+          countryCode: processedResult.data.countryCode,
+          creators: processedResult.data.creators,
         };
 
         await addComic(comicData, tempFile); // tempFile now has ofTotal
@@ -534,7 +559,7 @@ export const AppProvider = ({ children }: { ReactNode }) => {
       showError("An error occurred during Quick Add.");
       console.error("Quick Add error:", error);
     }
-  }, [isElectron, electronAPI, addComic]);
+  }, [isElectron, electronAPI, addComic, settings, gcdDbService, knowledgeBase]);
 
   const addFilesFromDrop = useCallback(async (droppedFiles: File[]) => {
     const comicExtensions = ['.cbr', '.cbz'];
@@ -622,7 +647,8 @@ export const AppProvider = ({ children }: { ReactNode }) => {
         settings.comicVineApiKey,
         settings.marvelPublicKey,
         settings.marvelPrivateKey,
-        gcdDbService
+        settings.gcdDbPath ? gcdDbService : null, // Conditionally pass gcdDbService
+        knowledgeBase // Pass knowledgeBase
       );
 
       const updatedComic = { ...comic, metadataLastChecked: new Date().toISOString() };
@@ -637,6 +663,7 @@ export const AppProvider = ({ children }: { ReactNode }) => {
           updatedComic.creators = result.data.creators;
           hasNewData = true;
         }
+        // Prioritize knowledge base publisher if it's more specific than "Unknown Publisher"
         if (result.data.publisher && result.data.publisher !== "Unknown Publisher" && comic.publisher === "Unknown Publisher") {
           updatedComic.publisher = result.data.publisher;
           hasNewData = true;
@@ -689,7 +716,7 @@ export const AppProvider = ({ children }: { ReactNode }) => {
 
     setIsScanningMetadata(false);
     showSuccess(`Metadata scan complete. Updated ${updatedCount} of ${candidates.length} comics.`);
-  }, [comics, settings, updateComic, logAction, gcdDbService]);
+  }, [comics, settings, updateComic, logAction, gcdDbService, knowledgeBase]);
 
   const updateComicProgress = useCallback(async (comicId: string, lastReadPage: number, totalPages: number) => {
     const comicToUpdate = comics.find(c => c.id === comicId);
