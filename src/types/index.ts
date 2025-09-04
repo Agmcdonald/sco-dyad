@@ -112,6 +112,7 @@ export interface AppSettings {
   gcdDbPath?: string;
   gcdIssuesPath?: string;
   gcdSequencesPath?: string;
+  hasLaunchedBefore?: boolean; // New property
 }
 
 export interface ComicKnowledge {

@@ -12,6 +12,7 @@ const defaultSettings: AppSettings = {
   fileNameFormat: '{series} #{issue} ({year})',
   libraryPath: '',
   gcdDbPath: '',
+  hasLaunchedBefore: false, // Default to false
 };
 
 interface SettingsContextType {
