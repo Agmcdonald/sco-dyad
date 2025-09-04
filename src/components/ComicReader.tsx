@@ -268,7 +268,7 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
     if (pageNumber < 1 || pageNumber > totalPages) return null;
     const imageUrl = pageImageUrls[pageNumber];
     return (
-      <div className="w-full h-full flex items-center justify-center">
+      <div className="h-full flex items-center justify-center">
         {!imageUrl ? (
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         ) : (
@@ -345,7 +345,7 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
             <NextIssuePreview nextComic={nextComic} onReadNext={loadNextComic} />
           ) : (
             <div
-              className="transition-transform duration-200 flex items-center justify-center"
+              className="transition-transform duration-200 flex items-center justify-center gap-4"
               style={{
                 transform: `scale(1) rotate(${rotation}deg)`,
                 width: "100%",
