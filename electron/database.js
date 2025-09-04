@@ -50,8 +50,7 @@ class ComicDatabase {
         lastModified TEXT,
         metadataLastChecked TEXT,
         ignoreInScans INTEGER DEFAULT 0,
-        isSeriesCover INTEGER DEFAULT 0,
-        contentRating TEXT
+        isSeriesCover INTEGER DEFAULT 0
       );
 
       CREATE TABLE IF NOT EXISTS creators (
@@ -79,6 +78,20 @@ class ComicDatabase {
         FOREIGN KEY (comicId) REFERENCES comics(id) ON DELETE CASCADE
       );
     `);
+
+    // --- Schema Migration ---
+    // This ensures that older databases are updated with new columns.
+    try {
+      const columns = this.db.pragma('table_info(comics)');
+      const columnNames = columns.map(col => col.name);
+
+      if (!columnNames.includes('contentRating')) {
+        this.db.exec('ALTER TABLE comics ADD COLUMN contentRating TEXT');
+        console.log('Database schema migrated: Added "contentRating" column to "comics" table.');
+      }
+    } catch (error) {
+      console.error('Failed to migrate database schema:', error);
+    }
   }
 
   saveSetting(key, value) {
