@@ -80,7 +80,7 @@ const isMockFile = (filePath: string): boolean => {
 
 const normalize = (s: string | undefined | null) => (s || "").trim().toLowerCase();
 
-export const AppProvider = ({ children }: { ReactNode }) => {
+export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { actions, logAction, setActions } = useActionLog();
   const { files, setFiles, addFile, addFiles, removeFile, updateFile } = useFileQueue();
   const { comics, setComics, refreshComics } = useComicLibrary(logAction);
