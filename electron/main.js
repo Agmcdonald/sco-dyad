@@ -130,7 +130,7 @@ async function initializeKnowledgeBaseFile() {
     // Determine path to default data files
     const dataDir = isDev
       ? path.join(__dirname, '../src/data')
-      : path.join(process.resourcesPath, 'app.asar.unpacked/src/data');
+      : path.join(process.resourcesPath, 'data');
 
     const defaultSeriesKBPath = path.join(dataDir, 'comicsKnowledge.json');
     const defaultCreatorsKBPath = path.join(dataDir, 'creatorsKnowledge.json');
