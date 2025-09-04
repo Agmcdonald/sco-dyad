@@ -102,13 +102,38 @@ class ComicDatabase {
     `);
 
     const transaction = this.db.transaction((c) => {
-      stmt.run({
-        ...c,
+      // Ensure all fields have default values to prevent "Missing named parameter" errors
+      const comicData = {
+        id: c.id || null,
+        series: c.series || null,
+        issue: c.issue || null,
+        year: c.year || null,
+        publisher: c.publisher || null,
+        volume: c.volume || null,
+        title: c.title || null,
+        publicationDate: c.publicationDate || null,
+        summary: c.summary || null,
+        rating: c.rating || null,
+        genre: c.genre || null,
+        characters: c.characters || null,
+        price: c.price || null,
+        barcode: c.barcode || null,
+        languageCode: c.languageCode || null,
+        countryCode: c.countryCode || null,
+        coverUrl: c.coverUrl || null,
+        filePath: c.filePath || null,
+        fileSize: c.fileSize || null,
+        totalPages: c.totalPages || null,
+        lastReadPage: c.lastReadPage || null,
         dateAdded: c.dateAdded || new Date().toISOString(),
         lastModified: new Date().toISOString(),
+        metadataLastChecked: c.metadataLastChecked || null,
         ignoreInScans: c.ignoreInScans ? 1 : 0,
         isSeriesCover: c.isSeriesCover ? 1 : 0,
-      });
+      };
+
+      stmt.run(comicData);
+      
       if (c.creators && c.creators.length > 0) {
         for (const creator of c.creators) {
           creatorsStmt.run(c.id, creator.name, creator.role);
