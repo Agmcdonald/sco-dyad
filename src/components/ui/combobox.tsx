@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Check, ChevronsUpDown, PlusCircle } from "lucide-react"
+import * as React from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -12,57 +12,42 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command"
+} from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area"; // Import ScrollArea
 
 export interface ComboboxOption {
-  value: string
-  label: string
+  value: string;
+  label: string;
+  disabled?: boolean;
 }
 
 interface ComboboxProps {
-  options: ComboboxOption[]
-  value: string
-  onValueChange: (value: string) => void
-  placeholder?: string
-  emptyText?: string
-  disabled?: boolean
+  options: ComboboxOption[];
+  value: string;
+  onValueChange: (value: string) => void;
+  placeholder?: string;
+  emptyText?: string;
+  searchPlaceholder?: string;
+  disabled?: boolean;
+  className?: string;
 }
 
 export function Combobox({
   options,
   value,
   onValueChange,
-  placeholder = "Select an option...",
-  emptyText = "No options found.",
+  placeholder = "Select option...",
+  emptyText = "No option found.",
+  searchPlaceholder = "Search options...",
   disabled = false,
+  className,
 }: ComboboxProps) {
-  const [open, setOpen] = React.useState(false)
-  const [inputValue, setInputValue] = React.useState("")
-
-  const currentOption = options.find((option) => option.value.toLowerCase() === value?.toLowerCase())
-
-  const handleSelect = (currentValue: string) => {
-    onValueChange(currentValue === value ? "" : currentValue)
-    setOpen(false)
-  }
-
-  const handleCreate = () => {
-    if (inputValue) {
-      onValueChange(inputValue)
-      setOpen(false)
-    }
-  }
-
-  const filteredOptions = options.filter(option =>
-    option.label.toLowerCase().includes(inputValue.toLowerCase())
-  );
-
-  const showCreateOption = inputValue && !options.some(option => option.label.toLowerCase() === inputValue.toLowerCase());
+  const [open, setOpen] = React.useState(false);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -71,53 +56,51 @@ export function Combobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between"
+          className={cn("w-full justify-between", className)}
           disabled={disabled}
         >
-          {currentOption ? currentOption.label : (value || placeholder)}
+          {value
+            ? options.find((option) => option.value === value)?.label
+            : placeholder}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command>
-          <CommandInput
-            placeholder="Search or create..."
-            value={inputValue}
-            onValueChange={setInputValue}
-          />
+          <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
-            <CommandEmpty>
-              {!showCreateOption ? emptyText : null}
-            </CommandEmpty>
-            <CommandGroup>
-              {filteredOptions.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.label}
-                  onSelect={() => handleSelect(option.value)}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === option.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {option.label}
-                </CommandItem>
-              ))}
-              {showCreateOption && (
-                <CommandItem
-                  onSelect={handleCreate}
-                  className="text-primary"
-                >
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Create "{inputValue}"
-                </CommandItem>
-              )}
-            </CommandGroup>
+            <ScrollArea className="h-48"> {/* Added ScrollArea with a fixed height */}
+              <CommandEmpty>{emptyText}</CommandEmpty>
+              <CommandGroup>
+                {options.map((option) => (
+                  <CommandItem
+                    key={option.value}
+                    value={option.label} // Use label for search matching
+                    onSelect={(currentValue) => {
+                      const selectedOption = options.find(
+                        (opt) => opt.label.toLowerCase() === currentValue.toLowerCase()
+                      );
+                      if (selectedOption) {
+                        onValueChange(selectedOption.value === value ? "" : selectedOption.value);
+                      }
+                      setOpen(false);
+                    }}
+                    disabled={option.disabled}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === option.value ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {option.label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </ScrollArea>
           </CommandList>
         </Command>
       </PopoverContent>
     </Popover>
-  )
+  );
 }
