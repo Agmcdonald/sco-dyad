@@ -147,7 +147,7 @@ const Organize = () => {
 
   return (
     <div 
-      className={`h-full flex flex-col space-y-4 ${isDragOver ? 'bg-primary/5' : ''}`}
+      className={`space-y-4 ${isDragOver ? 'bg-primary/5' : ''}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -231,20 +231,22 @@ const Organize = () => {
         </div>
       )}
 
-      {/* Scrollable File Queue */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="h-full rounded-lg border bg-card text-card-foreground shadow-sm">
-          {files.length === 0 && !fileLoadStatus.isLoading ? (
+      {/* File Queue - Removed flex-1 overflow-y-auto. It will now scroll with the parent <main> */}
+      <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+        {files.length === 0 && !fileLoadStatus.isLoading ? (
+          // FileDropzone needs to fill available space when no files.
+          // Wrap it in a div that takes up some minimum height.
+          <div className="min-h-[300px] flex items-center justify-center">
             <FileDropzone />
-          ) : (
-            <FileQueue 
-              files={filteredFiles} 
-              selectedFiles={selectedFiles}
-              onSelectionChange={setSelectedFiles}
-              onToggleInspector={handleToggleInspector}
-            />
-          )}
-        </div>
+          </div>
+        ) : (
+          <FileQueue 
+            files={filteredFiles} 
+            selectedFiles={selectedFiles}
+            onSelectionChange={setSelectedFiles}
+            onToggleInspector={handleToggleInspector}
+          />
+        )}
       </div>
 
       {selectedFile && (
