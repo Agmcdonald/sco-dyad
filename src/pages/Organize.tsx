@@ -220,15 +220,19 @@ const Organize = () => {
         </div>
       )}
 
+      {/* Sticky Bulk Actions Bar */}
       {files.length > 0 && !fileLoadStatus.isLoading && (
-        <BulkActions 
-          files={filteredFiles} 
-          selectedFiles={selectedFiles} 
-          onSelectionChange={setSelectedFiles} 
-        />
+        <div className="sticky top-0 z-10 bg-background py-4 -mt-4">
+          <BulkActions 
+            files={filteredFiles} 
+            selectedFiles={selectedFiles} 
+            onSelectionChange={setSelectedFiles} 
+          />
+        </div>
       )}
 
-      <div className="flex-1">
+      {/* Scrollable File Queue */}
+      <div className="flex-1 overflow-y-auto">
         <div className="h-full rounded-lg border bg-card text-card-foreground shadow-sm">
           {files.length === 0 && !fileLoadStatus.isLoading ? (
             <FileDropzone />
