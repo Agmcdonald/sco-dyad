@@ -34,7 +34,8 @@ const detectPublisherFromCharacters = (seriesName: string): string | null => {
 
 export const parseFilename = (path: string): ParsedComicInfo => {
   const filename = path.split(/[\\/]/).pop() || '';
-  let cleaned = filename.replace(/_/g, ' ').replace(/\.[^/.]+$/, "").trim();
+  // Replace hyphens with spaces to handle formats like "V-1" or "Series - Issue"
+  let cleaned = filename.replace(/_/g, ' ').replace(/-/g, ' ').replace(/\.[^/.]+$/, "").trim();
 
   // 0. Extract "of Total" first to prevent it from being removed by other patterns
   let ofTotal: string | null = null;
@@ -58,18 +59,26 @@ export const parseFilename = (path: string): ParsedComicInfo => {
 
   // 2. Extract Volume
   let volume: string | null = null;
-  const volumeMatch = cleaned.match(/(?:\(v|vol|volume)\s*(\d{1,3})\)/i);
-  if (volumeMatch) {
-    volume = volumeMatch[1];
-    cleaned = cleaned.replace(volumeMatch[0], '').trim();
+  // Check for standalone volume first, e.g., "V1", "V 1", "Vol 2"
+  const standaloneVolumeMatch = cleaned.match(/\s(v|vol|volume)\s?(\d+)/i);
+  if (standaloneVolumeMatch) {
+    volume = standaloneVolumeMatch[2];
+    cleaned = cleaned.replace(standaloneVolumeMatch[0], ' ');
+  } else {
+    const parenVolumeMatch = cleaned.match(/(?:\(v|vol|volume)\s*(\d{1,3})\)/i);
+    if (parenVolumeMatch) {
+      volume = parenVolumeMatch[1];
+      cleaned = cleaned.replace(parenVolumeMatch[0], '');
+    }
   }
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
 
-  // 3. Extract Issue (from most specific to least specific)
+  // 3. Extract Issue
   let issue: string | null = null;
   const issuePatterns = [
     { regex: /\s#(\d{1,4}(?:\.\d{1,2})?)/, group: 1 }, // #123
     { regex: /\sissue\s#?(\d{1,4}(?:\.\d{1,2})?)/i, group: 1 }, // issue 123
-    { regex: /\s(\d{3,4})/, group: 1 }, // 001 (3 or 4 digits)
+    { regex: /\s(\d{3,4})(?!\d)/, group: 1 }, // 001 (3 or 4 digits, not followed by another digit)
     { regex: /\s(\d{1,2}(?:\.\d{1,2})?)$/, group: 1 }, // 1 or 1.5 at the end
   ];
 
@@ -77,7 +86,11 @@ export const parseFilename = (path: string): ParsedComicInfo => {
     const issueMatch = cleaned.match(pattern.regex);
     if (issueMatch) {
       issue = issueMatch[pattern.group];
-      cleaned = cleaned.replace(issueMatch[0], '').trim();
+      // This is the key change: split the string at the issue number
+      // to separate the series from the title.
+      const parts = cleaned.split(issueMatch[0]);
+      cleaned = parts[0]; // Everything before the issue is the series
+      // The title (parts[1]) is effectively discarded from the series name, cleaning it up.
       break;
     }
   }

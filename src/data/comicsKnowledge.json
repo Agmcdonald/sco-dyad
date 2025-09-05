@@ -373,6 +373,21 @@
     ]
   },
   {
+    "series": "What If?",
+    "publisher": "Marvel Comics",
+    "startYear": 1977,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1977
+      },
+      {
+        "volume": "2",
+        "year": 1989
+      }
+    ]
+  },
+  {
     "series": "Saga",
     "publisher": "Image Comics",
     "startYear": 2012,
@@ -2433,7 +2448,79 @@
     "series": "Star Wars: Visionaries",
     "publisher": "Dark Horse Comics",
     "startYear": 2005,
-    "volumes": [
+    "volumes":<think>Deciding which files are relevant...
+
+{
+  "complexity": "high",
+  "relevantFiles": [
+    "src/lib/parser.ts",
+    "src/data/comicsKnowledge.json",
+    "src/types/index.ts",
+    "src/context/hooks/useFileQueue.ts",
+    "src/components/LearningCard.tsx",
+    "src/components/FilePreview.tsx"
+  ]
+}</think><think>Ranked files:
+
+src/lib/parser.ts: 0.99
+
+src/data/comicsKnowledge.json: 0.98
+
+src/types/index.ts: 0.94
+
+src/context/AppContext.tsx: 0.92
+
+src/pages/KnowledgeBase.tsx: 0.91
+
+src/context/KnowledgeBaseContext.tsx: 0.91
+
+src/pages/Organize.tsx: 0.90
+
+electron/main.js: 0.78
+
+ios/App/App/public/assets/index-Bnxb3awI.css: 0.77
+
+android/app/src/main/assets/public/assets/index-Bnxb3awI.css: 0.76
+
+src/services/electronFileService.ts: 0.75
+
+src/context/hooks/useComicLibrary.ts: 0.74
+
+electron/database.js: 0.74
+
+src/lib/formatter.ts: 0.72
+
+src/components/SeriesKBEditor.tsx: 0.68
+
+src/components/FileQueue.tsx: 0.61
+
+src/lib/smartProcessor.ts: 0.60
+
+src/components/BulkActions.tsx: 0.60
+
+src/context/hooks/useFileQueue.ts: 0.58
+
+src/lib/scraper.ts: 0.58
+
+src/lib/constants.ts: 0.56
+
+electron/ipcManager.js: 0.56
+
+src/context/SelectionContext.tsx: 0.52
+
+src/components/LearningCard.tsx: 0.50
+
+src/components/ComicCard.tsx: 0.50
+
+src/components/ComicReader.tsx: 0.49
+
+electron/preload.js: 0.49
+
+src/pages/Library.tsx: 0.46
+
+src/components/ui/button.tsx: 0.45
+
+src/components/FilePreview.tsx: 0.43</think><dyad-codebase-context files="src/lib/parser.ts,src/data/comicsKnowledge.json,src/types/index.ts,src/context/hooks/useFileQueue.ts,src/components/LearningCard.tsx,src/components/FilePreview.tsx,src/context/AppContext.tsx,src/pages/KnowledgeBase.tsx,src/context/KnowledgeBaseContext.tsx,src/pages/Organize.tsx,electron/main.js,ios/App/App/public/assets/index-Bnxb3awI.css,android/app/src/main/assets/public/assets/index-Bnxb3awI.css,src/services/electronFileService.ts,src/context/hooks/useComicLibrary.ts,electron/database.js,src/lib/formatter.ts"></dyad-codebase-context><think>dyad-token-savings?original-tokens=255665.5&smart-context-tokens=77384.25</think> [
       {
         "volume": "2005",
         "year": 2005
