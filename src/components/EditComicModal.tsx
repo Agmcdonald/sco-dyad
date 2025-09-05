@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -33,6 +33,8 @@ import { useAppContext } from "@/context/AppContext";
 import { creatorRoles } from "@/lib/constants";
 import { CONTENT_RATINGS } from "@/lib/ratings";
 import { Trash2 } from "lucide-react";
+import { Combobox, ComboboxOption } from "@/components/ui/combobox"; // Import Combobox
+import { useKnowledgeBase } from "@/context/KnowledgeBaseContext"; // Import useKnowledgeBase
 
 interface EditComicModalProps {
   comic: Comic;
@@ -66,6 +68,29 @@ const formSchema = z.object({
 
 const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
   const { updateComic } = useAppContext();
+  const { knowledgeBase } = useKnowledgeBase(); // Get knowledge base
+
+  // Prepare options for Series Combobox
+  const seriesOptions: ComboboxOption[] = React.useMemo(() => {
+    return knowledgeBase.series.map(s => ({
+      value: s.series,
+      label: s.series,
+    }));
+  }, [knowledgeBase.series]);
+
+  // Prepare options for Publisher Combobox
+  const publisherOptions: ComboboxOption[] = React.useMemo(() => {
+    const publishers = new Set<string>();
+    knowledgeBase.series.forEach(s => {
+      if (s.publisher) {
+        publishers.add(s.publisher);
+      }
+    });
+    return Array.from(publishers).map(p => ({
+      value: p,
+      label: p,
+    }));
+  }, [knowledgeBase.series]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -89,8 +114,41 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
     },
   });
 
-  // Removed the useEffect that was causing the form to reset on every render.
-  // The defaultValues in useForm are sufficient for initial setup.
+  // Watch for changes in series field to autofill
+  const currentSeriesValue = form.watch("series");
+  useEffect(() => {
+    const normalizedSeries = currentSeriesValue?.toLowerCase().trim();
+    const matchingKbEntry = knowledgeBase.series.find(
+      (kb) => kb.series.toLowerCase().trim() === normalizedSeries
+    );
+
+    if (matchingKbEntry) {
+      // Autofill publisher
+      if (matchingKbEntry.publisher && form.getValues("publisher") !== matchingKbEntry.publisher) {
+        form.setValue("publisher", matchingKbEntry.publisher, { shouldDirty: true });
+      }
+
+      // Autofill year (if current year is default or older than KB entry)
+      const currentYear = form.getValues("year");
+      if (matchingKbEntry.startYear && (currentYear === new Date().getFullYear() || currentYear > matchingKbEntry.startYear)) {
+        form.setValue("year", matchingKbEntry.startYear, { shouldDirty: true });
+      }
+
+      // Autofill volume
+      const currentVolume = form.getValues("volume");
+      const comicYear = form.getValues("year"); // Get the current year from the form
+      
+      // Try to find a volume that matches the comic's current year
+      const matchingVolumeByYear = matchingKbEntry.volumes.find(v => Number(v.year) === comicYear);
+      
+      if (matchingVolumeByYear && currentVolume !== matchingVolumeByYear.volume) {
+        form.setValue("volume", matchingVolumeByYear.volume, { shouldDirty: true });
+      } else if (matchingKbEntry.volumes.length > 0 && currentVolume !== matchingKbEntry.volumes[0].volume) {
+        // If no year-specific volume, use the first one if available and different from current
+        form.setValue("volume", matchingKbEntry.volumes[0].volume, { shouldDirty: true });
+      }
+    }
+  }, [currentSeriesValue, knowledgeBase.series, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     const updatedValues = { ...values };
@@ -127,7 +185,19 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
               {/* Basic Info */}
               <div className="space-y-4">
                 <FormField control={form.control} name="series" render={({ field }) => (
-                  <FormItem><FormLabel>Series</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem>
+                    <FormLabel>Series</FormLabel>
+                    <FormControl>
+                      <Combobox
+                        options={seriesOptions}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Select series or type new..."
+                        emptyText="No series found."
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )} />
                 <FormField control={form.control} name="issue" render={({ field }) => (
                   <FormItem><FormLabel>Issue</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
@@ -136,7 +206,19 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
                   <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="publisher" render={({ field }) => (
-                  <FormItem><FormLabel>Publisher</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem>
+                    <FormLabel>Publisher</FormLabel>
+                    <FormControl>
+                      <Combobox
+                        options={publisherOptions}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Select publisher or type new..."
+                        emptyText="No publishers found."
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )} />
                 <FormField control={form.control} name="volume" render={({ field }) => (
                   <FormItem><FormLabel>Volume</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
