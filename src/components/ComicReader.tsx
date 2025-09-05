@@ -56,6 +56,7 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
   const [isLoading, setIsLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState("Loading pages...");
   const [cbrTempDir, setCbrTempDir] = useState<string | null>(null);
+  const [readerError, setReaderError] = useState<string | null>(null); // New state for specific error message
   const fetchedPages = useRef(new Set());
 
   const comic = useMemo(() => {
@@ -85,6 +86,7 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
         fetchedPages.current.clear();
         setIsLoading(true);
         setLoadingMessage("Loading pages...");
+        setReaderError(null); // Reset error on comic change
       }
     }
   }, [comicIndex, comicList, internalComic.id]);
@@ -94,10 +96,12 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
       if (!canReadComic || !electronAPI) {
         setIsLoading(false);
         setTotalPages(isElectron ? 0 : 22);
+        setReaderError(isElectron ? "File path is missing or invalid." : "Reading comics is only supported in the desktop application.");
         return;
       }
 
       setIsLoading(true);
+      setReaderError(null); // Clear previous errors
       try {
         if (isCbr) {
           setLoadingMessage("Preparing comic archive...");
@@ -111,9 +115,10 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
           setPages(pageList);
           setTotalPages(pageList.length);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to fetch comic pages:", error);
-        showError("Failed to load comic. The file might be corrupted or too large.");
+        setReaderError(error.message || "The file might be corrupted or too large.");
+        showError(`Failed to load comic: ${error.message || "Unknown error"}`);
         setTotalPages(0);
       } finally {
         setIsLoading(false);
@@ -126,7 +131,7 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
         electronAPI.cleanupTempDir(cbrTempDir);
       }
     };
-  }, [canReadComic, electronAPI, comic.filePath, isCbr, comic.id]);
+  }, [canReadComic, electronAPI, comic.filePath, isCbr, comic.id, cbrTempDir]);
 
   useEffect(() => {
     const preloadPage = async (pageNumber: number, pageName: string) => {
@@ -332,15 +337,25 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
               <p className="font-semibold">{loadingMessage}</p>
               <p className="text-sm mt-1">This can take a moment for large files.</p>
             </div>
-          ) : !canReadComic || totalPages === 0 ? (
+          ) : readerError ? ( // Display specific error if available
             <div className="text-center text-muted-foreground">
               <BookOpen className="h-12 w-12 mx-auto mb-4" />
               <h3 className="font-semibold">Cannot Read Comic</h3>
               <p className="text-sm max-w-xs mt-2">
-                {isElectron 
-                  ? "Could not load pages from the comic file. The file may be missing or corrupted."
-                  : "Reading comics is only supported in the desktop application."
-                }
+                {readerError}
+              </p>
+              {!isElectron && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Reading comics is fully supported in the desktop application.
+                </p>
+              )}
+            </div>
+          ) : totalPages === 0 ? (
+            <div className="text-center text-muted-foreground">
+              <BookOpen className="h-12 w-12 mx-auto mb-4" />
+              <h3 className="font-semibold">Cannot Read Comic</h3>
+              <p className="text-sm max-w-xs mt-2">
+                No pages found in the comic file. It might be corrupted or in an unsupported format.
               </p>
             </div>
           ) : currentPage === totalPages && nextComic && viewMode === 'single' ? (
