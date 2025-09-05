@@ -89,28 +89,8 @@ const EditComicModal = ({ comic, isOpen, onClose }: EditComicModalProps) => {
     },
   });
 
-  useEffect(() => {
-    if (isOpen) {
-      form.reset({
-        series: comic.series || "",
-        issue: comic.issue || "",
-        year: comic.year || new Date().getFullYear(),
-        publisher: comic.publisher || "",
-        volume: comic.volume || "",
-        title: comic.title || "",
-        publicationDate: comic.publicationDate || "",
-        summary: comic.summary || "",
-        genre: comic.genre || "",
-        characters: comic.characters || "",
-        price: comic.price || "",
-        barcode: comic.barcode || "",
-        languageCode: comic.languageCode || "",
-        countryCode: comic.countryCode || "",
-        contentRating: comic.contentRating || "",
-        creators: comic.creators || [],
-      });
-    }
-  }, [isOpen, comic, form]);
+  // Removed the useEffect that was causing the form to reset on every render.
+  // The defaultValues in useForm are sufficient for initial setup.
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     const updatedValues = { ...values };
