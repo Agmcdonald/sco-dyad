@@ -175,6 +175,30 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setFileLoadStatus({ isLoading: false, progress: 0, total: 0, currentFile: "" });
   }, [addFiles, isElectron, electronAPI]);
 
+  const updateComic = useCallback(async (comic: Comic) => {
+    if (databaseService) {
+      try {
+        await databaseService.updateComic({
+          ...comic,
+          filePath: comic.filePath || '',
+          fileSize: 0, // Placeholder, actual size not always available here
+          dateAdded: comic.dateAdded.toISOString(),
+          lastModified: new Date().toISOString()
+        });
+        await refreshComics(); // Refresh the list after update
+        logAction('success', `Updated '${comic.series} #${comic.issue}'`);
+      } catch (error) {
+        console.error('Error updating comic in database:', error);
+        showError(`Failed to update comic: ${comic.series} #${comic.issue}`);
+        logAction('error', `Failed to update comic: ${comic.series} #${comic.issue}`);
+      }
+    } else {
+      // Web mode: update in local state
+      setComics(prev => prev.map(c => c.id === comic.id ? comic : c));
+      logAction('success', `(Web Mode) Updated '${comic.series} #${comic.issue}'`);
+    }
+  }, [databaseService, refreshComics, logAction, setComics]);
+
   const addComic = useCallback(async (comicData: NewComic, originalFile: QueuedFile) => {
     addToKnowledgeBase({
       series: comicData.series,
@@ -284,7 +308,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     const loadingToast = showLoading(`Quick adding ${filesToQuickAdd.length} files...`);
 
-    try { // Added missing try block
+    try {
       for (const file of filesToQuickAdd) {
         const name = file.name;
         
@@ -417,7 +441,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isElectron, electronAPI, comics, setComics, refreshComics]);
 
-  const performMetadataScan = useCallback(async (comic: Comic) => {
+  const performMetadataScan = useCallback(async (comic: Comic, updateComicFunc: (comic: Comic) => Promise<void>) => {
     if (!comic.filePath) {
       logAction('warning', `Cannot scan '${comic.series} #${comic.issue}': No file path available.`);
       return null;
@@ -484,16 +508,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
     
     if (hasNewData) {
-      await updateComic(updatedComic);
+      await updateComicFunc(updatedComic);
       logAction('success', `Enriched metadata for '${comic.series} #${comic.issue}'`);
       return true; // Indicate that an update occurred
     } else {
       // Even if no new data was found, we still update the comic to mark metadataLastChecked
       // This prevents repeatedly trying to fetch the same missing data if the API doesn't have it.
-      await updateComic(updatedComic);
+      await updateComicFunc(updatedComic);
       return false; // Indicate no new data, but still processed
     }
-  }, [settings, knowledgeBase, updateComic, logAction]);
+  }, [settings, knowledgeBase, logAction]);
 
   const startMetadataScan = useCallback(async () => {
     setIsScanningMetadata(true);
@@ -507,7 +531,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     for (let i = 0; i < candidates.length; i++) {
       const comic = candidates[i];
-      const wasUpdated = await performMetadataScan(comic);
+      const wasUpdated = await performMetadataScan(comic, updateComic);
       if (wasUpdated) {
         updatedCount++;
       }
@@ -517,7 +541,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     setIsScanningMetadata(false);
     showSuccess(`Metadata scan complete. Updated ${updatedCount} of ${candidates.length} comics.`);
-  }, [comics, performMetadataScan]);
+  }, [comics, performMetadataScan, updateComic]);
 
   const scanComicForMetadata = useCallback(async (comicId: string) => {
     const comic = comics.find(c => c.id === comicId);
@@ -527,7 +551,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
     const toastId = showLoading(`Scanning '${comic.series} #${comic.issue}' for details...`);
     try {
-      const wasUpdated = await performMetadataScan(comic);
+      const wasUpdated = await performMetadataScan(comic, updateComic);
       dismissToast(toastId);
       if (wasUpdated) {
         showSuccess(`Metadata updated for '${comic.series} #${comic.issue}'.`);
@@ -539,7 +563,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       showError(`Failed to scan '${comic.series} #${comic.issue}'.`);
       console.error(`Error scanning single comic ${comic.id}:`, error);
     }
-  }, [comics, performMetadataScan]);
+  }, [comics, performMetadataScan, updateComic]);
 
   const scanSelectedComicsForMetadata = useCallback(async (comicIds: string[]) => {
     if (comicIds.length === 0) {
@@ -553,7 +577,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       for (const comic of selectedComicsToScan) {
-        const wasUpdated = await performMetadataScan(comic);
+        const wasUpdated = await performMetadataScan(comic, updateComic);
         if (wasUpdated) {
           updatedCount++;
         }
@@ -571,7 +595,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       showError("An error occurred during the bulk scan.");
       console.error("Bulk scan error:", error);
     }
-  }, [comics, performMetadataScan, logAction]);
+  }, [comics, performMetadataScan, logAction, updateComic]);
 
   const updateComicProgress = useCallback(async (comicId: string, lastReadPage: number, totalPages: number) => {
     const comicToUpdate = comics.find(c => c.id === comicId);
