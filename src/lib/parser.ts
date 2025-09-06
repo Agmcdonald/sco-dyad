@@ -34,8 +34,8 @@ const detectPublisherFromCharacters = (seriesName: string): string | null => {
 
 export const parseFilename = (path: string): ParsedComicInfo => {
   const filename = path.split(/[\\/]/).pop() || '';
-  // Replace hyphens with spaces to handle formats like "V-1" or "Series - Issue"
-  let cleaned = filename.replace(/_/g, ' ').replace(/-/g, ' ').replace(/\.[^/.]+$/, "").trim();
+  // Preserve hyphens for series names like "A-Force"
+  let cleaned = filename.replace(/_/g, ' ').replace(/\.[^/.]+$/, "").trim();
 
   // 0. Extract "of Total" first to prevent it from being removed by other patterns
   let ofTotal: string | null = null;
@@ -98,8 +98,8 @@ export const parseFilename = (path: string): ParsedComicInfo => {
   // 4. The remainder is the series
   let series = cleaned.replace(/\[[^\]]*\]/g, '').replace(/\([^)]*\)/g, '').trim();
   // Clean up trailing characters like '#'
-  series = series.replace(/[^a-zA-Z0-9\s]+$/, '').trim();
-
+  series = series.replace(/[^a-zA-Z0-9\s-]+$/, '').trim(); // Preserve hyphens here
+  
   // 5. Detect Publisher
   const publisher = detectPublisherFromCharacters(series);
 
