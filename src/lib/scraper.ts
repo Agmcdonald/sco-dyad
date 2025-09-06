@@ -29,6 +29,12 @@ interface ScraperResult {
         title?: string;
         publicationDate?: string;
         series?: string; // Canonical series name from API
+        genre?: string;           // Genre classification
+        characters?: string;      // Featured characters
+        price?: string;           // Cover price
+        barcode?: string;         // UPC barcode
+        languageCode?: string;    // Language code
+        countryCode?: string;     // Country code
     };
     error?: string;
 }
@@ -36,7 +42,13 @@ interface ScraperResult {
 // Helper to strip HTML tags from descriptions
 const stripHtml = (html: string | null | undefined): string => {
     if (!html) return '';
-    return html.replace(/<[^>]*>?/gm, '');
+    return html
+      .replace(/<[^>]*>/g, '') // Remove HTML tags
+      .replace(/&nbsp;/g, ' ') // Replace &nbsp; with spaces
+      .replace(/&amp;/g, '&')  // Replace &amp; with &
+      .replace(/&lt;/g, '<')   // Replace &lt; with <
+      .replace(/&gt;/g, '>')   // Replace &gt; with >
+      .trim();
 };
 
 /**
@@ -158,7 +170,7 @@ export const fetchComicMetadata = async (
             score,
             matchDetails: {
               nameMatch: volumeName.includes(searchSeries) || searchSeries.includes(volumeName),
-              publisherMatch: publisherName.includes(searchPublisher) || searchPublisher.includes(publisherName), // FIX: Corrected typo
+              publisherMatch: publisherName.includes(searchPublisher) || searchPublisher.includes(publisherName),
               yearDiff: volumeYear ? Math.abs(volumeYear - searchYear) : 999
             }
           };
@@ -187,7 +199,7 @@ export const fetchComicMetadata = async (
         // Step 2: Fetch the specific issue from that volume
         const issueFields = 'name,cover_date,description,person_credits,volume,image,api_detail_url,site_detail_url,characters,genres,price,barcode,language_credits,concept_credits,location_credits,story_arc_credits,team_credits';
         
-        // FIX: Try multiple issue number formats
+        // Try multiple issue number formats
         const issueFormats = [
           parsed.issue,                           // "006"
           parseInt(parsed.issue, 10).toString(),  // "6" 
@@ -220,13 +232,52 @@ export const fetchComicMetadata = async (
         }
 
         const issue = issueResponse.results[0];
-        console.log(`[COMIC-VINE-SCRAPER] Issue details found:`, issue);
+        console.log(`[COMIC-VINE-SCRAPER] Raw issue response fields:`);
+        console.log('- name:', issue.name);
+        console.log('- description length:', issue.description?.length || 0);
+        console.log('- person_credits count:', issue.person_credits?.length || 0);
+        console.log('- characters count:', issue.characters?.length || 0);
+        console.log('- genres count:', issue.genres?.length || 0);
+        console.log('- cover_date:', issue.cover_date);
+
+        // Log the first few creators and characters if they exist
+        if (issue.person_credits?.length > 0) {
+          console.log('- sample creators:', issue.person_credits.slice(0, 3));
+        }
+        if (issue.characters?.length > 0) {
+          console.log('- sample characters:', issue.characters.slice(0, 3));
+        }
+        if (issue.genres?.length > 0) {
+          console.log('- sample genres:', issue.genres.slice(0, 3));
+        }
+
+        // Process and clean HTML description
+        const description = stripHtml(issue.description);
+
+        // Extract creators from person_credits
+        const creators: Creator[] = [];
+        if (issue.person_credits && Array.isArray(issue.person_credits)) {
+          issue.person_credits.forEach((credit: any) => {
+            if (credit.name && credit.role) {
+              creators.push({
+                name: credit.name,
+                role: credit.role
+              });
+            }
+          });
+        }
+
+        // Extract characters
+        const characters = issue.characters?.map((char: any) => char.name).filter(Boolean).join(', ') || undefined;
+
+        // Extract genres
+        const genre = issue.genres?.map((g: any) => g.name).filter(Boolean).join(', ') || undefined;
 
         // Determine confidence based on how much data we found
         let confidence: Confidence = 'Low';
-        if (issue.description && issue.person_credits?.length > 0) {
+        if (description && creators.length > 0 && characters && genre) {
             confidence = 'High';
-        } else if (issue.description || issue.person_credits?.length > 0) {
+        } else if (description || creators.length > 0 || characters || genre) {
             confidence = 'Medium';
         }
 
@@ -239,12 +290,12 @@ export const fetchComicMetadata = async (
                 year: parsed.year || (issue.cover_date ? new Date(issue.cover_date).getFullYear() : new Date().getFullYear()),
                 publisher: bestVolume.publisher.name,
                 volume: bestVolume.name, // Using the volume name as the volume identifier
-                summary: stripHtml(issue.description),
-                creators: issue.person_credits?.map((p: any) => ({ name: p.name, role: p.role })) || [],
-                title: issue.name,
-                publicationDate: issue.cover_date,
-                genre: issue.genres?.map((g: any) => g.name).join(', ') || undefined,
-                characters: issue.characters?.map((c: any) => c.name).join(', ') || undefined,
+                summary: description,
+                creators: creators,
+                title: issue.name || undefined,
+                publicationDate: issue.cover_date || undefined,
+                genre: genre,
+                characters: characters,
                 price: issue.price || undefined,
                 barcode: issue.barcode || undefined,
                 languageCode: issue.language_credits?.map((l: any) => l.name).join(', ') || undefined, // Assuming language_credits might contain language info
