@@ -51,21 +51,33 @@ export const fetchComicMetadata = async (
     parsed: ParsedComicInfo,
     apiKey: string
 ): Promise<ScraperResult> => {
+    console.log(`[COMIC-VINE-SCRAPER] Starting fetch for:`, parsed);
+
     if (!apiKey) {
+        console.error("[COMIC-VINE-SCRAPER] API Key is missing.");
         return { success: false, error: "Comic Vine API Key is missing. Please set it in Settings." };
     }
     if (!parsed.series || !parsed.issue) {
+        console.error("[COMIC-VINE-SCRAPER] Series or issue number is missing for API lookup.");
         return { success: false, error: "Series or issue number is missing for API lookup." };
     }
 
     try {
         // Step 1: Search for the volume
         const volumeSearchUrl = `${API_BASE_URL}/search/?api_key=${apiKey}&format=json&query=${encodeURIComponent(parsed.series)}&resources=volume&field_list=name,start_year,publisher,id`;
+        console.log(`[COMIC-VINE-SCRAPER] Volume search URL: ${volumeSearchUrl}`);
         const volumeResponse = await fetch(volumeSearchUrl);
-        if (!volumeResponse.ok) throw new Error(`API request failed with status ${volumeResponse.status}`);
+        
+        if (!volumeResponse.ok) {
+            const errorText = await volumeResponse.text();
+            console.error(`[COMIC-VINE-SCRAPER] Volume API request failed with status ${volumeResponse.status}: ${errorText}`);
+            throw new Error(`API request failed with status ${volumeResponse.status}: ${errorText}`);
+        }
         const volumeData = await volumeResponse.json();
+        console.log(`[COMIC-VINE-SCRAPER] Volume search raw response:`, volumeData);
 
         if (volumeData.status_code !== 1 || volumeData.number_of_total_results === 0) {
+            console.warn(`[COMIC-VINE-SCRAPER] No volume found for "${parsed.series}"`);
             return { success: false, error: `No volume found for "${parsed.series}"` };
         }
 
@@ -76,18 +88,28 @@ export const fetchComicMetadata = async (
                 Math.abs(Number(curr.start_year) - parsed.year!) < Math.abs(Number(prev.start_year) - parsed.year!) ? curr : prev
             );
         }
+        console.log(`[COMIC-VINE-SCRAPER] Best volume found:`, bestVolume);
 
         // Step 2: Fetch the specific issue from that volume
         const issueSearchUrl = `${API_BASE_URL}/issues/?api_key=${apiKey}&format=json&filter=volume:${bestVolume.id},issue_number:${parsed.issue}&field_list=name,cover_date,description,person_credits,volume`;
+        console.log(`[COMIC-VINE-SCRAPER] Issue search URL: ${issueSearchUrl}`);
         const issueResponse = await fetch(issueSearchUrl);
-        if (!issueResponse.ok) throw new Error(`API request failed with status ${issueResponse.status}`);
+        
+        if (!issueResponse.ok) {
+            const errorText = await issueResponse.text();
+            console.error(`[COMIC-VINE-SCRAPER] Issue API request failed with status ${issueResponse.status}: ${errorText}`);
+            throw new Error(`API request failed with status ${issueResponse.status}: ${errorText}`);
+        }
         const issueData = await issueResponse.json();
+        console.log(`[COMIC-VINE-SCRAPER] Issue search raw response:`, issueData);
 
         if (issueData.status_code !== 1 || issueData.number_of_total_results === 0) {
+            console.warn(`[COMIC-VINE-SCRAPER] No issue match found for "${parsed.series}" #${parsed.issue} in volume "${bestVolume.name}"`);
             return { success: false, error: `No match found for "${parsed.series}" #${parsed.issue} in volume "${bestVolume.name}"` };
         }
 
         const issue = issueData.results[0];
+        console.log(`[COMIC-VINE-SCRAPER] Issue details found:`, issue);
 
         return {
             success: true,
@@ -105,7 +127,7 @@ export const fetchComicMetadata = async (
         };
 
     } catch (error) {
-        console.error("Comic Vine API Error:", error);
+        console.error("[COMIC-VINE-SCRAPER] Comic Vine API Error:", error);
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
         return { success: false, error: `API Error: ${errorMessage}` };
     }
@@ -125,8 +147,10 @@ export const testApiConnection = async (apiKey: string): Promise<{ success: bool
 
     try {
         const testUrl = `${API_BASE_URL}/search/?api_key=${apiKey}&format=json&query=test&limit=1`;
+        console.log(`[COMIC-VINE-SCRAPER] Testing connection URL: ${testUrl}`);
         const response = await fetch(testUrl);
         const data = await response.json();
+        console.log(`[COMIC-VINE-SCRAPER] Test connection raw response:`, data);
 
         if (data.status_code === 1) {
             return { success: true, message: "Connection successful!" };
@@ -136,6 +160,7 @@ export const testApiConnection = async (apiKey: string): Promise<{ success: bool
             return { success: false, message: `API returned an error: ${data.error}` };
         }
     } catch (error) {
+        console.error("[COMIC-VINE-SCRAPER] Test connection failed:", error);
         return { success: false, message: "Failed to connect to the API. Check your network connection." };
     }
 };

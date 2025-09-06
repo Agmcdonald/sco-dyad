@@ -262,7 +262,7 @@ class ComicFileHandler {
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-pages-'));
         await Promise.race([
           this.unrar(filePath, tempDir),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('CBR page count timeout')), 120000)) // Increased timeout to 2 minutes
+          new Promise((_, reject) => setTimeout(() => reject(new Error('CBR page count timeout')), 300000)) // Increased timeout to 5 minutes
         ]);
         const allFiles = await this._walk(tempDir);
         return allFiles.filter(file => this.isImageFile(file)).length;
@@ -390,7 +390,7 @@ class ComicFileHandler {
       console.log(`[FileHandler] Starting CBR cover extraction for ${filePath} to temp dir ${tempDir}`);
       await Promise.race([
         this.unrar(filePath, tempDir),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR cover extraction timeout')), 120000)) // Increased timeout to 2 minutes
+        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR cover extraction timeout')), 300000)) // Increased timeout to 5 minutes
       ]);
       console.log(`[FileHandler] CBR extraction complete for cover of ${filePath}`);
       
@@ -697,26 +697,42 @@ class ComicFileHandler {
    * @returns Object with temp directory path and list of page filenames
    */
   async prepareCbrForReading(filePath) {
-    if (!this.unrarAvailable) throw new Error('RAR support is not available');
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-reader-'));
+    if (!this.unrarAvailable) {
+      console.error(`[FileHandler] CBR: RAR support is not available for ${filePath}`);
+      throw new Error('RAR support is not available');
+    }
+    console.log(`[FileHandler] CBR: Starting prepareCbrForReading for ${filePath}`);
+    let tempDir = null;
     try {
-      console.log(`[FileHandler] Starting CBR extraction for reading ${filePath} to temp dir ${tempDir}`);
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-reader-'));
+      console.log(`[FileHandler] CBR: Created temp dir ${tempDir}`);
+      
+      console.log(`[FileHandler] CBR: Starting unrar extraction for ${filePath} to ${tempDir}`);
       await Promise.race([
         this.unrar(filePath, tempDir),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR extraction timeout')), 120000)) // Increased timeout to 2 minutes
+        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR extraction timeout')), 300000)) // Increased timeout to 5 minutes
       ]);
-      console.log(`[FileHandler] CBR extraction complete for reading ${filePath}`);
+      console.log(`[FileHandler] CBR: Unrar extraction complete for ${filePath}`);
+
+      console.log(`[FileHandler] CBR: Walking temp dir ${tempDir} for image files`);
       const allFiles = await this._walk(tempDir);
       const imageFiles = allFiles
         .filter(file => this.isImageFile(file))
         .map(file => path.relative(tempDir, file).replace(/\\/g, '/'))
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
       
-      if (imageFiles.length === 0) throw new Error('No image files found in CBR archive');
+      if (imageFiles.length === 0) {
+        console.error(`[FileHandler] CBR: No image files found in extracted archive for ${filePath}`);
+        throw new Error('No image files found in CBR archive');
+      }
+      console.log(`[FileHandler] CBR: Found ${imageFiles.length} image files.`);
       return { tempDir, pages: imageFiles };
     } catch (error) {
-      console.error(`[FileHandler] Error preparing CBR ${filePath} for reading:`, error);
-      await fs.rm(tempDir, { recursive: true, force: true }).catch(e => console.error(`[FileHandler] Error cleaning up temp dir ${tempDir} after failed CBR prep:`, e));
+      console.error(`[FileHandler] CBR: Error preparing CBR ${filePath} for reading:`, error);
+      if (tempDir) {
+        console.log(`[FileHandler] CBR: Cleaning up temp dir ${tempDir} after error.`);
+        await fs.rm(tempDir, { recursive: true, force: true }).catch(e => console.error(`[FileHandler] CBR: Error cleaning up temp dir ${tempDir} after failed CBR prep:`, e));
+      }
       throw new Error(`Failed to prepare CBR for reading: ${error.message}`);
     }
   }

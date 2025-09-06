@@ -17,6 +17,7 @@ import {
   X,
   Loader2,
   CheckCircle,
+  AlertCircle, // Import AlertCircle for error icon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -124,14 +125,16 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
         setIsLoading(false);
       }
     };
-    fetchPages();
+    if (isOpen) { // Only fetch pages if the reader is open
+      fetchPages();
+    }
 
     return () => {
       if (cbrTempDir && electronAPI) {
         electronAPI.cleanupTempDir(cbrTempDir);
       }
     };
-  }, [canReadComic, electronAPI, comic.filePath, isCbr, comic.id, cbrTempDir]);
+  }, [canReadComic, electronAPI, comic.filePath, isCbr, comic.id, cbrTempDir, isOpen]); // Added isOpen to dependencies
 
   useEffect(() => {
     const preloadPage = async (pageNumber: number, pageName: string) => {
@@ -339,7 +342,7 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
             </div>
           ) : readerError ? ( // Display specific error if available
             <div className="text-center text-muted-foreground">
-              <BookOpen className="h-12 w-12 mx-auto mb-4" />
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" /> {/* Changed icon to AlertCircle */}
               <h3 className="font-semibold">Cannot Read Comic</h3>
               <p className="text-sm max-w-xs mt-2">
                 {readerError}
