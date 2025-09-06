@@ -366,7 +366,7 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
             <div className="space-y-3">
               <RatingSelector 
                 currentRating={rating} 
-                onRatingChange={handleRateComic}
+                onRatingChange={handleRatingChange}
                 size="md"
               />
               {rating !== undefined && (
