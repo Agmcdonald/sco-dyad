@@ -15,7 +15,7 @@
  * of the detected information.
  */
 
-import { parseFilename, ParsedComicInfo } from "./parser"; // Corrected import to include parseFilename
+import { parseFilename, ParsedComicInfo } from "./parser";
 import { Creator, QueuedFile, Confidence, KnowledgeBase } from "@/types";
 import { fetchComicMetadata } from "./scraper";
 import { GcdDatabaseService } from "@/services/gcdDatabaseService"; // Keep import for type, but won't be used
@@ -177,4 +177,76 @@ export const processComicFile = async (
       error: `Processing error: ${error instanceof Error ? error.message : 'Unknown error'}`
     };
   }
+};
+
+/**
+ * Batch Process Files
+ * Processes multiple queued files in a batch, updating progress via a callback.
+ * @param files - Array of QueuedFile objects to process
+ * @param comicVineApiKey - Comic Vine API key
+ * @param knowledgeBase - Local knowledge base for series/publishers
+ * @param onProgress - Callback for progress updates (processed count, total count, current file name)
+ * @returns A Map of fileId to ProcessingResult
+ */
+export const batchProcessFiles = async (
+  files: QueuedFile[],
+  comicVineApiKey: string,
+  knowledgeBase: KnowledgeBase,
+  onProgress: (processed: number, total: number, currentFile: string) => void
+): Promise<Map<string, ProcessingResult>> => {
+  const results = new Map<string, ProcessingResult>();
+  const totalFiles = files.length;
+
+  for (let i = 0; i < totalFiles; i++) {
+    const file = files[i];
+    onProgress(i + 1, totalFiles, file.name);
+    const result = await processComicFile(file, comicVineApiKey, knowledgeBase);
+    results.set(file.id, result);
+    await new Promise(resolve => setTimeout(resolve, 50)); // Small delay to prevent API rate limits and UI freezing
+  }
+
+  return results;
+};
+
+/**
+ * Get Processing Statistics
+ * Calculates statistics from a map of processing results.
+ * @param results - Map of fileId to ProcessingResult
+ * @returns Object with counts for total, successful, failed, and confidence levels
+ */
+export const getProcessingStats = (results: Map<string, ProcessingResult>) => {
+  let successful = 0;
+  let failed = 0;
+  let highConfidence = 0;
+  let mediumConfidence = 0;
+  let lowConfidence = 0;
+
+  results.forEach(result => {
+    if (result.success) {
+      successful++;
+    } else {
+      failed++;
+    }
+
+    switch (result.confidence) {
+      case 'High':
+        highConfidence++;
+        break;
+      case 'Medium':
+        mediumConfidence++;
+        break;
+      case 'Low':
+        lowConfidence++;
+        break;
+    }
+  });
+
+  return {
+    total: results.size,
+    successful,
+    failed,
+    highConfidence,
+    mediumConfidence,
+    lowConfidence,
+  };
 };
