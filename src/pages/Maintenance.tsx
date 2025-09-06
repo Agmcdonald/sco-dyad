@@ -194,12 +194,9 @@ const Maintenance = () => {
       {/* Work in Progress Section */}
       <div>
         <h2 className="text-2xl font-semibold tracking-tight mb-4">Work in Progress</h2>
-        <div className="relative space-y-6 opacity-50 pointer-events-none">
-          <div className="absolute inset-0 z-10 flex items-center justify-center">
-            <div className="bg-background/80 backdrop-blur-sm px-4 py-2 rounded-lg border shadow-lg">
-              <p className="font-semibold text-foreground">Coming Soon</p>
-            </div>
-          </div>
+        {/* Removed opacity-50 and pointer-events-none to enable the section */}
+        <div className="relative space-y-6"> 
+          {/* Removed "Coming Soon" overlay */}
           {/* Metadata Enrichment */}
           <Card>
             <CardHeader>
