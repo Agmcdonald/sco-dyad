@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback, useMemo } from 'react';
 import { QueuedFile, Comic, NewComic, UndoPayload, ComicKnowledge } from '@/types';
 import { useElectronDatabaseService } from '@/services/electronDatabaseService';
 import { useElectron } from '@/hooks/useElectron';
@@ -129,6 +129,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
   const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
+
+  // Derive lastUndoableAction from the actions array
+  const lastUndoableAction = useMemo(() => {
+    // Find the most recent action that has an undo payload
+    return actions.find(action => action.undo) || null;
+  }, [actions]);
 
   const addFilesFromPaths = useCallback(async (paths: string[]) => {
     if (paths.length === 0) return;
@@ -531,18 +537,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const undoLastAction = useCallback(() => {
     if (!lastUndoableAction) return;
 
-    if (lastUndoableAction.type === 'ADD_COMIC') {
-      const { comicId, originalFile } = lastUndoableAction.payload;
+    // Remove the action from the log first
+    setActions(prev => prev.filter(action => action.id !== lastUndoableAction.id));
+
+    if (lastUndoableAction.undo.type === 'ADD_COMIC') {
+      const { comicId, originalFile } = lastUndoableAction.undo.payload;
       removeComic(comicId, false); // Remove from library
       addFile(originalFile); // Add back to queue
       logAction('info', `Undo: Removed '${originalFile.series} #${originalFile.issue}' from library and re-added to queue.`);
-    } else if (lastUndoableAction.type === 'SKIP_FILE') {
-      const payload = lastUndoableAction.payload;
-      // Add robust checks for payload and its content
+    } else if (lastUndoableAction.undo.type === 'SKIP_FILE') {
+      const payload = lastUndoableAction.undo.payload;
       if (!payload || !payload.skippedFile) {
         console.error('Invalid payload for SKIP_FILE undo action:', payload);
         showError('Failed to undo skip action: Missing file data in payload.');
-        setLastUndoableAction(null); // Clear the action to prevent further errors
         return;
       }
       const { skippedFile } = payload;
@@ -550,8 +557,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       showSuccess(`Re-added skipped file: ${skippedFile.name}`);
       logAction('info', `Undo: Re-added skipped file '${skippedFile.name}' to queue.`);
     }
-    setLastUndoableAction(null);
-  }, [lastUndoableAction, removeComic, addFile, logAction, setActions]); // Added setActions to dependencies
+  }, [lastUndoableAction, removeComic, addFile, logAction, setActions]);
 
   const startMetadataScan = useCallback(async () => {
     setIsScanningMetadata(true);
