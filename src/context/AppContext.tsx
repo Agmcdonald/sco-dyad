@@ -205,6 +205,38 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [databaseService, refreshComics, logAction, setComics]);
 
+  const removeComic = useCallback(async (id: string, deleteFile: boolean = false) => {
+    if (databaseService) {
+      try {
+        const comicToRemove = comics.find(c => c.id === id);
+        if (!comicToRemove) {
+          showError("Comic not found in library.");
+          return;
+        }
+
+        let filePathToDelete: string | undefined = undefined;
+        if (deleteFile && comicToRemove.filePath && !isMockFile(comicToRemove.filePath)) {
+          filePathToDelete = comicToRemove.filePath;
+        }
+
+        await databaseService.deleteComic(id, filePathToDelete);
+        await refreshComics();
+        logAction('success', `Removed '${comicToRemove.series} #${comicToRemove.issue}' from library.`);
+        if (deleteFile) {
+          logAction('info', `Permanently deleted file: ${comicToRemove.filePath}`);
+        }
+      } catch (error) {
+        console.error('Error removing comic from database:', error);
+        showError(`Failed to remove comic: ${id}`);
+        logAction('error', `Failed to remove comic: ${id}`);
+      }
+    } else {
+      // Web mode: update in local state
+      setComics(prev => prev.filter(c => c.id !== id));
+      logAction('success', `(Web Mode) Removed comic '${id}' from library.`);
+    }
+  }, [databaseService, comics, refreshComics, logAction, setComics]);
+
   const addComic = useCallback(async (comicData: NewComic, originalFile: QueuedFile) => {
     addToKnowledgeBase({
       series: comicData.series,
@@ -429,358 +461,4 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const result = await electronAPI.importComics(comicsToImport);
         await refreshComics();
         return result;
-      } catch (error) {
-        console.error("Error importing comics via Electron:", error);
-        showError("Failed to import comics.");
-        return null;
-      }
-    } else {
-      const currentComicIds = new Set(comics.map(c => c.id));
-      const newComicsToAdd = comicsToImport.filter(
-        newComic => !currentComicIds.has(newComic.id)
-      );
-      setComics(prev => [...prev, ...newComicsToAdd]);
-      return {
-        added: newComicsToAdd.length,
-        skipped: comicsToImport.length - newComicsToAdd.length,
-      };
-    }
-  }, [isElectron, electronAPI, comics, setComics, refreshComics]);
-
-  const performMetadataScan = useCallback(async (comic: Comic, updateComicFunc: (comic: Comic) => Promise<void>) => {
-    if (!comic.filePath) {
-      logAction('warning', `Cannot scan '${comic.series} #${comic.issue}': No file path available.`);
-      return null;
-    }
-
-    const tempFile: QueuedFile = {
-      id: comic.id,
-      name: comic.filePath || `${comic.series} #${comic.issue}`,
-      path: comic.filePath,
-      series: comic.series,
-      issue: comic.issue,
-      year: comic.year,
-      publisher: comic.publisher,
-      status: 'Pending',
-      confidence: null,
-    };
-
-    const result = await processComicFile(
-      tempFile,
-      settings.comicVineApiKey,
-      knowledgeBase
-    );
-
-    const updatedComic = { ...comic, metadataLastChecked: new Date().toISOString() };
-    let hasNewData = false;
-
-    if (result && result.success && result.data) {
-      // Only update if the new data is better or fills a gap
-      if (result.data.summary && !comic.summary) { updatedComic.summary = result.data.summary; hasNewData = true; }
-      if (result.data.creators && result.data.creators.length > 0 && (!comic.creators || comic.creators.length === 0)) { updatedComic.creators = result.data.creators; hasNewData = true; }
-      if (result.data.publisher && result.data.publisher !== "Unknown Publisher" && comic.publisher === "Unknown Publisher") { updatedComic.publisher = result.data.publisher; hasNewData = true; }
-      if (result.data.title && !comic.title) {
-            updatedComic.title = result.data.title;
-            hasNewData = true;
-      }
-      if (result.data.publicationDate && !comic.publicationDate) {
-            updatedComic.publicationDate = result.data.publicationDate;
-            hasNewData = true;
-      }
-      if (result.data.genre && !comic.genre) {
-            updatedComic.genre = result.data.genre;
-            hasNewData = true;
-      }
-      if (result.data.characters && !comic.characters) {
-            updatedComic.characters = result.data.characters;
-            hasNewData = true;
-      }
-      if (result.data.price && !comic.price) {
-            updatedComic.price = result.data.price;
-            hasNewData = true;
-      }
-      if (result.data.barcode && !comic.barcode) {
-            updatedComic.barcode = result.data.barcode;
-            hasNewData = true;
-      }
-      if (result.data.languageCode && !comic.languageCode) {
-            updatedComic.languageCode = result.data.languageCode;
-            hasNewData = true;
-      }
-      if (result.data.countryCode && !comic.countryCode) {
-            updatedComic.countryCode = result.data.countryCode;
-            hasNewData = true;
-      }
-    }
-    
-    if (hasNewData) {
-      await updateComicFunc(updatedComic);
-      logAction('success', `Enriched metadata for '${comic.series} #${comic.issue}'`);
-      return true; // Indicate that an update occurred
-    } else {
-      // Even if no new data was found, we still update the comic to mark metadataLastChecked
-      // This prevents repeatedly trying to fetch the same missing data if the API doesn't have it.
-      await updateComicFunc(updatedComic);
-      return false; // Indicate no new data, but still processed
-    }
-  }, [settings, knowledgeBase, logAction]);
-
-  const skipFile = useCallback((file: QueuedFile) => {
-    removeFile(file.id);
-    logAction('info', `Skipped file: ${file.name}`, {
-      type: 'SKIP_FILE',
-      payload: { skippedFile: file }
-    });
-    showSuccess(`Skipped file: ${file.name}`);
-  }, [removeFile, logAction]);
-
-  const undoLastAction = useCallback(() => {
-    if (!lastUndoableAction) return;
-
-    // Store the action to be undone before removing it from the log
-    const actionToUndo = lastUndoableAction;
-
-    // Remove the action from the log first
-    setActions(prev => prev.filter(action => action.id !== actionToUndo.id));
-
-    if (actionToUndo.undo.type === 'ADD_COMIC') {
-      const { comicId, originalFile } = actionToUndo.undo.payload;
-      removeComic(comicId, false); // Remove from library
-      addFile(originalFile); // Add back to queue
-      logAction('info', `Undo: Removed '${originalFile.series} #${originalFile.issue}' from library and re-added to queue.`);
-    } else if (actionToUndo.undo.type === 'SKIP_FILE') {
-      const payload = actionToUndo.undo.payload;
-      if (!payload || !payload.skippedFile) {
-        console.error('Invalid payload for SKIP_FILE undo action:', payload);
-        showError('Failed to undo skip action: Missing file data in payload.');
-        return;
-      }
-      const { skippedFile } = payload;
-      addFile(skippedFile); // Add back to queue
-      showSuccess(`Re-added skipped file: ${skippedFile.name}`);
-      logAction('info', `Undo: Re-added skipped file '${skippedFile.name}' to queue.`);
-    }
-    // Removed setLastUndoableAction(null); as lastUndoableAction is now derived.
-  }, [lastUndoableAction, removeComic, addFile, logAction, setActions]);
-
-  const startMetadataScan = useCallback(async () => {
-    setIsScanningMetadata(true);
-    setMetadataScanProgress({ processed: 0, total: 0, updated: 0 });
-
-    // Filter candidates: only comics that have missing metadata AND are not ignored
-    const candidates = comics.filter(c => !c.ignoreInScans && hasMissingMetadata(c));
-
-    setMetadataScanProgress(prev => ({ ...prev, total: candidates.length }));
-    let updatedCount = 0;
-
-    for (let i = 0; i < candidates.length; i++) {
-      const comic = candidates[i];
-      const wasUpdated = await performMetadataScan(comic, updateComic);
-      if (wasUpdated) {
-        updatedCount++;
-      }
-      setMetadataScanProgress(prev => ({ ...prev, processed: i + 1, updated: updatedCount }));
-      await new Promise(res => setTimeout(res, 200));
-    }
-
-    setIsScanningMetadata(false);
-    showSuccess(`Metadata scan complete. Updated ${updatedCount} of ${candidates.length} comics.`);
-  }, [comics, performMetadataScan, updateComic]);
-
-  const scanComicForMetadata = useCallback(async (comicId: string) => {
-    const comic = comics.find(c => c.id === comicId);
-    if (!comic) {
-      showError("Comic not found.");
-      return;
-    }
-    const toastId = showLoading(`Scanning '${comic.series} #${comic.issue}' for details...`);
-    try {
-      const wasUpdated = await performMetadataScan(comic, updateComic);
-      dismissToast(toastId);
-      if (wasUpdated) {
-        showSuccess(`Metadata updated for '${comic.series} #${comic.issue}'.`);
-      } else {
-        showSuccess(`No new metadata found for '${comic.series} #${comic.issue}'.`);
-      }
-    } catch (error) {
-      dismissToast(toastId);
-      showError(`Failed to scan '${comic.series} #${comic.issue}'.`);
-      console.error(`Error scanning single comic ${comic.id}:`, error);
-    }
-  }, [comics, performMetadataScan, updateComic]);
-
-  const scanSelectedComicsForMetadata = useCallback(async (comicIds: string[]) => {
-    if (comicIds.length === 0) {
-      showError("No comics selected for scan.");
-      return;
-    }
-    const selectedComicsToScan = comics.filter(c => comicIds.includes(c.id));
-    const toastId = showLoading(`Scanning ${selectedComicsToScan.length} selected comics...`);
-    let updatedCount = 0;
-    let processedCount = 0;
-
-    try {
-      for (const comic of selectedComicsToScan) {
-        const wasUpdated = await performMetadataScan(comic, updateComic);
-        if (wasUpdated) {
-          updatedCount++;
-        }
-        processedCount++;
-        // Update toast message for progress
-        dismissToast(toastId);
-        showLoading(`Scanning ${processedCount} of ${selectedComicsToScan.length} comics...`, toastId);
-        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
-      }
-      dismissToast(toastId);
-      showSuccess(`Scan complete. Updated ${updatedCount} of ${processedCount} selected comics.`);
-      logAction('success', `Scanned ${processedCount} selected comics, updated ${updatedCount}.`);
-    } catch (error) {
-      dismissToast(toastId);
-      showError("An error occurred during the bulk scan.");
-      console.error("Bulk scan error:", error);
-    }
-  }, [comics, performMetadataScan, logAction, updateComic]);
-
-  const updateComicProgress = useCallback(async (comicId: string, lastReadPage: number, totalPages: number) => {
-    const comicToUpdate = comics.find(c => c.id === comicId);
-    if (comicToUpdate && (comicToUpdate.lastReadPage !== lastReadPage || comicToUpdate.totalPages !== totalPages)) {
-      const updatedComic = { ...comicToUpdate, lastReadPage, totalPages };
-      
-      if (databaseService) {
-        try {
-          await databaseService.updateComic({
-            ...updatedComic,
-            filePath: updatedComic.filePath || '',
-            fileSize: 0,
-            dateAdded: updatedComic.dateAdded.toISOString(),
-            lastModified: new Date().toISOString()
-          });
-          setComics(prev => prev.map(c => c.id === updatedComic.id ? updatedComic : c));
-        } catch (error) {
-          console.error('Error updating comic progress in database:', error);
-        }
-      } else {
-        setComics(prev => prev.map(c => c.id === updatedComic.id ? updatedComic : c));
-      }
-    }
-  }, [comics, databaseService, setComics]);
-
-  const updateReadingHistory = useCallback((comic: Comic, currentPage: number, totalPages: number) => {
-    if (totalPages > 0 && (currentPage / totalPages > 0.1 || currentPage === totalPages)) {
-        addToRecentlyRead(comic);
-    }
-  }, [addToRecentlyRead]);
-
-  const openComicForReading = useCallback((comic: Comic) => {
-    const isPdf = comic.filePath?.toLowerCase().endsWith('.pdf');
-
-    if (isElectron && electronAPI && isPdf && comic.filePath) {
-      electronAPI.openPdf(comic.filePath)
-        .then(result => {
-          if (result.success) {
-            addToRecentlyRead(comic);
-            showSuccess(`Opening "${comic.series} #${comic.issue}" in a new window.`);
-          } else {
-            showError(`Failed to open PDF: ${result.error || 'Unknown error'}`);
-          }
-        })
-        .catch(err => {
-          showError(`Failed to open PDF: ${err.message}`);
-        });
-    } else {
-      if (isPdf && !isElectron) {
-        showError("Reading PDFs is only supported in the desktop app.");
-        return;
-      }
-      setReadingComic(comic);
-    }
-  }, [isElectron, electronAPI, addToRecentlyRead]);
-
-  const syncKnowledgeBaseToLibrary = useCallback(async () => {
-    if (!databaseService) {
-      showError("Database service is not available.");
-      return;
-    }
-
-    const toastId = showLoading("Syncing Knowledge Base to library...");
-    try {
-      const { series: kbSeries } = knowledgeBase;
-      const updates: (Partial<Comic> & { id: string })[] = [];
-      const kbMap = new Map<string, ComicKnowledge>();
-      kbSeries.forEach(kb => kbMap.set(normalize(kb.series), kb));
-
-      for (const comic of comics) {
-        const kbEntry = kbMap.get(normalize(comic.series));
-        if (!kbEntry) continue;
-
-        let hasChanged = false;
-        const updatedComic: Partial<Comic> & { id: string } = { id: comic.id };
-
-        if (comic.publisher !== kbEntry.publisher) {
-          updatedComic.publisher = kbEntry.publisher;
-          hasChanged = true;
-        }
-
-        const matchingVolume = (kbEntry.volumes || []).find(v => Number(v.year) === Number(comic.year));
-        if (matchingVolume && comic.volume !== matchingVolume.volume) {
-          updatedComic.volume = matchingVolume.volume;
-          hasChanged = true;
-        }
-
-        if (hasChanged) {
-          updates.push(updatedComic);
-        }
-      }
-
-      if (updates.length > 0) {
-        const updatedCount = await databaseService.batchUpdateComics(updates);
-        await refreshComics();
-        showSuccess(`Sync complete. Updated ${updatedCount} comic(s).`);
-        logAction('success', `Synced Knowledge Base to library, updating ${updatedCount} comics.`);
-      } else {
-        showSuccess("Library is already in sync with the Knowledge Base.");
-      }
-    } catch (error) {
-      console.error("Failed to sync Knowledge Base:", error);
-      showError("An error occurred during the sync.");
-    } finally {
-      dismissToast(toastId);
-    }
-  }, [knowledgeBase, comics, databaseService, refreshComics, logAction]);
-
-  return (
-    <AppContext.Provider value={{ 
-      files, addFile, addFiles, removeFile, updateFile, skipFile,
-      comics, addComic, updateComic, removeComic, updateComicRating,
-      actions, logAction, lastUndoableAction, undoLastAction,
-      addMockFiles, triggerSelectFiles, triggerScanFolder, triggerQuickAddFiles, addFilesFromDrop,
-      addFilesFromPaths, quickAddFiles, fileLoadStatus,
-      readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted,
-      toggleComicReadStatus,
-      setReadingItemPriority, setReadingItemRating,
-      recentlyRead, addToRecentlyRead, updateRecentRating,
-      refreshComics,
-      importComics,
-      isScanningMetadata,
-      metadataScanProgress,
-      startMetadataScan,
-      scanComicForMetadata, // New
-      scanSelectedComicsForMetadata, // New
-      updateComicProgress,
-      updateReadingHistory,
-      readingComic, setReadingComic,
-      openComicForReading,
-      syncKnowledgeBaseToLibrary
-    }}>
-      {children}
-    </AppContext.Provider>
-  );
-};
-
-export const useAppContext = () => {
-  const context = useContext(AppContext);
-  if (context === undefined) {
-    throw new Error('useAppContext must be used within an AppProvider');
-  }
-  return context;
-};
+      }<ctrl63>
