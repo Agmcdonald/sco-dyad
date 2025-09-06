@@ -127,7 +127,8 @@ export const fetchComicMetadata = async (
           const searchPublisher = parsed.publisher?.toLowerCase() || '';
           
           if (publisherName && searchPublisher) {
-            if (publisherName.includes(searchPublisher) || searchPublisher.includes(publisherPublisher)) {
+            // FIX: Corrected typo from publisherPublisher to searchPublisher
+            if (publisherName.includes(searchPublisher) || searchPublisher.includes(publisherName)) {
               score += 25; // Publisher match
             }
           } else if (publisherName) {
@@ -157,7 +158,7 @@ export const fetchComicMetadata = async (
             score,
             matchDetails: {
               nameMatch: volumeName.includes(searchSeries) || searchSeries.includes(volumeName),
-              publisherMatch: publisherName.includes(searchPublisher) || searchPublisher.includes(volumePublisher),
+              publisherMatch: publisherName.includes(searchPublisher) || searchPublisher.includes(publisherName), // FIX: Corrected typo
               yearDiff: volumeYear ? Math.abs(volumeYear - searchYear) : 999
             }
           };
@@ -184,23 +185,41 @@ export const fetchComicMetadata = async (
         console.log(`[COMIC-VINE-SCRAPER] Best volume selected: "${bestVolume.name}" (${bestVolume.start_year}) - Score: ${bestVolume.score}`);
 
         // Step 2: Fetch the specific issue from that volume
-        const issueSearchUrl = `${API_BASE_URL}/issues/?api_key=${apiKey}&format=json&filter=volume:${bestVolume.id},issue_number:${parsed.issue}&field_list=name,cover_date,description,person_credits,volume,image,api_detail_url,site_detail_url,characters,genres,price,barcode,language_credits,concept_credits,location_credits,story_arc_credits,team_credits`;
-        console.log(`[COMIC-VINE-SCRAPER] Issue search URL: ${issueSearchUrl}`);
+        const issueFields = 'name,cover_date,description,person_credits,volume,image,api_detail_url,site_detail_url,characters,genres,price,barcode,language_credits,concept_credits,location_credits,story_arc_credits,team_credits';
         
-        const issueResponse = await electronAPI.fetchComicVine(issueSearchUrl);
-        
-        if (!issueResponse.success) {
-            throw new Error(issueResponse.error || `Issue API request failed`);
-        }
-        const issueData = issueResponse.data;
-        console.log(`[COMIC-VINE-SCRAPER] Issue search raw response:`, issueData);
+        // FIX: Try multiple issue number formats
+        const issueFormats = [
+          parsed.issue,                           // "006"
+          parseInt(parsed.issue, 10).toString(),  // "6" 
+          parsed.issue.replace(/^0+/, '') || parsed.issue  // "6" (remove leading zeros, fallback to original)
+        ];
 
-        if (issueData.status_code !== 1 || issueData.number_of_total_results === 0) {
-            console.warn(`[COMIC-VINE-SCRAPER] No issue match found for "${parsed.series}" #${parsed.issue} in volume "${bestVolume.name}"`);
-            return { success: false, error: `No match found for "${parsed.series}" #${parsed.issue} in volume "${bestVolume.name}"` };
+        console.log(`[COMIC-VINE-SCRAPER] Trying issue formats for #${parsed.issue}:`, issueFormats);
+
+        let issueResponse = null;
+        let foundFormat = null;
+
+        for (const format of issueFormats) {
+          const issueUrl = `${API_BASE_URL}/issues/?api_key=${apiKey}&format=json&filter=volume:${bestVolume.id},issue_number:${format}&field_list=${issueFields}`;
+          
+          console.log(`[COMIC-VINE-SCRAPER] Trying issue format "${format}": ${issueUrl}`);
+          
+          const response = await electronAPI.fetchComicVine(issueUrl);
+          
+          if (response.success && response.data && response.data.results && response.data.results.length > 0) {
+            issueResponse = response.data;
+            foundFormat = format;
+            console.log(`[COMIC-VINE-SCRAPER] Found issue using format "${format}"`);
+            break;
+          }
         }
 
-        const issue = issueData.results[0];
+        if (!issueResponse || !issueResponse.results || issueResponse.results.length === 0) {
+          console.log(`[COMIC-VINE-SCRAPER] No issue match found for "${parsed.series}" after trying all formats:`, issueFormats);
+          return { success: false, error: `No match found for "${parsed.series}" #${parsed.issue} in volume "${bestVolume.name}" after trying all formats.` };
+        }
+
+        const issue = issueResponse.results[0];
         console.log(`[COMIC-VINE-SCRAPER] Issue details found:`, issue);
 
         // Determine confidence based on how much data we found
