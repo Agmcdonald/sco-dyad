@@ -87,50 +87,101 @@ export const fetchComicMetadata = async (
             return { success: false, error: `No volume found for "${volumeSearchQuery}"` };
         }
 
-        // Filter and find the best volume match
-        let candidateVolumes = volumeData.results;
+        const volumes = volumeData.results;
+        console.log(`[COMIC-VINE-SCRAPER] Found ${volumes.length} volumes for "${parsed.series}"`);
 
-        // Prioritize exact series name match (case-insensitive, ignoring non-alphanumeric for comparison)
-        const normalizedParsedSeries = parsed.series.toLowerCase().replace(/[^a-z0-9]/g, '');
-        candidateVolumes.sort((a: any, b: any) => {
-            const normalizedA = a.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-            const normalizedB = b.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-            if (normalizedA === normalizedParsedSeries && normalizedB !== normalizedParsedSeries) return -1;
-            if (normalizedA !== normalizedParsedSeries && normalizedB === normalizedParsedSeries) return 1;
-            return 0;
+        // Debug: Show all available volumes
+        volumes.forEach((vol: any, index: number) => {
+          console.log(`  ${index + 1}. "${vol.name}" (${vol.start_year}) - ${vol.publisher?.name || 'Unknown Publisher'}`);
         });
 
-        // Further filter by publisher if available in parsed data
-        if (parsed.publisher) {
-            const normalizedParsedPublisher = parsed.publisher.toLowerCase();
-            candidateVolumes = candidateVolumes.filter((volume: any) => 
-                volume.publisher?.name?.toLowerCase().includes(normalizedParsedPublisher)
-            );
-        }
+        // Score each volume based on multiple criteria
+        const scoredVolumes = volumes.map((volume: any) => {
+          let score = 0;
+          const volumeName = volume.name?.toLowerCase() || '';
+          const searchSeries = parsed.series.toLowerCase();
+          const volumeYear = parseInt(volume.start_year) || 0;
+          const searchYear = parsed.year || 0;
+          
+          // 1. Name matching (most important - up to 60 points)
+          if (volumeName === searchSeries) {
+            score += 60; // Exact match
+          } else if (volumeName.includes(searchSeries)) {
+            score += 50; // Contains search term
+          } else if (searchSeries.includes(volumeName)) {
+            score += 40; // Search term contains volume name
+          } else {
+            // Check for partial matches (like "A-Force" vs "A-Force (2015)")
+            const cleanVolumeName = volumeName.replace(/\s*\([^)]*\)/, '').trim(); // Remove parentheses
+            const cleanSearchSeries = searchSeries.replace(/\s*\([^)]*\)/, '').trim();
+            
+            if (cleanVolumeName === cleanSearchSeries) {
+              score += 55; // Match without parenthetical info
+            } else if (cleanVolumeName.includes(cleanSearchSeries) || cleanSearchSeries.includes(cleanVolumeName)) {
+              score += 35; // Partial match
+            }
+          }
+          
+          // 2. Publisher matching (up to 25 points)
+          const publisherName = volume.publisher?.name?.toLowerCase() || '';
+          const searchPublisher = parsed.publisher?.toLowerCase() || '';
+          
+          if (publisherName && searchPublisher) {
+            if (publisherName.includes(searchPublisher) || searchPublisher.includes(publisherPublisher)) {
+              score += 25; // Publisher match
+            }
+          } else if (publisherName) {
+            // Boost known major publishers
+            if (publisherName.includes('marvel')) score += 10;
+            if (publisherName.includes('dc')) score += 10;
+            if (publisherName.includes('image')) score += 8;
+            if (publisherName.includes('dark horse')) score += 8;
+          }
+          
+          // 3. Year proximity (up to 20 points)
+          if (volumeYear && searchYear) {
+            const yearDiff = Math.abs(volumeYear - searchYear);
+            if (yearDiff === 0) score += 20; // Exact year match
+            else if (yearDiff === 1) score += 15; // 1 year off
+            else if (yearDiff <= 2) score += 10; // 2 years off
+            else if (yearDiff <= 5) score += 5;  // 5 years off
+            // No points for more than 5 years difference
+          }
+          
+          // 4. Prefer newer/active series (up to 10 points)
+          if (volumeYear >= 2010) score += 10;
+          else if (volumeYear >= 2000) score += 5;
+          
+          return { 
+            ...volume, 
+            score,
+            matchDetails: {
+              nameMatch: volumeName.includes(searchSeries) || searchSeries.includes(volumeName),
+              publisherMatch: publisherName.includes(searchPublisher) || searchPublisher.includes(volumePublisher),
+              yearDiff: volumeYear ? Math.abs(volumeYear - searchYear) : 999
+            }
+          };
+        });
 
-        // Select the best volume: prioritize exact name match, then closest year
-        let bestVolume = candidateVolumes[0];
-        if (candidateVolumes.length > 1 && parsed.year) {
-            bestVolume = candidateVolumes.reduce((prev: any, curr: any) => {
-                const prevYearDiff = Math.abs(Number(prev.start_year) - parsed.year!);
-                const currYearDiff = Math.abs(Number(curr.start_year) - parsed.year!);
-                
-                // If one is an exact series name match and the other isn't, prefer the exact match
-                const prevNormalizedName = prev.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-                const currNormalizedName = curr.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-                if (prevNormalizedName === normalizedParsedSeries && currNormalizedName !== normalizedParsedSeries) return prev;
-                if (prevNormalizedName !== normalizedParsedSeries && currNormalizedName === normalizedParsedSeries) return curr;
+        // Sort by score (highest first)
+        scoredVolumes.sort((a: any, b: any) => b.score - a.score);
 
-                // Otherwise, prefer the one with the closest year
-                return currYearDiff < prevYearDiff ? curr : prev;
-            });
-        }
+        // Debug: Show scoring results
+        console.log(`[COMIC-VINE-SCRAPER] Volume scoring results for "${parsed.series}":`);
+        scoredVolumes.slice(0, 5).forEach((vol: any, index: number) => {
+          console.log(`  ${index + 1}. "${vol.name}" (${vol.start_year}) - Score: ${vol.score} - ${vol.publisher?.name || 'Unknown'}`);
+          console.log(`     Details: Name=${vol.matchDetails.nameMatch}, Publisher=${vol.matchDetails.publisherMatch}, YearDiff=${vol.matchDetails.yearDiff}`);
+        });
+
+        // Select best volume (minimum score threshold of 30)
+        const bestVolume = scoredVolumes.find((vol: any) => vol.score >= 30);
         
         if (!bestVolume) {
-            console.warn(`[COMIC-VINE-SCRAPER] No suitable volume found after filtering for "${parsed.series}"`);
+            console.log(`[COMIC-VINE-SCRAPER] No suitable volume found for "${parsed.series}" (highest score: ${scoredVolumes[0]?.score || 0})`);
             return { success: false, error: `No suitable volume found for "${parsed.series}"` };
         }
-        console.log(`[COMIC-VINE-SCRAPER] Best volume selected:`, bestVolume);
+
+        console.log(`[COMIC-VINE-SCRAPER] Best volume selected: "${bestVolume.name}" (${bestVolume.start_year}) - Score: ${bestVolume.score}`);
 
         // Step 2: Fetch the specific issue from that volume
         const issueSearchUrl = `${API_BASE_URL}/issues/?api_key=${apiKey}&format=json&filter=volume:${bestVolume.id},issue_number:${parsed.issue}&field_list=name,cover_date,description,person_credits,volume,image,api_detail_url,site_detail_url,characters,genres,price,barcode,language_credits,concept_credits,location_credits,story_arc_credits,team_credits`;
