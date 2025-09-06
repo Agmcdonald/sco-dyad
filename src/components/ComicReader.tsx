@@ -17,7 +17,7 @@ import {
   X,
   Loader2,
   CheckCircle,
-  AlertCircle, // Import AlertCircle for error icon
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,20 +26,19 @@ import { Comic } from "@/types";
 import { cn } from "@/lib/utils";
 import { useElectron } from "@/hooks/useElectron";
 import { useAppContext } from "@/context/AppContext";
-import { showError, showSuccess } from "@/utils/toast";
+import { showError } from "@/utils/toast";
 import { RATING_EMOJIS } from "@/lib/ratings";
 import RatingSelector from "./RatingSelector";
 import NextIssuePreview from "./NextIssuePreview";
 
 interface ComicReaderProps {
   comic: Comic;
-  isOpen: boolean;
   onClose: () => void;
   comicList?: Comic[];
   currentIndex?: number;
 }
 
-const ComicReader = ({ comic: initialComic, isOpen, onClose, comicList, currentIndex }: ComicReaderProps) => {
+const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: ComicReaderProps) => {
   const { isElectron, electronAPI } = useElectron();
   const { comics, readingList, updateReadingHistory, updateComicRating, toggleComicReadStatus, updateComicProgress } = useAppContext();
   
@@ -58,7 +57,7 @@ const ComicReader = ({ comic: initialComic, isOpen, onClose, comicList, currentI
   const [isLoading, setIsLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState("Loading pages...");
   const [cbrTempDir, setCbrTempDir] = useState<string | null>(null);
-  const [readerError, setReaderError] = useState<string | null>(null); // New state for specific error message
+  const [readerError, setReaderError] = useState<string | null>(null);
   const fetchedPages = useRef(new Set());
 
   const comic = useMemo(() => {
@@ -88,7 +87,7 @@ const ComicReader = ({ comic: initialComic, isOpen, onClose, comicList, currentI
         fetchedPages.current.clear();
         setIsLoading(true);
         setLoadingMessage("Loading pages...");
-        setReaderError(null); // Reset error on comic change
+        setReaderError(null);
       }
     }
   }, [comicIndex, comicList, internalComic.id]);
@@ -103,7 +102,7 @@ const ComicReader = ({ comic: initialComic, isOpen, onClose, comicList, currentI
       }
 
       setIsLoading(true);
-      setReaderError(null); // Clear previous errors
+      setReaderError(null);
       try {
         if (isCbr) {
           setLoadingMessage("Preparing comic archive...");
@@ -126,16 +125,15 @@ const ComicReader = ({ comic: initialComic, isOpen, onClose, comicList, currentI
         setIsLoading(false);
       }
     };
-    if (isOpen) { // Only fetch pages if the reader is open
-      fetchPages();
-    }
+    
+    fetchPages();
 
     return () => {
       if (cbrTempDir && electronAPI) {
         electronAPI.cleanupTempDir(cbrTempDir);
       }
     };
-  }, [canReadComic, electronAPI, comic.filePath, isCbr, comic.id, cbrTempDir, isOpen]); // Added isOpen to dependencies
+  }, [canReadComic, electronAPI, comic.filePath, isCbr, comic.id]);
 
   useEffect(() => {
     const preloadPage = async (pageNumber: number, pageName: string) => {
@@ -186,7 +184,7 @@ const ComicReader = ({ comic: initialComic, isOpen, onClose, comicList, currentI
     if (nextComic) {
       setComicIndex(prev => prev + 1);
     }
-  }, [nextComic]);
+  }, [nextComic, setComicIndex]);
 
   const nextPage = useCallback(() => {
     if (currentPage === totalPages && nextComic) {
@@ -214,7 +212,6 @@ const ComicReader = ({ comic: initialComic, isOpen, onClose, comicList, currentI
     }
   };
 
-  // Automatically mark as read when reaching the last page
   useEffect(() => {
     if (currentPage === totalPages && totalPages > 0 && !isMarkedAsRead) {
       toggleComicReadStatus(comic);
@@ -232,16 +229,14 @@ const ComicReader = ({ comic: initialComic, isOpen, onClose, comicList, currentI
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [nextPage, prevPage, onClose, handleMarkAsRead]);
 
-  // Effect for auto-hiding controls
   useEffect(() => {
     let timer: NodeJS.Timeout;
     const handleActivity = () => {
       setShowControls(true);
       clearTimeout(timer);
-      timer = setTimeout(() => setShowControls(false), 4000); // Hide after 4 seconds
+      timer = setTimeout(() => setShowControls(false), 4000);
     };
 
-    // Initially show controls and start timer
     handleActivity();
 
     window.addEventListener("mousemove", handleActivity);
@@ -254,7 +249,6 @@ const ComicReader = ({ comic: initialComic, isOpen, onClose, comicList, currentI
     };
   }, []);
 
-  // Effect for saving progress ONLY on unmount
   useEffect(() => {
     return () => {
       const { comic, currentPage, totalPages } = progressToSave.current;
@@ -341,9 +335,9 @@ const ComicReader = ({ comic: initialComic, isOpen, onClose, comicList, currentI
               <p className="font-semibold">{loadingMessage}</p>
               <p className="text-sm mt-1">This can take a moment for large files.</p>
             </div>
-          ) : readerError ? ( // Display specific error if available
+          ) : readerError ? (
             <div className="text-center text-muted-foreground">
-              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" /> {/* Changed icon to AlertCircle */}
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
               <h3 className="font-semibold">Cannot Read Comic</h3>
               <p className="text-sm max-w-xs mt-2">
                 {readerError}
