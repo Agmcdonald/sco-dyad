@@ -11,7 +11,6 @@ import { useComicLibrary } from './hooks/useComicLibrary';
 import { useReadingList } from './hooks/useReadingList';
 import { useRecentlyRead } from './hooks/useRecentlyRead';
 import { processComicFile } from '@/lib/smartProcessor';
-import { useGcdDatabaseService } from '@/services/gcdDatabaseService'; // Keep import for type, but won't be used
 import { useKnowledgeBase } from './KnowledgeBaseContext';
 import { parseFilename } from '@/lib/parser';
 
@@ -129,7 +128,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const databaseService = useElectronDatabaseService();
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
-  // const gcdDbService = useGcdDatabaseService(); // Removed GCD service
   const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
 
   const addFilesFromPaths = useCallback(async (paths: string[]) => {
@@ -282,268 +280,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const quickAddFiles = useCallback(async (filesToQuickAdd: QueuedFile[]) => {
     let addedCount = 0;
-    for (const file of filesToQuickAdd) {
-      // The 'file' object passed here already has 'ofTotal' if it came from addFilesFromPaths or triggerQuickAddFiles
-      // The summary will be constructed in addComic based on originalFile.ofTotal
-      const parsed = parseFilename(file.path); // Re-parse to ensure 'parsed' has 'ofTotal' if 'file' didn't
+    let failedCount = 0;
 
-      if (!parsed.series || !parsed.issue) {
-        showError(`Could not quick add "${file.name}": Missing series or issue number.`);
-        continue;
-      }
+    const loadingToast = showLoading(`Quick adding ${filesToQuickAdd.length} files...`);
 
-      const comicData: NewComic = {
-        id: crypto.randomUUID(), // Generate ID for quick add
-        series: parsed.series,
-        issue: parsed.issue,
-        year: parsed.year || new Date().getFullYear(),
-        publisher: parsed.publisher || "Unknown Publisher",
-        volume: parsed.volume || String(parsed.year || new Date().getFullYear()),
-        summary: `Quick added from file: ${file.name}`
-      };
-
-      // Ensure the 'file' object passed to addComic has the 'ofTotal' from parsing
-      const fileWithOfTotal: QueuedFile = { ...file, ofTotal: parsed.ofTotal };
-
-      await processComicFile(
-        tempFile,
-        settings.comicVineApiKey,
-        knowledgeBase // Pass knowledgeBase
-      );
-
-      if (!processedResult.success || !processedResult.data) {
-        showError(`Could not quick add "${name}": ${processedResult.error || "Failed to process metadata."}`);
-        failedCount++;
-        continue;
-      }
-
-      const comicData: NewComic = {
-        id: crypto.randomUUID(), // Generate ID for quick add
-        series: processedResult.data.series,
-        issue: processedResult.data.issue,
-        year: processedResult.data.year,
-        publisher: processedResult.data.publisher,
-        volume: processedResult.data.volume,
-        summary: processedResult.data.summary,
-        title: processedResult.data.title,
-        publicationDate: processedResult.data.publicationDate,
-        genre: processedResult.data.genre,
-        characters: processedResult.data.characters,
-        price: processedResult.data.price,
-        barcode: processedResult.data.barcode,
-        languageCode: processedResult.data.languageCode,
-        countryCode: processedResult.data.countryCode,
-        creators: processedResult.data.creators,
-      };
-
-      await addComic(comicData, fileWithOfTotal); // tempFile now has ofTotal
-      removeFile(file.id);
-      addedCount++;
-    }
-
-    dismissToast(loadingToast);
-    if (addedCount > 0) {
-      showSuccess(`Quick added ${addedCount} comic(s) to the library.`);
-    }
-    if (failedCount > 0) {
-      showError(`${failedCount} file(s) could not be added.`);
-    }
-
-    } catch (error) {
-      showError("An error occurred during Quick Add.");
-      console.error("Quick Add error:", error);
-    }
-  }, [isElectron, electronAPI, addComic, settings, knowledgeBase, removeFile]); // Removed gcdDbService
-
-  const updateComic = useCallback(async (updatedComic: Comic) => {
-    const oldComic = comics.find(c => c.id === updatedComic.id);
-
-    if (isElectron && electronAPI && databaseService && oldComic && oldComic.filePath) {
-      const seriesChanged = oldComic.series !== updatedComic.series;
-      const publisherChanged = oldComic.publisher !== updatedComic.publisher;
-
-      if (seriesChanged || publisherChanged) {
-        try {
-          const fileExtension = oldComic.filePath.substring(oldComic.filePath.lastIndexOf('.'));
-          const newFolderPart = formatPath(settings.folderNameFormat, updatedComic);
-          const newFilePart = formatPath(settings.fileNameFormat, updatedComic) + fileExtension;
-          const newRelativePath = `${newFolderPart}/${newFilePart}`.replace(/\\/g, '/');
-
-          const moveResult = await electronAPI.organizeFile(oldComic.filePath, newRelativePath); // Changed from moveFile to organizeFile
-
-          if (moveResult.success) {
-            updatedComic.filePath = moveResult.newPath;
-            logAction('info', `Moved file for '${updatedComic.series} #${updatedComic.issue}'`);
-            showSuccess('Comic file moved to new location.');
-          } else {
-            showError(`Failed to move comic file: ${moveResult.error}`);
-          }
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          console.error('Error moving comic file:', error);
-          showError(`An error occurred while moving the comic file: ${errorMessage}`);
-        }
-      }
-    }
-
-    console.log('[APP-CONTEXT] Updating comic:', updatedComic.series, 'with rating:', updatedComic.rating);
-    
-    if (databaseService) {
-      try {
-        await databaseService.updateComic({
-          ...updatedComic,
-          filePath: updatedComic.filePath || '',
-          fileSize: 0,
-          dateAdded: updatedComic.dateAdded.toISOString(),
-          lastModified: new Date().toISOString()
-        });
-        await refreshComics();
-      } catch (error) {
-        console.error('Error updating comic in database:', error);
-      }
-    }
-    setComics(prev => prev.map(c => c.id === updatedComic.id ? updatedComic : c));
-    logAction('info', `Updated metadata for '${updatedComic.series} #${updatedComic.issue}'`);
-    
-    addToKnowledgeBase({
-      series: updatedComic.series,
-      publisher: updatedComic.publisher,
-      startYear: updatedComic.year,
-      volumes: [{ volume: updatedComic.volume, year: updatedComic.year }]
-    });
-  }, [comics, isElectron, electronAPI, databaseService, settings, logAction, refreshComics, setComics, addToKnowledgeBase]);
-
-  const updateComicRating = useCallback(async (comicId: string, rating: number) => {
-    console.log('[APP-CONTEXT] updateComicRating called for comic:', comicId, 'rating:', rating);
-    
-    const comicToUpdate = comics.find(c => c.id === comicId);
-    if (!comicToUpdate) {
-      console.error('[APP-CONTEXT] Comic not found:', comicId);
-      return;
-    }
-
-    const updatedComic = { ...comicToUpdate, rating };
-    console.log('[APP-CONTEXT] Updating comic with new rating:', updatedComic);
-    
-    await updateComic(updatedComic);
-
-    setReadingList(prev => prev.map(item => 
-      item.comicId === comicId ? { ...item, rating } : item
-    ));
-    
-    setRecentlyRead(prev => prev.map(item => 
-      item.comicId === comicId ? { ...item, rating } : item
-    ));
-    
-    showSuccess(`Rated "${updatedComic.series} #${updatedComic.issue}"`);
-    console.log('[APP-CONTEXT] Rating update complete');
-  }, [comics, updateComic, setReadingList, setRecentlyRead]);
-
-  const removeComic = useCallback(async (id: string, deleteFile: boolean = false) => {
-    const comicToRemove = comics.find(c => c.id === id);
-    if (!comicToRemove) return;
-
-    if (isElectron && electronAPI) {
-      try {
-        const filePath = deleteFile ? comicToRemove.filePath : undefined;
-        await electronAPI.deleteComic(id, filePath);
-        await refreshComics();
-        const message = deleteFile ? `Permanently deleted '${comicToRemove.series} #${comicToRemove.issue}'` : `Removed '${comicToRemove.series} #${comicToRemove.issue}' from library`;
-        logAction('info', message);
-        showSuccess(message);
-      } catch (error) {
-        console.error('Error deleting comic:', error);
-        showError("Failed to delete comic.");
-      }
-    } else {
-      setComics(prev => prev.filter(c => c.id !== id));
-      logAction('info', `(Web Mode) Removed comic: '${comicToRemove.series} #${comicToRemove.issue}'`);
-      showSuccess("Comic removed from library");
-    }
-  }, [comics, isElectron, electronAPI, logAction, refreshComics, setComics]);
-
-  const skipFile = useCallback((file: QueuedFile) => {
-    removeFile(file.id);
-    logAction('info', `Skipped file: ${file.name}`, {
-      type: 'SKIP_FILE',
-      payload: { skippedFile: file }
-    });
-  }, [removeFile, logAction]);
-
-  const lastUndoableAction = actions.find(a => !!a.undo) || null;
-
-  const undoLastAction = useCallback(() => {
-    if (!lastUndoableAction || !lastUndoableAction.undo) return;
-    const { type, payload } = lastUndoableAction.undo;
-    if (type === 'ADD_COMIC') {
-      removeComic(payload.comicId);
-      addFile(payload.originalFile);
-    } else if (type === 'SKIP_FILE') {
-      addFile(payload.skippedFile);
-    }
-    logAction('info', `Undo: ${lastUndoableAction.message}`);
-    setActions(prev => prev.map(a => a.id === lastUndoableAction.id ? { ...a, undo: undefined } : a));
-  }, [lastUndoableAction, removeComic, addFile, logAction, setActions]);
-
-  const addMockFiles = useCallback(() => {
-    const newMockFiles: QueuedFile[] = [
-      { id: `file-${Date.now()}-1`, name: "Saga #2 (2012).cbr", path: "mock://saga-2-2012.cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
-      { id: `file-${Date.now()}-2`, name: "Batman The Knight #1 (2022).cbr", path: "mock://batman-knight-1-2022.cbr", series: null, issue: null, year: null, publisher: null, confidence: null, status: "Pending" },
-    ];
-    addFiles(newMockFiles);
-    logAction('info', `Added ${newMockFiles.length} demo files for testing.`);
-  }, [addFiles, logAction]);
-
-  const triggerSelectFiles = useCallback(async () => {
-    if (!isElectron || !electronAPI) {
-      showError("This feature is only available in the desktop app.");
-      return;
-    }
-    try {
-      const filePaths = await electronAPI.selectFilesDialog();
-      if (filePaths && filePaths.length > 0) {
-        await addFilesFromPaths(filePaths);
-      }
-    } catch (error) {
-      showError("Could not select files.");
-    }
-  }, [isElectron, electronAPI, addFilesFromPaths]);
-
-  const triggerScanFolder = useCallback(async () => {
-    if (!isElectron || !electronAPI) {
-      showError("This feature is only available in the desktop app.");
-      return;
-    }
-    try {
-      const folderPaths = await electronAPI.selectFolderDialog();
-      if (folderPaths && folderPaths.length > 0) {
-        const filePaths = await electronAPI.scanFolder(folderPaths[0]);
-        await addFilesFromPaths(filePaths.map((f: any) => f.path || f));
-      }
-    } catch (error) {
-      showError("Could not scan folder.");
-    }
-  }, [isElectron, electronAPI, addFilesFromPaths]);
-
-  const triggerQuickAddFiles = useCallback(async () => {
-    if (!isElectron || !electronAPI) {
-      showError("This feature is only available in the desktop app.");
-      return;
-    }
-    try {
-      const filePaths = await electronAPI.selectFilesDialog();
-      if (!filePaths || filePaths.length === 0) {
-        return; // User cancelled
-      }
-
-      const loadingToast = showLoading(`Quick adding ${filePaths.length} files...`);
-      let addedCount = 0;
-      let failedCount = 0;
-
-      for (const path of filePaths) {
-        const name = path.split(/[\\/]/).pop() || 'Unknown File';
+    try { // Added missing try block
+      for (const file of filesToQuickAdd) {
+        const name = file.name;
         
-        const parsed = parseFilename(path); // Parsing happens here
+        const parsed = parseFilename(file.path);
 
         if (!parsed.series || !parsed.issue) {
           showError(`Could not quick add "${name}": Missing series or issue number.`);
@@ -554,22 +299,21 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const tempFile: QueuedFile = {
           id: `quick-add-${Date.now()}-${Math.random()}`,
           name,
-          path,
+          path: file.path,
           series: parsed.series,
           issue: parsed.issue,
           year: parsed.year,
           publisher: parsed.publisher,
           volume: parsed.volume,
-          ofTotal: parsed.ofTotal, // Add ofTotal to tempFile
+          ofTotal: parsed.ofTotal,
           confidence: null,
           status: 'Pending'
         };
 
-        // Use processComicFile to get enriched data for quick add
         const processedResult = await processComicFile(
           tempFile,
           settings.comicVineApiKey,
-          knowledgeBase // Pass knowledgeBase
+          knowledgeBase
         );
 
         if (!processedResult.success || !processedResult.data) {
@@ -579,7 +323,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         }
 
         const comicData: NewComic = {
-          id: crypto.randomUUID(), // Generate ID for quick add
+          id: crypto.randomUUID(),
           series: processedResult.data.series,
           issue: processedResult.data.issue,
           year: processedResult.data.year,
@@ -597,7 +341,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           creators: processedResult.data.creators,
         };
 
-        await addComic(comicData, tempFile); // tempFile now has ofTotal
+        await addComic(comicData, tempFile);
+        removeFile(file.id);
         addedCount++;
       }
 
@@ -610,6 +355,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       }
 
     } catch (error) {
+      dismissToast(loadingToast);
       showError("An error occurred during Quick Add.");
       console.error("Quick Add error:", error);
     }
@@ -747,7 +493,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       await updateComic(updatedComic);
       return false; // Indicate no new data, but still processed
     }
-  }, [settings, knowledgeBase, updateComic, logAction]); // Removed gcdDbService
+  }, [settings, knowledgeBase, updateComic, logAction]);
 
   const startMetadataScan = useCallback(async () => {
     setIsScanningMetadata(true);
