@@ -17,6 +17,22 @@ const Layout = () => {
   const { selectedItem } = useSelection();
   const { readingComic, setReadingComic } = useAppContext();
 
+  // Determine if the inspector panel should be visually open
+  const isInspectorPanelOpen = isInspectorOpen && !!selectedItem;
+
+  // Calculate sidebar panel size based on inspector state
+  // When inspector is open, collapse sidebar to 5 units (approx 72px)
+  // When inspector is closed, allow sidebar to be its default size
+  const sidebarCollapsedSize = 5; // Corresponds to ~72px
+  const sidebarDefaultSize = 20;
+  const sidebarMinSize = 15;
+  const sidebarMaxSize = 25;
+
+  const currentSidebarSize = isInspectorPanelOpen ? sidebarCollapsedSize : sidebarDefaultSize;
+  const currentSidebarMinSize = isInspectorPanelOpen ? sidebarCollapsedSize : sidebarMinSize;
+  const currentSidebarMaxSize = isInspectorPanelOpen ? sidebarCollapsedSize : sidebarMaxSize;
+
+
   const toggleInspector = () => {
     setIsInspectorOpen(!isInspectorOpen);
   };
@@ -31,8 +47,19 @@ const Layout = () => {
   return (
     <div className="h-screen w-full">
       <ResizablePanelGroup direction="horizontal" className="h-full w-full">
-        <ResizablePanel id="sidebar" order={1} defaultSize={20} minSize={15} maxSize={25}>
-          <Sidebar />
+        <ResizablePanel 
+          id="sidebar" 
+          order={1} 
+          defaultSize={currentSidebarSize} 
+          minSize={currentSidebarMinSize} 
+          maxSize={currentSidebarMaxSize}
+          // The `onResize` prop is crucial here to update the `defaultSize` when the panel is manually resized
+          // However, `defaultSize` is only for initial render. To make it truly dynamic,
+          // we need to manage the `size` prop and update it.
+          // For now, we'll rely on `minSize` and `maxSize` to constrain it.
+          // The visual collapse will be handled by the Sidebar component itself.
+        >
+          <Sidebar isCollapsed={isInspectorPanelOpen} />
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel id="main" order={2}>

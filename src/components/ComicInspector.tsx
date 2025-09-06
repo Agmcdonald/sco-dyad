@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Comic } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -20,6 +20,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   Tag, 
   BookOpen, 
@@ -36,7 +42,8 @@ import {
   ImageIcon,
   CheckCircle,
   ShieldAlert,
-  Sparkles
+  Sparkles,
+  ChevronDown
 } from "lucide-react";
 import EditComicModal from "./EditComicModal";
 import RatingSelector from "./RatingSelector";
@@ -60,6 +67,7 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
   const { comics, readingList, addToReadingList, removeComic, updateComicRating, updateComic, toggleComicReadStatus, openComicForReading, scanComicForMetadata } = useAppContext();
   const { setSelectedItem } = useSelection();
   const { isElectron } = useElectron();
+  const dropdownTriggerRef = useRef<HTMLButtonElement>(null);
 
   const comic = useMemo(() => {
     return comics.find(c => c.id === initialComic.id) || initialComic;
@@ -151,6 +159,51 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
   const handleScanForDetails = async () => {
     await scanComicForMetadata(comic.id);
   };
+
+  const handleReadComic = useCallback(() => {
+    openComicForReading(comic);
+  }, [openComicForReading, comic]);
+
+  const handleEditComic = useCallback(() => {
+    setIsModalOpen(true);
+  }, []);
+
+  const handleFixCover = useCallback(() => {
+    setIsFixCoverOpen(true);
+  }, []);
+
+  const handleAddToList = useCallback(() => {
+    addToReadingList(comic);
+  }, [addToReadingList, comic]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Prevent default behavior for 'r' if it's not an input field
+      if (event.key === 'r' && !(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)) {
+        event.preventDefault();
+        handleReadComic();
+      }
+      if (event.key === 'e' && !(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)) {
+        event.preventDefault();
+        handleEditComic();
+      }
+      if (event.key === 'f' && !(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)) {
+        event.preventDefault();
+        handleFixCover();
+      }
+      if (event.key === 'm' && !(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)) {
+        event.preventDefault();
+        dropdownTriggerRef.current?.click(); // Programmatically open the dropdown
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleReadComic, handleEditComic, handleFixCover]);
+
 
   const coverSrc = getCoverUrl(comic.coverUrl);
 
@@ -313,7 +366,7 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
             <div className="space-y-3">
               <RatingSelector 
                 currentRating={rating} 
-                onRatingChange={handleRatingChange}
+                onRatingChange={handleRateComic}
                 size="md"
               />
               {rating !== undefined && (
@@ -325,75 +378,71 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
           </div>
         </div>
         <div className="p-4 border-t mt-auto bg-background space-y-2">
-          <Button className="w-full" onClick={() => openComicForReading(comic)}>
-            <BookOpen className="mr-2 h-4 w-4" /> Read Comic
-          </Button>
-          <div className="grid grid-cols-2 gap-2">
-            <Button 
-              variant="secondary" 
-              onClick={() => addToReadingList(comic)}
-              disabled={isInReadingList}
-            >
-              <PlusCircle className="mr-2 h-4 w-4" /> 
-              {isInReadingList ? 'In List' : 'Add to List'}
+          {/* Primary Actions */}
+          <div className="grid grid-cols-3 gap-2">
+            <Button className="w-full" onClick={handleReadComic} aria-label="Read Comic (R)">
+              <BookOpen className="mr-2 h-4 w-4" /> Read
             </Button>
-            <Button
-              variant={isMarkedAsRead ? "default" : "secondary"}
-              onClick={handleMarkAsRead}
-              className={isMarkedAsRead ? "bg-green-600 hover:bg-green-700" : ""}
+            <Button 
+              className="w-full" 
+              variant="outline" 
+              onClick={handleFixCover}
+              aria-label="Fix Cover (F)"
             >
-              <CheckCircle className="mr-2 h-4 w-4" />
-              {isMarkedAsRead ? 'Mark Unread' : 'Mark Read'}
+              <ImageIcon className="mr-2 h-4 w-4" /> Fix Cover
+            </Button>
+            <Button className="w-full" variant="outline" onClick={handleEditComic} aria-label="Edit (E)">
+              <Tag className="mr-2 h-4 w-4" /> Edit
             </Button>
           </div>
-          
-          {/* Cover Management */}
-          <Button 
-            className="w-full" 
-            variant="outline" 
-            onClick={() => setIsFixCoverOpen(true)}
-          >
-            <ImageIcon className="mr-2 h-4 w-4" /> 
-            Fix Cover
-          </Button>
-          
-          {/* Series Cover Controls */}
-          {hasMultipleIssues && (
-            <div className="grid grid-cols-1 gap-2">
-              {isCurrentSeriesCover ? (
-                <Button variant="outline" onClick={handleRemoveAsSeriesCover}>
-                  <Image className="mr-2 h-4 w-4" /> Remove as Series Cover
-                </Button>
-              ) : (
-                <Button variant="outline" onClick={handleSetAsSeriesCover}>
-                  <Image className="mr-2 h-4 w-4" /> Set as Series Cover
-                </Button>
+
+          {/* Secondary Actions (More Menu) */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full" ref={dropdownTriggerRef} aria-label="More Actions (M)">
+                More <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={handleAddToList} disabled={isInReadingList} aria-label="Add to Reading List">
+                <PlusCircle className="mr-2 h-4 w-4" /> 
+                {isInReadingList ? 'In Reading List' : 'Add to Reading List'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleMarkAsRead} aria-label={isMarkedAsRead ? "Mark Unread" : "Mark Read"}>
+                <CheckCircle className="mr-2 h-4 w-4" />
+                {isMarkedAsRead ? 'Mark Unread' : 'Mark Read'}
+              </DropdownMenuItem>
+              {hasMultipleIssues && (
+                isCurrentSeriesCover ? (
+                  <DropdownMenuItem onClick={handleRemoveAsSeriesCover} aria-label="Remove as Series Cover">
+                    <Image className="mr-2 h-4 w-4" /> Remove as Series Cover
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={handleSetAsSeriesCover} aria-label="Set as Series Cover">
+                    <Image className="mr-2 h-4 w-4" /> Set as Series Cover
+                  </DropdownMenuItem>
+                )
               )}
-            </div>
-          )}
-          
-          <Button variant="outline" className="w-full" onClick={() => setIsModalOpen(true)}>
-            <Tag className="mr-2 h-4 w-4" /> Edit
-          </Button>
+              <DropdownMenuItem onClick={handleScanForDetails} aria-label="Scan for Details">
+                <Sparkles className="mr-2 h-4 w-4" /> Scan for Details
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-          {/* New: Scan for Details */}
-          <Button variant="outline" className="w-full" onClick={handleScanForDetails}>
-            <Sparkles className="mr-2 h-4 w-4" /> Scan for Details
-          </Button>
-
-          {/* New: Ignore in Scans Toggle */}
+          {/* Persistent Bottom Actions */}
           <div className="flex items-center justify-between rounded-lg border p-3">
             <Label htmlFor="ignore-in-scans" className="text-sm font-medium">Ignore in Auto Scans</Label>
             <Switch 
               id="ignore-in-scans" 
               checked={comic.ignoreInScans || false} 
               onCheckedChange={handleToggleIgnoreInScans} 
+              aria-label="Toggle ignore in auto scans"
             />
           </div>
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="w-full">
+              <Button variant="destructive" className="w-full" aria-label="Delete Comic">
                 <Trash2 className="mr-2 h-4 w-4" /> Delete
               </Button>
             </AlertDialogTrigger>
