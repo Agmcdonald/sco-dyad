@@ -80,6 +80,20 @@ const isMockFile = (filePath: string): boolean => {
 
 const normalize = (s: string | undefined | null) => (s || "").trim().toLowerCase();
 
+// Helper to determine if a comic has missing metadata that could be enriched
+const hasMissingMetadata = (comic: Comic): boolean => {
+  return !comic.summary || 
+         !comic.creators || comic.creators.length === 0 ||
+         !comic.genre ||
+         !comic.characters ||
+         !comic.publicationDate ||
+         !comic.price ||
+         !comic.barcode ||
+         !comic.languageCode ||
+         !comic.countryCode ||
+         comic.publisher === "Unknown Publisher"; // Consider unknown publisher as missing
+};
+
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { actions, logAction, setActions } = useActionLog();
   const { files, setFiles, addFile, addFiles, removeFile, updateFile } = useFileQueue();
@@ -621,7 +635,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setIsScanningMetadata(true);
     setMetadataScanProgress({ processed: 0, total: 0, updated: 0 });
 
-    const candidates = comics.filter(c => !c.ignoreInScans && !c.metadataLastChecked);
+    // Filter candidates: only comics that have missing metadata
+    const candidates = comics.filter(c => !c.ignoreInScans && hasMissingMetadata(c));
 
     setMetadataScanProgress(prev => ({ ...prev, total: candidates.length }));
     let updatedCount = 0;
@@ -707,6 +722,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         updatedCount++;
         logAction('success', `Enriched metadata for '${comic.series} #${comic.issue}'`);
       } else {
+        // Even if no new data was found, we still update the comic to mark metadataLastChecked
+        // This prevents repeatedly trying to fetch the same missing data if the API doesn't have it.
         await updateComic(updatedComic);
       }
       

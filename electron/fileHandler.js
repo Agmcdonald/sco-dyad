@@ -262,7 +262,7 @@ class ComicFileHandler {
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-pages-'));
         await Promise.race([
           this.unrar(filePath, tempDir),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('CBR page count timeout')), 15000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('CBR page count timeout')), 60000)) // Increased timeout
         ]);
         const allFiles = await this._walk(tempDir);
         return allFiles.filter(file => this.isImageFile(file)).length;
@@ -387,10 +387,12 @@ class ComicFileHandler {
     let tempDir = null;
     try {
       tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-cover-'));
+      console.log(`[FileHandler] Starting CBR cover extraction for ${filePath} to temp dir ${tempDir}`);
       await Promise.race([
         this.unrar(filePath, tempDir),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR cover extraction timeout')), 30000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR cover extraction timeout')), 60000)) // Increased timeout
       ]);
+      console.log(`[FileHandler] CBR extraction complete for cover of ${filePath}`);
       
       const allFiles = await this._walk(tempDir);
       const imageFiles = allFiles
@@ -406,12 +408,16 @@ class ComicFileHandler {
         .jpeg({ quality: 85 })
         .toFile(outputPath);
         
+      console.log(`[FileHandler] Cover saved to ${outputPath}`);
       return outputPath;
     } catch (error) {
       console.error(`[FileHandler] Error extracting cover from CBR ${filePath}:`, error);
       throw new Error(`Failed to extract cover from CBR: ${error.message}`);
     } finally {
-      if (tempDir) await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      if (tempDir) {
+        console.log(`[FileHandler] Cleaning up temp dir ${tempDir}`);
+        await fs.rm(tempDir, { recursive: true, force: true }).catch(e => console.error(`[FileHandler] Error cleaning up temp dir ${tempDir}:`, e));
+      }
     }
   }
 
@@ -694,10 +700,12 @@ class ComicFileHandler {
     if (!this.unrarAvailable) throw new Error('RAR support is not available');
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-reader-'));
     try {
+      console.log(`[FileHandler] Starting CBR extraction for reading ${filePath} to temp dir ${tempDir}`);
       await Promise.race([
         this.unrar(filePath, tempDir),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR extraction timeout')), 60000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR extraction timeout')), 60000)) // Increased timeout
       ]);
+      console.log(`[FileHandler] CBR extraction complete for reading ${filePath}`);
       const allFiles = await this._walk(tempDir);
       const imageFiles = allFiles
         .filter(file => this.isImageFile(file))
@@ -708,7 +716,7 @@ class ComicFileHandler {
       return { tempDir, pages: imageFiles };
     } catch (error) {
       console.error(`[FileHandler] Error preparing CBR ${filePath} for reading:`, error);
-      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(e => console.error(`[FileHandler] Error cleaning up temp dir ${tempDir} after failed CBR prep:`, e));
       throw new Error(`Failed to prepare CBR for reading: ${error.message}`);
     }
   }
@@ -721,7 +729,11 @@ class ComicFileHandler {
    */
   async getPageDataUrlFromTemp(tempDir, pageName) {
     const safePagePath = path.join(tempDir, pageName);
-    if (!safePagePath.startsWith(tempDir)) throw new Error('Invalid page path');
+    // Basic security check to ensure we don't read outside the tempDir
+    if (!safePagePath.startsWith(tempDir)) {
+      console.error(`[FileHandler] Attempted to access path outside temp directory: ${safePagePath}`);
+      throw new Error('Invalid page path: Attempted to access file outside designated temporary directory.');
+    }
     
     try {
       const pageData = await fs.readFile(safePagePath);
@@ -738,9 +750,12 @@ class ComicFileHandler {
    */
   async cleanupTempDir(tempDir) {
     if (tempDir && tempDir.startsWith(os.tmpdir())) {
+      console.log(`[FileHandler] Cleaning up temp dir ${tempDir}`);
       await fs.rm(tempDir, { recursive: true, force: true }).catch(e => 
         console.error(`[FileHandler] Failed to clean up temp dir ${tempDir}`, e)
       );
+    } else {
+      console.warn(`[FileHandler] Attempted to clean up non-temp or invalid directory: ${tempDir}`);
     }
   }
 }
