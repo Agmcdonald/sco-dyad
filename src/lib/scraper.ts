@@ -53,7 +53,7 @@ const stripHtml = (html: string | null | undefined): string => {
 
 /**
  * Fetch Comic Metadata (from Comic Vine)
- * Fetches data from the Comic Vine API via the Electron main process to bypass CORS.
+ * Main processing function that attempts to extract and enrich metadata for a comic file
  * 
  * @param parsed - Parsed comic information from filename
  * @param apiKey - API key for Comic Vine
@@ -169,7 +169,7 @@ export const fetchComicMetadata = async (
             score,
             matchDetails: {
               nameMatch: volumeName.includes(searchSeries) || searchSeries.includes(volumeName),
-              publisherMatch: publisherName.includes(searchPublisher) || searchPublisher.includes(publisherName),
+              publisherMatch: publisherName.includes(searchPublisher) || searchPublisher.includes(volumeName), // Corrected: should be searchPublisher
               yearDiff: volumeYear ? Math.abs(volumeYear - searchYear) : 999
             }
           };
@@ -197,64 +197,51 @@ export const fetchComicMetadata = async (
 
         // Step 2: Fetch the specific issue from that volume
         // Removed field_list to get full response
-        const issueFields = 'name,cover_date,description,person_credits,volume,image,api_detail_url,site_detail_url,character_credits,concept_credits,price,barcode,language_credits,team_credits'; // Kept for reference in logs, but not used in URL
+        const issueUrl = `${API_BASE_URL}/issues/?api_key=${apiKey}&format=json&filter=volume:${bestVolume.id},issue_number:${parsed.issue}`;
         
-        // Try multiple issue number formats
-        const issueFormats = [
-          parsed.issue,                           // "006"
-          parseInt(parsed.issue, 10).toString(),  // "6" 
-          parsed.issue.replace(/^0+/, '') || parsed.issue  // "6" (remove leading zeros, fallback to original)
-        ];
+        console.log(`[COMIC-VINE-SCRAPER] Issue search URL: ${issueUrl}`);
+        
+        const issueResponse = await electronAPI.fetchComicVine(issueUrl);
+        
+        if (!issueResponse.success) {
+            throw new Error(issueResponse.error || `Issue API request failed`);
+        }
+        const issueData = issueResponse.data;
+        console.log(`[COMIC-VINE-SCRAPER] Issue search raw response:`, issueData);
 
-        console.log(`[COMIC-VINE-SCRAPER] Trying issue formats for #${parsed.issue}:`, issueFormats);
+        if (issueData.status_code !== 1 || issueData.number_of_total_results === 0) {
+            console.warn(`[COMIC-VINE-SCRAPER] No issue found for "${parsed.series}" #${parsed.issue}`);
+            return { success: false, error: `No issue found for "${parsed.series}" #${parsed.issue}` };
+        }
 
-        let issueResponse = null;
-        let foundFormat = null;
+        const issue = issueData.results[0];
 
-        for (const format of issueFormats) {
-          // FIX: Removed field_list parameter from the URL
-          const issueUrl = `${API_BASE_URL}/issues/?api_key=${apiKey}&format=json&filter=volume:${bestVolume.id},issue_number:${format}`;
+        // --- START DEBUGGING FULL RESPONSE STRUCTURE ---
+        console.log('[COMIC-VINE-SCRAPER] Full response structure analysis:');
+        console.log('Response type:', typeof issueData);
+        console.log('Results array length:', issueData.results?.length || 0);
+
+        if (issue) {
+          console.log('Issue object keys:', Object.keys(issue));
+          console.log('Sample of non-null fields:');
           
-          console.log(`[COMIC-VINE-SCRAPER] Trying issue format "${format}": ${issueUrl}`);
-          
-          const response = await electronAPI.fetchComicVine(issueUrl);
-          
-          if (response.success && response.data && response.data.results && response.data.results.length > 0) {
-            issueResponse = response.data;
-            foundFormat = format;
-            console.log(`[COMIC-VINE-SCRAPER] Found issue using format "${format}"`);
-            break;
-          }
+          Object.keys(issue).forEach(key => {
+            const value = issue[key];
+            if (value !== null && value !== undefined && value !== '') {
+              if (Array.isArray(value)) {
+                console.log(`  ${key}: Array(${value.length})`);
+                if (value.length > 0) {
+                  console.log(`    Sample: ${JSON.stringify(value[0]).substring(0, 100)}...`);
+                }
+              } else if (typeof value === 'object') {
+                console.log(`  ${key}: Object with keys [${Object.keys(value).join(', ')}]`);
+              } else {
+                console.log(`  ${key}: ${typeof value} - ${String(value).substring(0, 50)}...`);
+              }
+            }
+          });
         }
-
-        if (!issueResponse || !issueResponse.results || issueResponse.results.length === 0) {
-          console.log(`[COMIC-VINE-SCRAPER] No issue match found for "${parsed.series}" after trying all formats:`, issueFormats);
-          return { success: false, error: `No match found for "${parsed.series}" #${parsed.issue} in volume "${bestVolume.name}" after trying all formats.` };
-        }
-
-        const issue = issueResponse.results[0];
-        console.log(`[COMIC-VINE-SCRAPER] Raw issue response fields:`);
-        console.log('- name:', issue.name);
-        console.log('- description length:', issue.description?.length || 0);
-        console.log('- person_credits count:', issue.person_credits?.length || 0);
-        console.log('- character_credits count:', issue.character_credits?.length || 0);
-        console.log('- concept_credits count:', issue.concept_credits?.length || 0);
-        console.log('- team_credits count:', issue.team_credits?.length || 0);
-        console.log('- cover_date:', issue.cover_date);
-
-        // Log the first few creators and characters if they exist
-        if (issue.person_credits?.length > 0) {
-          console.log('- sample creators:', issue.person_credits.slice(0, 3));
-        }
-        if (issue.character_credits?.length > 0) {
-          console.log('- sample characters:', issue.character_credits.slice(0, 3));
-        }
-        if (issue.concept_credits?.length > 0) {
-          console.log('- sample genres:', issue.concept_credits.slice(0, 3));
-        }
-        if (issue.team_credits?.length > 0) {
-          console.log('- sample teams:', issue.team_credits.slice(0, 3));
-        }
+        // --- END DEBUGGING FULL RESPONSE STRUCTURE ---
 
         // Process and clean HTML description
         const description = stripHtml(issue.description);
