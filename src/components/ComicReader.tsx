@@ -305,7 +305,7 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
             </Button>
             <div>
               <h2 className="font-semibold text-sm truncate flex items-center">
-                {comic.series} #{comic.issue}
+                {comic.series} #${comic.issue}
                 {rating !== undefined && (
                   <span className="ml-2 text-lg" title={RATING_EMOJIS[rating as keyof typeof RATING_EMOJIS]?.label}>
                     {RATING_EMOJIS[rating as keyof typeof RATING_EMOJIS]?.emoji}

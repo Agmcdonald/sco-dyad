@@ -32,7 +32,7 @@ export interface Comic extends NewComic {
   dateAdded: Date;
   filePath?: string;
   metadataLastChecked?: string;
-  ignoreInScans?: boolean;
+  ignoreInScans?: boolean; // New field to exclude from metadata scans
   isSeriesCover?: boolean; // Whether this comic's cover should be used for the series
   lastReadPage?: number;
   totalPages?: number;

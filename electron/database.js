@@ -89,6 +89,10 @@ class ComicDatabase {
         this.db.exec('ALTER TABLE comics ADD COLUMN contentRating TEXT');
         console.log('Database schema migrated: Added "contentRating" column to "comics" table.');
       }
+      if (!columnNames.includes('ignoreInScans')) {
+        this.db.exec('ALTER TABLE comics ADD COLUMN ignoreInScans INTEGER DEFAULT 0');
+        console.log('Database schema migrated: Added "ignoreInScans" column to "comics" table.');
+      }
     } catch (error) {
       console.error('Failed to migrate database schema:', error);
     }
@@ -174,7 +178,7 @@ class ComicDatabase {
       stmt.run({
         ...c,
         lastModified: new Date().toISOString(),
-        ignoreInScans: c.ignoreInScans ? 1 : 0,
+        ignoreInScans: c.ignoreInScans ? 1 : 0, // Ensure boolean is converted to integer
         isSeriesCover: c.isSeriesCover ? 1 : 0,
       });
       
@@ -199,7 +203,13 @@ class ComicDatabase {
 
         const fields = Object.keys(dataToUpdate);
         const setClause = fields.map(f => `${f} = ?`).join(', ');
-        const values = fields.map(f => dataToUpdate[f]);
+        const values = fields.map(f => {
+          // Convert boolean to integer for ignoreInScans
+          if (f === 'ignoreInScans') {
+            return dataToUpdate[f] ? 1 : 0;
+          }
+          return dataToUpdate[f];
+        });
 
         const stmt = this.db.prepare(`UPDATE comics SET ${setClause} WHERE id = ?`);
         const info = stmt.run(...values, id);

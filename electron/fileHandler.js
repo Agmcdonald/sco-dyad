@@ -262,7 +262,7 @@ class ComicFileHandler {
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-pages-'));
         await Promise.race([
           this.unrar(filePath, tempDir),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('CBR page count timeout')), 60000)) // Increased timeout
+          new Promise((_, reject) => setTimeout(() => reject(new Error('CBR page count timeout')), 120000)) // Increased timeout to 2 minutes
         ]);
         const allFiles = await this._walk(tempDir);
         return allFiles.filter(file => this.isImageFile(file)).length;
@@ -390,7 +390,7 @@ class ComicFileHandler {
       console.log(`[FileHandler] Starting CBR cover extraction for ${filePath} to temp dir ${tempDir}`);
       await Promise.race([
         this.unrar(filePath, tempDir),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR cover extraction timeout')), 60000)) // Increased timeout
+        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR cover extraction timeout')), 120000)) // Increased timeout to 2 minutes
       ]);
       console.log(`[FileHandler] CBR extraction complete for cover of ${filePath}`);
       
@@ -703,7 +703,7 @@ class ComicFileHandler {
       console.log(`[FileHandler] Starting CBR extraction for reading ${filePath} to temp dir ${tempDir}`);
       await Promise.race([
         this.unrar(filePath, tempDir),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR extraction timeout')), 60000)) // Increased timeout
+        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR extraction timeout')), 120000)) // Increased timeout to 2 minutes
       ]);
       console.log(`[FileHandler] CBR extraction complete for reading ${filePath}`);
       const allFiles = await this._walk(tempDir);

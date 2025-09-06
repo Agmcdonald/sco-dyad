@@ -61,6 +61,8 @@ interface AppContextType {
   isScanningMetadata: boolean;
   metadataScanProgress: { processed: number; total: number; updated: number };
   startMetadataScan: () => void;
+  scanComicForMetadata: (comicId: string) => Promise<void>; // New: Scan single comic
+  scanSelectedComicsForMetadata: (comicIds: string[]) => Promise<void>; // New: Scan multiple comics
   updateComicProgress: (comicId: string, lastReadPage: number, totalPages: number) => Promise<void>;
   updateReadingHistory: (comic: Comic, currentPage: number, totalPages: number) => void;
   readingComic: Comic | null;
@@ -269,7 +271,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       }
     } else {
       const newComic: Comic = { ...comicData, id: `comic-${comicIdCounter++}`, coverUrl: '/placeholder.svg', dateAdded: new Date(), summary: finalSummary }; // Use the final summary
-      setComics(prev => [newComic, ...prev]);
+      setComics(prev => [...prev, ...newMockFiles]);
       logAction('success', `(Web Mode) Added '${newComic.series} #${newComic.issue}' to library`, {
         type: 'ADD_COMIC',
         payload: { comicId: newComic.id, originalFile }
@@ -631,11 +633,67 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isElectron, electronAPI, comics, setComics, refreshComics]);
 
+  const performMetadataScan = useCallback(async (comic: Comic) => {
+    if (!comic.filePath) {
+      logAction('warning', `Cannot scan '${comic.series} #${comic.issue}': No file path available.`);
+      return null;
+    }
+
+    const tempFile: QueuedFile = {
+      id: comic.id,
+      name: comic.filePath || `${comic.series} #${comic.issue}`,
+      path: comic.filePath,
+      series: comic.series,
+      issue: comic.issue,
+      year: comic.year,
+      publisher: comic.publisher,
+      status: 'Pending',
+      confidence: null,
+    };
+
+    const result = await processComicFile(
+      tempFile,
+      settings.comicVineApiKey,
+      settings.marvelPublicKey,
+      settings.marvelPrivateKey,
+      settings.gcdDbPath ? gcdDbService : null,
+      knowledgeBase
+    );
+
+    const updatedComic = { ...comic, metadataLastChecked: new Date().toISOString() };
+    let hasNewData = false;
+
+    if (result && result.success && result.data) {
+      // Only update if the new data is better or fills a gap
+      if (result.data.summary && !comic.summary) { updatedComic.summary = result.data.summary; hasNewData = true; }
+      if (result.data.creators && result.data.creators.length > 0 && (!comic.creators || comic.creators.length === 0)) { updatedComic.creators = result.data.creators; hasNewData = true; }
+      if (result.data.publisher && result.data.publisher !== "Unknown Publisher" && comic.publisher === "Unknown Publisher") { updatedComic.publisher = result.data.publisher; hasNewData = true; }
+      if (result.data.title && !comic.title) { updatedComic.title = result.data.title; hasNewData = true; }
+      if (result.data.publicationDate && !comic.publicationDate) { updatedComic.publicationDate = result.data.publicationDate; hasNewData = true; }
+      if (result.data.genre && !comic.genre) { updatedComic.genre = result.data.genre; hasNewData = true; }
+      if (result.data.characters && !comic.characters) { updatedComic.characters = result.data.characters; hasNewData = true; }
+      if (result.data.price && !comic.price) { updatedComic.price = result.data.price; hasNewData = true; }
+      if (result.data.barcode && !comic.barcode) { updatedComic.barcode = result.data.barcode; hasNewData = true; }
+      if (result.data.languageCode && !comic.languageCode) { updatedComic.languageCode = result.data.languageCode; hasNewData = true; }
+      if (result.data.countryCode && !comic.countryCode) { updatedComic.countryCode = result.data.countryCode; hasNewData = true; }
+    }
+
+    if (hasNewData) {
+      await updateComic(updatedComic);
+      logAction('success', `Enriched metadata for '${comic.series} #${comic.issue}'`);
+      return true; // Indicate that an update occurred
+    } else {
+      // Even if no new data was found, we still update the comic to mark metadataLastChecked
+      await updateComic(updatedComic);
+      return false; // Indicate no new data, but still processed
+    }
+  }, [settings, gcdDbService, knowledgeBase, updateComic, logAction]);
+
   const startMetadataScan = useCallback(async () => {
     setIsScanningMetadata(true);
     setMetadataScanProgress({ processed: 0, total: 0, updated: 0 });
 
-    // Filter candidates: only comics that have missing metadata
+    // Filter candidates: only comics that have missing metadata AND are not ignored
     const candidates = comics.filter(c => !c.ignoreInScans && hasMissingMetadata(c));
 
     setMetadataScanProgress(prev => ({ ...prev, total: candidates.length }));
@@ -643,97 +701,71 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     for (let i = 0; i < candidates.length; i++) {
       const comic = candidates[i];
-      
-      const tempFile: QueuedFile = {
-        id: comic.id,
-        name: comic.filePath || `${comic.series} #${comic.issue}`,
-        path: comic.filePath || `${comic.series} #${comic.issue}`,
-        series: comic.series,
-        issue: comic.issue,
-        year: comic.year,
-        publisher: comic.publisher,
-        status: 'Pending',
-        confidence: null,
-        // ofTotal is not directly part of Comic, so we don't set it here for metadata scan
-      };
-
-      const result = await processComicFile(
-        tempFile,
-        settings.comicVineApiKey,
-        settings.marvelPublicKey,
-        settings.marvelPrivateKey,
-        settings.gcdDbPath ? gcdDbService : null, // Conditionally pass gcdDbService
-        knowledgeBase // Pass knowledgeBase
-      );
-
-      const updatedComic = { ...comic, metadataLastChecked: new Date().toISOString() };
-      let hasNewData = false;
-
-      if (result && result.success && result.data) {
-        if (result.data.summary && !comic.summary) {
-          updatedComic.summary = result.data.summary;
-          hasNewData = true;
-        }
-        if (result.data.creators && result.data.creators.length > 0 && (!comic.creators || comic.creators.length === 0)) {
-          updatedComic.creators = result.data.creators;
-          hasNewData = true;
-        }
-        // Prioritize knowledge base publisher if it's more specific than "Unknown Publisher"
-        if (result.data.publisher && result.data.publisher !== "Unknown Publisher" && comic.publisher === "Unknown Publisher") {
-          updatedComic.publisher = result.data.publisher;
-          hasNewData = true;
-        }
-        if (result.data.title && !comic.title) {
-            updatedComic.title = result.data.title;
-            hasNewData = true;
-        }
-        if (result.data.publicationDate && !comic.publicationDate) {
-            updatedComic.publicationDate = result.data.publicationDate;
-            hasNewData = true;
-        }
-        if (result.data.genre && !comic.genre) {
-            updatedComic.genre = result.data.genre;
-            hasNewData = true;
-        }
-        if (result.data.characters && !comic.characters) {
-            updatedComic.characters = result.data.characters;
-            hasNewData = true;
-        }
-        if (result.data.price && !comic.price) {
-            updatedComic.price = result.data.price;
-            hasNewData = true;
-        }
-        if (result.data.barcode && !comic.barcode) {
-            updatedComic.barcode = result.data.barcode;
-            hasNewData = true;
-        }
-        if (result.data.languageCode && !comic.languageCode) {
-            updatedComic.languageCode = result.data.languageCode;
-            hasNewData = true;
-        }
-        if (result.data.countryCode && !comic.countryCode) {
-            updatedComic.countryCode = result.data.countryCode;
-            hasNewData = true;
-        }
-      }
-      
-      if (hasNewData) {
-        await updateComic(updatedComic);
+      const wasUpdated = await performMetadataScan(comic);
+      if (wasUpdated) {
         updatedCount++;
-        logAction('success', `Enriched metadata for '${comic.series} #${comic.issue}'`);
-      } else {
-        // Even if no new data was found, we still update the comic to mark metadataLastChecked
-        // This prevents repeatedly trying to fetch the same missing data if the API doesn't have it.
-        await updateComic(updatedComic);
       }
-      
       setMetadataScanProgress(prev => ({ ...prev, processed: i + 1, updated: updatedCount }));
       await new Promise(res => setTimeout(res, 200));
     }
 
     setIsScanningMetadata(false);
     showSuccess(`Metadata scan complete. Updated ${updatedCount} of ${candidates.length} comics.`);
-  }, [comics, settings, updateComic, logAction, gcdDbService, knowledgeBase]);
+  }, [comics, performMetadataScan]);
+
+  const scanComicForMetadata = useCallback(async (comicId: string) => {
+    const comic = comics.find(c => c.id === comicId);
+    if (!comic) {
+      showError("Comic not found.");
+      return;
+    }
+    const toastId = showLoading(`Scanning '${comic.series} #${comic.issue}' for details...`);
+    try {
+      const wasUpdated = await performMetadataScan(comic);
+      dismissToast(toastId);
+      if (wasUpdated) {
+        showSuccess(`Metadata updated for '${comic.series} #${comic.issue}'.`);
+      } else {
+        showSuccess(`No new metadata found for '${comic.series} #${comic.issue}'.`);
+      }
+    } catch (error) {
+      dismissToast(toastId);
+      showError(`Failed to scan '${comic.series} #${comic.issue}'.`);
+      console.error(`Error scanning single comic ${comic.id}:`, error);
+    }
+  }, [comics, performMetadataScan]);
+
+  const scanSelectedComicsForMetadata = useCallback(async (comicIds: string[]) => {
+    if (comicIds.length === 0) {
+      showError("No comics selected for scan.");
+      return;
+    }
+    const selectedComicsToScan = comics.filter(c => comicIds.includes(c.id));
+    const toastId = showLoading(`Scanning ${selectedComicsToScan.length} selected comics...`);
+    let updatedCount = 0;
+    let processedCount = 0;
+
+    try {
+      for (const comic of selectedComicsToScan) {
+        const wasUpdated = await performMetadataScan(comic);
+        if (wasUpdated) {
+          updatedCount++;
+        }
+        processedCount++;
+        // Update toast message for progress
+        dismissToast(toastId);
+        showLoading(`Scanning ${processedCount} of ${selectedComicsToScan.length} comics...`, toastId);
+        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+      }
+      dismissToast(toastId);
+      showSuccess(`Scan complete. Updated ${updatedCount} of ${processedCount} selected comics.`);
+      logAction('success', `Scanned ${processedCount} selected comics, updated ${updatedCount}.`);
+    } catch (error) {
+      dismissToast(toastId);
+      showError("An error occurred during the bulk scan.");
+      console.error("Bulk scan error:", error);
+    }
+  }, [comics, performMetadataScan, logAction]);
 
   const updateComicProgress = useCallback(async (comicId: string, lastReadPage: number, totalPages: number) => {
     const comicToUpdate = comics.find(c => c.id === comicId);
@@ -858,6 +890,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       isScanningMetadata,
       metadataScanProgress,
       startMetadataScan,
+      scanComicForMetadata, // New
+      scanSelectedComicsForMetadata, // New
       updateComicProgress,
       updateReadingHistory,
       readingComic, setReadingComic,

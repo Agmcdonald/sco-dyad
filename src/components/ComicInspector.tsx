@@ -35,7 +35,8 @@ import {
   Image,
   ImageIcon,
   CheckCircle,
-  ShieldAlert
+  ShieldAlert,
+  Sparkles
 } from "lucide-react";
 import EditComicModal from "./EditComicModal";
 import RatingSelector from "./RatingSelector";
@@ -46,6 +47,8 @@ import { useElectron } from "@/hooks/useElectron";
 import { RATING_EMOJIS, CONTENT_RATINGS } from "@/lib/ratings";
 import { showError, showSuccess } from "@/utils/toast";
 import { getCoverUrl } from "@/lib/cover";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
 
 interface ComicInspectorProps {
   comic: Comic;
@@ -54,7 +57,7 @@ interface ComicInspectorProps {
 const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFixCoverOpen, setIsFixCoverOpen] = useState(false);
-  const { comics, readingList, addToReadingList, removeComic, updateComicRating, updateComic, toggleComicReadStatus, openComicForReading } = useAppContext();
+  const { comics, readingList, addToReadingList, removeComic, updateComicRating, updateComic, toggleComicReadStatus, openComicForReading, scanComicForMetadata } = useAppContext();
   const { setSelectedItem } = useSelection();
   const { isElectron } = useElectron();
 
@@ -133,6 +136,20 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
       console.error('Error removing series cover:', error);
       showError('Failed to remove series cover');
     }
+  };
+
+  const handleToggleIgnoreInScans = async (checked: boolean) => {
+    try {
+      await updateComic({ ...comic, ignoreInScans: checked });
+      showSuccess(`'${comic.series} #${comic.issue}' will ${checked ? 'now be ignored' : 'no longer be ignored'} in metadata scans.`);
+    } catch (error) {
+      console.error('Error toggling ignoreInScans:', error);
+      showError('Failed to update setting.');
+    }
+  };
+
+  const handleScanForDetails = async () => {
+    await scanComicForMetadata(comic.id);
   };
 
   const coverSrc = getCoverUrl(comic.coverUrl);
@@ -358,6 +375,22 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
           <Button variant="outline" className="w-full" onClick={() => setIsModalOpen(true)}>
             <Tag className="mr-2 h-4 w-4" /> Edit
           </Button>
+
+          {/* New: Scan for Details */}
+          <Button variant="outline" className="w-full" onClick={handleScanForDetails}>
+            <Sparkles className="mr-2 h-4 w-4" /> Scan for Details
+          </Button>
+
+          {/* New: Ignore in Scans Toggle */}
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <Label htmlFor="ignore-in-scans" className="text-sm font-medium">Ignore in Auto Scans</Label>
+            <Switch 
+              id="ignore-in-scans" 
+              checked={comic.ignoreInScans || false} 
+              onCheckedChange={handleToggleIgnoreInScans} 
+            />
+          </div>
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" className="w-full">

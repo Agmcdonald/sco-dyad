@@ -194,9 +194,7 @@ const Maintenance = () => {
       {/* Work in Progress Section */}
       <div>
         <h2 className="text-2xl font-semibold tracking-tight mb-4">Work in Progress</h2>
-        {/* Removed opacity-50 and pointer-events-none to enable the section */}
         <div className="relative space-y-6"> 
-          {/* Removed "Coming Soon" overlay */}
           {/* Metadata Enrichment */}
           <Card>
             <CardHeader>
@@ -205,7 +203,7 @@ const Maintenance = () => {
                 Metadata Enrichment
               </CardTitle>
               <CardDescription>
-                Scan your library to find and fill in missing details like summaries, creators, and cover dates using online databases.
+                Scan your library to find and fill in missing details like summaries, creators, and cover dates using online databases. Comics marked to be ignored will be skipped.
               </CardDescription>
             </CardHeader>
             <CardContent>
