@@ -480,7 +480,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [isElectron, electronAPI, comics, setComics, refreshComics]);
 
   const performMetadataScan = useCallback(async (comic: Comic, updateComicFunc: (comic: Comic) => Promise<void>) => {
-    if (!comic.filePath) {
+    if (!comic.ignoreInScans && !comic.filePath) {
       logAction('warning', `Cannot scan '${comic.series} #${comic.issue}': No file path available.`);
       return null;
     }
@@ -592,7 +592,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       showSuccess(`Re-added skipped file: ${skippedFile.name}`);
       logAction('info', `Undo: Re-added skipped file '${skippedFile.name}' to queue.`);
     }
-    // Removed setLastUndoableAction(null); as lastUndoableAction is now derived.
   }, [lastUndoableAction, removeComic, addFile, logAction, setActions]);
 
   const startMetadataScan = useCallback(async () => {
