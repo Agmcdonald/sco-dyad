@@ -33,12 +33,13 @@ import NextIssuePreview from "./NextIssuePreview";
 
 interface ComicReaderProps {
   comic: Comic;
+  isOpen: boolean;
   onClose: () => void;
   comicList?: Comic[];
   currentIndex?: number;
 }
 
-const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: ComicReaderProps) => {
+const ComicReader = ({ comic: initialComic, isOpen, onClose, comicList, currentIndex }: ComicReaderProps) => {
   const { isElectron, electronAPI } = useElectron();
   const { comics, readingList, updateReadingHistory, updateComicRating, toggleComicReadStatus, updateComicProgress } = useAppContext();
   
