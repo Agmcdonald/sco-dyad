@@ -102,16 +102,11 @@ export interface RecentAction {
 
 export interface AppSettings {
   comicVineApiKey: string;
-  marvelPublicKey: string;
-  marvelPrivateKey: string;
   keepOriginalFiles: boolean;
   autoScanOnStartup: boolean;
   folderNameFormat: string;
   fileNameFormat: string;
   libraryPath: string;
-  gcdDbPath?: string;
-  gcdIssuesPath?: string;
-  gcdSequencesPath?: string;
   hasLaunchedBefore?: boolean; // New property
 }
 

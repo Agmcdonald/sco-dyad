@@ -23,7 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettings } from "@/context/SettingsContext";
 import { useElectron } from "@/hooks/useElectron";
 import { showError, showSuccess } from "@/utils/toast";
-import { testApiConnection, testMarvelApiConnection } from "@/lib/scraper";
+import { testApiConnection } from "@/lib/scraper";
 import { Loader2, FolderOpen, Sun, Moon, Keyboard } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
@@ -32,7 +32,6 @@ const Settings = () => {
   const { settings, setSettings } = useSettings();
   const { isElectron, electronAPI } = useElectron();
   const [isTesting, setIsTesting] = useState(false);
-  const [isTestingMarvel, setIsTestingMarvel] = useState(false);
   const [libraryPath, setLibraryPath] = useState("");
   const location = useLocation();
 
@@ -84,13 +83,6 @@ const Settings = () => {
     const result = await testApiConnection(settings.comicVineApiKey);
     result.success ? showSuccess(result.message) : showError(result.message);
     setIsTesting(false);
-  };
-
-  const handleTestMarvelConnection = async () => {
-    setIsTestingMarvel(true);
-    const result = await testMarvelApiConnection(settings.marvelPublicKey, settings.marvelPrivateKey);
-    result.success ? showSuccess(result.message) : showError(result.message);
-    setIsTestingMarvel(false);
   };
 
   return (

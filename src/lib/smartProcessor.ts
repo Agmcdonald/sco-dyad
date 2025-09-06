@@ -8,19 +8,17 @@
  * Processing Pipeline:
  * 1. Parse filename using intelligent patterns
  * 2. Query local Knowledge Base (for known series/publishers)
- * 3. Query local GCD database (if available)
- * 4. Query Marvel API (for Marvel comics)
- * 5. Query Comic Vine API (for other publishers)
- * 6. Fall back to parsed data only
+ * 3. Query Comic Vine API
+ * 4. Fall back to parsed data only
  * 
  * The processor returns confidence levels to help users understand the reliability
  * of the detected information.
  */
 
-import { parseFilename } from "./parser";
-import { QueuedFile, Confidence, Creator, KnowledgeBase } from "@/types";
-import { fetchComicMetadata, fetchMarvelMetadata } from "./scraper";
-import { GcdDatabaseService } from "@/services/gcdDatabaseService";
+import { ParsedComicInfo } from "./parser";
+import { Creator, QueuedFile, Confidence, KnowledgeBase } from "@/types";
+import { fetchComicMetadata } from "./scraper";
+import { GcdDatabaseService } from "@/services/gcdDatabaseService"; // Keep import for type, but won't be used
 
 /**
  * Processing Result Interface
@@ -62,25 +60,17 @@ const normalize = (s: string | undefined | null) => (s || "").trim().toLowerCase
  * Processing Strategy:
  * 1. Parse filename to extract basic information
  * 2. Try local Knowledge Base lookup (highest quality, immediate)
- * 3. Try GCD database lookup (highest quality, offline)
- * 4. Try Marvel API (for Marvel comics)
- * 5. Try Comic Vine API (for other publishers)
- * 6. Fall back to parsed data only
+ * 3. Try Comic Vine API
+ * 4. Fall back to parsed data only
  * 
  * @param file - QueuedFile to process
  * @param comicVineApiKey - Comic Vine API key
- * @param marvelPublicKey - Marvel API public key
- * @param marvelPrivateKey - Marvel API private key
- * @param gcdDbService - Grand Comics Database service (optional)
  * @param knowledgeBase - Local knowledge base for series/publishers
  * @returns ProcessingResult with detected metadata and confidence
  */
 export const processComicFile = async (
   file: QueuedFile, 
   comicVineApiKey: string,
-  marvelPublicKey: string,
-  marvelPrivateKey: string,
-  gcdDbService: GcdDatabaseService | null, // Can be null now
   knowledgeBase: KnowledgeBase
 ): Promise<ProcessingResult> => {
   try {
@@ -126,90 +116,12 @@ export const processComicFile = async (
       };
     }
 
-    // 2. Attempt GCD Database Search (if service is provided)
-    if (gcdDbService && parsed.series) {
-      console.log(`[SMART-PROCESSOR] Attempting GCD database search for: ${parsed.series}`);
-      try {
-        const gcdResults = await gcdDbService.searchSeries(parsed.series);
-        console.log(`[SMART-PROCESSOR] GCD search results:`, gcdResults);
-        
-        if (gcdResults && gcdResults.length > 0) {
-          const bestMatch = gcdResults[0];
-          console.log(`[SMART-PROCESSOR] Best GCD match:`, bestMatch);
-          
-          const issueDetails = await gcdDbService.getIssueDetails(bestMatch.id, parsed.issue);
-          console.log(`[SMART-PROCESSOR] Issue details:`, issueDetails);
-          
-          let creators: Creator[] = [];
-          if (issueDetails) {
-            creators = await gcdDbService.getIssueCreators(issueDetails.id);
-            console.log(`[SMART-PROCESSOR] Creators:`, creators);
-          }
-          
-          return {
-            success: true,
-            confidence: issueDetails ? "High" : "Medium",
-            data: {
-              series: bestMatch.name,
-              issue: parsed.issue,
-              year: parsed.year || bestMatch.year_began,
-              publisher: bestMatch.publisher,
-              volume: String(bestMatch.year_began),
-              summary: issueDetails?.synopsis || `Matched from local GCD: ${bestMatch.name}`,
-              title: issueDetails?.title,
-              publicationDate: issueDetails?.publication_date,
-              genre: issueDetails?.genre,
-              characters: issueDetails?.characters,
-              price: (issueDetails as any)?.price,
-              barcode: (issueDetails as any)?.barcode,
-              languageCode: (issueDetails as any)?.language_code,
-              countryCode: (issueDetails as any)?.series_country_code,
-              creators: creators,
-              confidence: issueDetails ? "High" : "Medium",
-              source: 'knowledge' // GCD is considered knowledge
-            }
-          };
-        }
-      } catch (error) {
-        console.error(`[SMART-PROCESSOR] GCD database error:`, error);
-        // Continue to other methods if GCD fails
-      }
-    } else {
-      console.log(`[SMART-PROCESSOR] GCD database not available or not connected`);
-    }
-
-    // 3. Attempt Marvel API fetch if it's a Marvel comic (or parsed publisher suggests it)
-    if ((parsed.publisher?.toLowerCase() === 'marvel comics' || (kbMatch && normalize(kbMatch.publisher) === 'marvel comics')) && marvelPublicKey && marvelPrivateKey) {
-      console.log(`[SMART-PROCESSOR] Attempting Marvel API search`);
-      const marvelResult = await fetchMarvelMetadata(parsed, marvelPublicKey, marvelPrivateKey);
-      if (marvelResult.success && marvelResult.data) {
-        console.log(`[SMART-PROCESSOR] Marvel API success`);
-        return {
-          success: true,
-          confidence: marvelResult.data.confidence,
-          data: {
-            series: marvelResult.data.series || parsed.series,
-            issue: parsed.issue,
-            year: parsed.year || new Date().getFullYear(),
-            publisher: marvelResult.data.publisher,
-            volume: marvelResult.data.volume,
-            summary: marvelResult.data.summary,
-            creators: marvelResult.data.creators,
-            title: marvelResult.data.title,
-            publicationDate: marvelResult.data.publicationDate,
-            confidence: marvelResult.data.confidence,
-            source: marvelResult.data.source
-          }
-        };
-      }
-    }
-
-    // 4. Attempt Comic Vine API fetch for other publishers
-    if (comicVineApiKey) {
-      console.log(`[SMART-PROCESSOR] Attempting Comic Vine API search`);
+    // 2. Attempt Comic Vine API fetch
+    if (comicVineApiKey && parsed.series) {
+      console.log(`[SMART-PROCESSOR] Attempting Comic Vine API search for: ${parsed.series}`);
       const apiResult = await fetchComicMetadata(parsed, comicVineApiKey);
       if (apiResult.success && apiResult.data) {
-        console.log(`[SMART-PROCESSOR] Comic Vine API success`);
+        console.log(`[SMART-PROCESSOR] Comic Vine API success for: ${parsed.series}`);
         return {
           success: true,
           confidence: apiResult.data.confidence,
@@ -222,15 +134,17 @@ export const processComicFile = async (
             summary: apiResult.data.summary,
             creators: apiResult.data.creators,
             confidence: apiResult.data.confidence,
-            source: apiResult.data.source
+            source: 'api'
           }
         };
+      } else {
+        console.log(`[SMART-PROCESSOR] Comic Vine API failed for ${parsed.series}: ${apiResult.error}`);
       }
     }
 
-    // 5. Fallback to parsed data only
+    // 3. Fallback to parsed data only
     if (parsed.year) {
-      console.log(`[SMART-PROCESSOR] Using parsed data as fallback`);
+      console.log(`[SMART-PROCESSOR] Using parsed data as fallback for: ${file.name}`);
       return {
         success: true,
         confidence: parsed.publisher ? "Medium" : "Low",
@@ -248,8 +162,8 @@ export const processComicFile = async (
       };
     }
 
-    // 6. Failure
-    console.log(`[SMART-PROCESSOR] Processing failed - insufficient information`);
+    // 4. Failure
+    console.log(`[SMART-PROCESSOR] Processing failed - insufficient information for: ${file.name}`);
     return {
       success: false,
       confidence: "Low",
@@ -257,7 +171,7 @@ export const processComicFile = async (
     };
 
   } catch (error) {
-    console.error(`[SMART-PROCESSOR] Processing error:`, error);
+    console.error(`[SMART-PROCESSOR] Processing error for ${file.name}:`, error);
     return {
       success: false,
       confidence: "Low",
@@ -272,9 +186,6 @@ export const processComicFile = async (
  * 
  * @param files - Array of QueuedFile to process
  * @param comicVineApiKey - Comic Vine API key
- * @param marvelPublicKey - Marvel API public key
- * @param marvelPrivateKey - Marvel API private key
- * @param gcdDbService - GCD database service
  * @param knowledgeBase - Local knowledge base for series/publishers
  * @param onProgress - Callback function for progress updates
  * @returns A map of file IDs to their processing results
@@ -282,9 +193,6 @@ export const processComicFile = async (
 export const batchProcessFiles = async (
   files: QueuedFile[],
   comicVineApiKey: string,
-  marvelPublicKey: string,
-  marvelPrivateKey: string,
-  gcdDbService: GcdDatabaseService | null,
   knowledgeBase: KnowledgeBase,
   onProgress?: (processed: number, total: number, currentFile: string) => void
 ): Promise<Map<string, ProcessingResult>> => {
@@ -294,7 +202,7 @@ export const batchProcessFiles = async (
     const file = files[i];
     onProgress?.(i, files.length, file.name);
     
-    const result = await processComicFile(file, comicVineApiKey, marvelPublicKey, marvelPrivateKey, gcdDbService, knowledgeBase);
+    const result = await processComicFile(file, comicVineApiKey, knowledgeBase);
     results.set(file.id, result);
     
     // Small delay to prevent UI blocking and API rate limiting

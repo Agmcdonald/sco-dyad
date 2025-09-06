@@ -12,8 +12,8 @@ import {
   Loader2
 } from "lucide-react";
 import DuplicateDetector from "@/components/DuplicateDetector";
-import GcdImporter from "@/components/GcdImporter";
-import GcdDatabaseManager from "@/components/GcdDatabaseManager";
+// import GcdImporter from "@/components/GcdImporter"; // Removed
+// import GcdDatabaseManager from "@/components/GcdDatabaseManager"; // Removed
 import { useAppContext } from "@/context/AppContext";
 import { useElectron } from "@/hooks/useElectron";
 import { showSuccess, showError } from "@/utils/toast";
@@ -234,8 +234,8 @@ const Maintenance = () => {
               </Button>
             </CardFooter>
           </Card>
-          <GcdDatabaseManager />
-          <GcdImporter />
+          {/* <GcdDatabaseManager /> */} {/* Removed */}
+          {/* <GcdImporter /> */} {/* Removed */}
         </div>
       </div>
     </div>

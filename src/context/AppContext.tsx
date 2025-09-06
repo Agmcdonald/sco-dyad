@@ -11,7 +11,7 @@ import { useComicLibrary } from './hooks/useComicLibrary';
 import { useReadingList } from './hooks/useReadingList';
 import { useRecentlyRead } from './hooks/useRecentlyRead';
 import { processComicFile } from '@/lib/smartProcessor';
-import { useGcdDatabaseService } from '@/services/gcdDatabaseService';
+import { useGcdDatabaseService } from '@/services/gcdDatabaseService'; // Keep import for type, but won't be used
 import { useKnowledgeBase } from './KnowledgeBaseContext';
 import { parseFilename } from '@/lib/parser';
 
@@ -129,7 +129,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const databaseService = useElectronDatabaseService();
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
-  const gcdDbService = useGcdDatabaseService(); // This hook likely initializes the service
+  // const gcdDbService = useGcdDatabaseService(); // Removed GCD service
   const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
 
   const addFilesFromPaths = useCallback(async (paths: string[]) => {
@@ -271,7 +271,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       }
     } else {
       const newComic: Comic = { ...comicData, id: `comic-${comicIdCounter++}`, coverUrl: '/placeholder.svg', dateAdded: new Date(), summary: finalSummary }; // Use the final summary
-      setComics(prev => [...prev, ...newMockFiles]);
+      setComics(prev => [...prev, newComic]); // Fixed: use newComic directly
       logAction('success', `(Web Mode) Added '${newComic.series} #${newComic.issue}' to library`, {
         type: 'ADD_COMIC',
         payload: { comicId: newComic.id, originalFile }
@@ -305,14 +305,55 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       // Ensure the 'file' object passed to addComic has the 'ofTotal' from parsing
       const fileWithOfTotal: QueuedFile = { ...file, ofTotal: parsed.ofTotal };
 
-      await addComic(comicData, fileWithOfTotal);
+      await processComicFile(
+        tempFile,
+        settings.comicVineApiKey,
+        knowledgeBase // Pass knowledgeBase
+      );
+
+      if (!processedResult.success || !processedResult.data) {
+        showError(`Could not quick add "${name}": ${processedResult.error || "Failed to process metadata."}`);
+        failedCount++;
+        continue;
+      }
+
+      const comicData: NewComic = {
+        id: crypto.randomUUID(), // Generate ID for quick add
+        series: processedResult.data.series,
+        issue: processedResult.data.issue,
+        year: processedResult.data.year,
+        publisher: processedResult.data.publisher,
+        volume: processedResult.data.volume,
+        summary: processedResult.data.summary,
+        title: processedResult.data.title,
+        publicationDate: processedResult.data.publicationDate,
+        genre: processedResult.data.genre,
+        characters: processedResult.data.characters,
+        price: processedResult.data.price,
+        barcode: processedResult.data.barcode,
+        languageCode: processedResult.data.languageCode,
+        countryCode: processedResult.data.countryCode,
+        creators: processedResult.data.creators,
+      };
+
+      await addComic(comicData, fileWithOfTotal); // tempFile now has ofTotal
       removeFile(file.id);
       addedCount++;
     }
+
+    dismissToast(loadingToast);
     if (addedCount > 0) {
       showSuccess(`Quick added ${addedCount} comic(s) to the library.`);
     }
-  }, [addComic, removeFile]);
+    if (failedCount > 0) {
+      showError(`${failedCount} file(s) could not be added.`);
+    }
+
+    } catch (error) {
+      showError("An error occurred during Quick Add.");
+      console.error("Quick Add error:", error);
+    }
+  }, [isElectron, electronAPI, addComic, settings, knowledgeBase, removeFile]); // Removed gcdDbService
 
   const updateComic = useCallback(async (updatedComic: Comic) => {
     const oldComic = comics.find(c => c.id === updatedComic.id);
@@ -528,9 +569,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const processedResult = await processComicFile(
           tempFile,
           settings.comicVineApiKey,
-          settings.marvelPublicKey,
-          settings.marvelPrivateKey,
-          settings.gcdDbPath ? gcdDbService : null, // Conditionally pass gcdDbService
           knowledgeBase // Pass knowledgeBase
         );
 
@@ -575,7 +613,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       showError("An error occurred during Quick Add.");
       console.error("Quick Add error:", error);
     }
-  }, [isElectron, electronAPI, addComic, settings, gcdDbService, knowledgeBase]);
+  }, [isElectron, electronAPI, addComic, settings, knowledgeBase, removeFile]);
 
   const addFilesFromDrop = useCallback(async (droppedFiles: File[]) => {
     const comicExtensions = ['.cbr', '.cbz'];
@@ -654,9 +692,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const result = await processComicFile(
       tempFile,
       settings.comicVineApiKey,
-      settings.marvelPublicKey,
-      settings.marvelPrivateKey,
-      settings.gcdDbPath ? gcdDbService : null,
       knowledgeBase
     );
 
@@ -668,26 +703,51 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       if (result.data.summary && !comic.summary) { updatedComic.summary = result.data.summary; hasNewData = true; }
       if (result.data.creators && result.data.creators.length > 0 && (!comic.creators || comic.creators.length === 0)) { updatedComic.creators = result.data.creators; hasNewData = true; }
       if (result.data.publisher && result.data.publisher !== "Unknown Publisher" && comic.publisher === "Unknown Publisher") { updatedComic.publisher = result.data.publisher; hasNewData = true; }
-      if (result.data.title && !comic.title) { updatedComic.title = result.data.title; hasNewData = true; }
-      if (result.data.publicationDate && !comic.publicationDate) { updatedComic.publicationDate = result.data.publicationDate; hasNewData = true; }
-      if (result.data.genre && !comic.genre) { updatedComic.genre = result.data.genre; hasNewData = true; }
-      if (result.data.characters && !comic.characters) { updatedComic.characters = result.data.characters; hasNewData = true; }
-      if (result.data.price && !comic.price) { updatedComic.price = result.data.price; hasNewData = true; }
-      if (result.data.barcode && !comic.barcode) { updatedComic.barcode = result.data.barcode; hasNewData = true; }
-      if (result.data.languageCode && !comic.languageCode) { updatedComic.languageCode = result.data.languageCode; hasNewData = true; }
-      if (result.data.countryCode && !comic.countryCode) { updatedComic.countryCode = result.data.countryCode; hasNewData = true; }
+      if (result.data.title && !comic.title) {
+            updatedComic.title = result.data.title;
+            hasNewData = true;
+      }
+      if (result.data.publicationDate && !comic.publicationDate) {
+            updatedComic.publicationDate = result.data.publicationDate;
+            hasNewData = true;
+      }
+      if (result.data.genre && !comic.genre) {
+            updatedComic.genre = result.data.genre;
+            hasNewData = true;
+      }
+      if (result.data.characters && !comic.characters) {
+            updatedComic.characters = result.data.characters;
+            hasNewData = true;
+      }
+      if (result.data.price && !comic.price) {
+            updatedComic.price = result.data.price;
+            hasNewData = true;
+      }
+      if (result.data.barcode && !comic.barcode) {
+            updatedComic.barcode = result.data.barcode;
+            hasNewData = true;
+      }
+      if (result.data.languageCode && !comic.languageCode) {
+            updatedComic.languageCode = result.data.languageCode;
+            hasNewData = true;
+      }
+      if (result.data.countryCode && !comic.countryCode) {
+            updatedComic.countryCode = result.data.countryCode;
+            hasNewData = true;
+      }
     }
-
+    
     if (hasNewData) {
       await updateComic(updatedComic);
       logAction('success', `Enriched metadata for '${comic.series} #${comic.issue}'`);
       return true; // Indicate that an update occurred
     } else {
       // Even if no new data was found, we still update the comic to mark metadataLastChecked
+      // This prevents repeatedly trying to fetch the same missing data if the API doesn't have it.
       await updateComic(updatedComic);
       return false; // Indicate no new data, but still processed
     }
-  }, [settings, gcdDbService, knowledgeBase, updateComic, logAction]);
+  }, [settings, knowledgeBase, updateComic, logAction]); // Removed gcdDbService
 
   const startMetadataScan = useCallback(async () => {
     setIsScanningMetadata(true);

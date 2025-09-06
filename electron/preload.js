@@ -66,20 +66,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
 
-  // GCD Importer (temporarily disabled)
-  importerStart: (paths) => ipcRenderer.invoke('importer:start', paths),
-  onImporterProgress: (callback) => {
-    ipcRenderer.on('importer:progress', (event, data) => callback(data));
-  },
-
-  // GCD Database (temporarily disabled)
-  gcdDbConnect: (dbPath) => ipcRenderer.invoke('gcd-db:connect', dbPath),
-  gcdDbDisconnect: () => ipcRenderer.invoke('gcd-db:disconnect'),
-  gcdDbSearchSeries: (seriesName) => ipcRenderer.invoke('gcd-db:search-series', seriesName),
-  gcdDbGetIssueDetails: (seriesId, issueNumber) => ipcRenderer.invoke('gcd-db:get-issue-details', seriesId, issueNumber),
-  gcdDbGetIssueCreators: (issueId) => ipcRenderer.invoke('gcd-db:get-issue-creators', issueId),
-  gcdDbSearchPublishers: (query) => ipcRenderer.invoke('gcd-db:search-publishers', query),
-
   // Knowledge Base
   getKnowledgeBase: () => ipcRenderer.invoke('get-knowledge-base'),
   saveKnowledgeBase: (data) => ipcRenderer.invoke('save-knowledge-base', data),

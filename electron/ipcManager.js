@@ -1,7 +1,6 @@
 const { ipcMain, dialog, app, BrowserWindow } = require('electron');
 const path = require('path');
-const fs = require('fs');
-const fsPromises = fs.promises;
+const fs = require('fs').promises;
 const { pathToFileURL } = require('url');
 
 function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBasePath, publicCoversDir }) {
@@ -86,7 +85,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
             if (basename) {
               const candidatePath = path.join(publicCoversDir || '', basename);
               try {
-                await fsPromises.access(candidatePath);
+                await fs.access(candidatePath);
                 resolved = pathToFileURL(candidatePath).href;
               } catch {
                 // not found under publicCoversDir; try direct absolute path if original looked absolute
@@ -94,7 +93,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
                   if (path.isAbsolute(original)) {
                     const abs = original;
                     try {
-                      await fsPromises.access(abs);
+                      await fs.access(abs);
                       resolved = pathToFileURL(abs).href;
                     } catch {}
                   }
@@ -178,7 +177,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       console.log('[IPC] extract-cover called for:', filePath);
       
       // Ensure covers directory exists
-      await fsPromises.mkdir(publicCoversDir, { recursive: true });
+      await fs.mkdir(publicCoversDir, { recursive: true });
       console.log('[IPC] Covers directory ensured:', publicCoversDir);
 
       // Extract cover and get the absolute path
@@ -187,7 +186,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       
       // Verify the file actually exists before returning success
       try {
-        await fsPromises.access(absoluteCoverPath);
+        await fs.access(absoluteCoverPath);
         console.log('[IPC] Cover file existence verified');
       } catch (accessError) {
         console.error('[IPC] Cover file does not exist after extraction:', absoluteCoverPath);
@@ -293,16 +292,16 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
               copy.coverUrl = pathToFileURL(url).href;
             } else if (url === '/placeholder.svg' || url.includes('placeholder')) {
               // FIXED: Use a data URL for placeholder instead of file path
-              copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K';
+              copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCI yeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K';
             }
           } else {
             // No cover URL - use placeholder
-            copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K';
+            copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCI yeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K';
           }
         } catch (e) {
           console.error('Error normalizing coverUrl for comic:', copy.id, e);
           // Fallback to placeholder on error
-          copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K';
+          copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCI yeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K';
         }
         return copy;
       });
@@ -321,7 +320,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('delete-comic', async (event, comicId, filePath) => {
     if (filePath) {
       try {
-        await fsPromises.unlink(filePath);
+        await fs.unlink(filePath);
       } catch (error) {
         console.error(`Failed to delete file: ${filePath}`, error);
       }
@@ -337,14 +336,14 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       }
       
       // Default to placeholder
-      comic.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K';
+      comic.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQ xeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCI yeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K';
       
       if (comic.filePath) {
         try {
           console.log('[IPC] save-comic: Extracting cover for:', comic.filePath);
           
           // Ensure covers directory exists
-          await fsPromises.mkdir(publicCoversDir, { recursive: true });
+          await fs.mkdir(publicCoversDir, { recursive: true });
           
           // Extract cover and get absolute path
           const absoluteCoverPath = await fileHandler.extractCoverToPublic(comic.filePath, publicCoversDir);
@@ -352,7 +351,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
           
           // Verify file exists before setting URL
           try {
-            await fsPromises.access(absoluteCoverPath);
+            await fs.access(absoluteCoverPath);
             comic.coverUrl = pathToFileURL(absoluteCoverPath).href;
             console.log('[IPC] save-comic: Cover URL set to:', comic.coverUrl);
           } catch (accessError) {
@@ -391,7 +390,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   // Knowledge Base handlers
   ipcMain.handle('get-knowledge-base', async () => {
     try {
-      const data = await fsPromises.readFile(knowledgeBasePath, 'utf-8');
+      const data = await fs.readFile(knowledgeBasePath, 'utf-8');
       return JSON.parse(data);
     } catch (error) {
       console.error('Failed to read knowledge base:', error);
@@ -401,7 +400,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
 
   ipcMain.handle('save-knowledge-base', async (event, data) => {
     try {
-      await fsPromises.writeFile(knowledgeBasePath, JSON.stringify(data, null, 2), 'utf-8');
+      await fs.writeFile(knowledgeBasePath, JSON.stringify(data, null, 2), 'utf-8');
       return true;
     } catch (error) {
       console.error('Failed to save knowledge base:', error);
@@ -411,25 +410,25 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
 
   // GCD Importer - Temporarily Disabled
   ipcMain.handle('importer:start', async () => {
-    console.warn('GCD Importer is temporarily disabled due to build issues.');
+    console.warn('GCD Importer is temporarily disabled due to user request.');
     return { success: false, message: 'This feature is temporarily disabled.' };
   });
 
   // GCD Database operations - Temporarily Disabled
   ipcMain.handle('gcd-db:connect', () => {
-    console.warn('GCD DB Connect is temporarily disabled.');
+    console.warn('GCD DB Connect is temporarily disabled due to user request.');
     return false;
   });
   ipcMain.handle('gcd-db:search-series', () => {
-    console.warn('GCD DB Search is temporarily disabled.');
+    console.warn('GCD DB Search is temporarily disabled due to user request.');
     return [];
   });
   ipcMain.handle('gcd-db:get-issue-details', () => {
-    console.warn('GCD DB Get Issue Details is temporarily disabled.');
+    console.warn('GCD DB Get Issue Details is temporarily disabled due to user request.');
     return null;
   });
   ipcMain.handle('gcd-db:get-issue-creators', () => {
-    console.warn('GCD DB Get Issue Creators is temporarily disabled.');
+    console.warn('GCD DB Get Issue Creators is temporarily disabled due to user request.');
     return [];
   });
 
@@ -442,7 +441,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     });
     if (canceled || !filePath) return { success: false, path: null };
     try {
-      await fsPromises.writeFile(filePath, data, 'utf-8');
+      await fs.writeFile(filePath, data, 'utf-8');
       return { success: true, path: filePath };
     } catch (error) {
       return { success: false, error: error.message };
@@ -457,7 +456,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     });
     if (canceled || filePaths.length === 0) return { success: false, data: null };
     try {
-      const data = await fsPromises.readFile(filePaths[0], 'utf-8');
+      const data = await fs.readFile(filePaths[0], 'utf-8');
       return { success: true, data };
     } catch (error) {
       return { success: false, error: error.message };
