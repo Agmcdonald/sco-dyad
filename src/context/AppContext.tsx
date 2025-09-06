@@ -519,6 +519,40 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [settings, knowledgeBase, logAction]);
 
+  const skipFile = useCallback((file: QueuedFile) => {
+    removeFile(file.id);
+    logAction('info', `Skipped file: ${file.name}`, {
+      type: 'SKIP_FILE',
+      payload: { skippedFile: file }
+    });
+    showSuccess(`Skipped file: ${file.name}`);
+  }, [removeFile, logAction]);
+
+  const undoLastAction = useCallback(() => {
+    if (!lastUndoableAction) return;
+
+    if (lastUndoableAction.type === 'ADD_COMIC') {
+      const { comicId, originalFile } = lastUndoableAction.payload;
+      removeComic(comicId, false); // Remove from library
+      addFile(originalFile); // Add back to queue
+      logAction('info', `Undo: Removed '${originalFile.series} #${originalFile.issue}' from library and re-added to queue.`);
+    } else if (lastUndoableAction.type === 'SKIP_FILE') {
+      const payload = lastUndoableAction.payload;
+      // Add robust checks for payload and its content
+      if (!payload || !payload.skippedFile) {
+        console.error('Invalid payload for SKIP_FILE undo action:', payload);
+        showError('Failed to undo skip action: Missing file data in payload.');
+        setLastUndoableAction(null); // Clear the action to prevent further errors
+        return;
+      }
+      const { skippedFile } = payload;
+      addFile(skippedFile); // Add back to queue
+      showSuccess(`Re-added skipped file: ${skippedFile.name}`);
+      logAction('info', `Undo: Re-added skipped file '${skippedFile.name}' to queue.`);
+    }
+    setLastUndoableAction(null);
+  }, [lastUndoableAction, removeComic, addFile, logAction, setActions]); // Added setActions to dependencies
+
   const startMetadataScan = useCallback(async () => {
     setIsScanningMetadata(true);
     setMetadataScanProgress({ processed: 0, total: 0, updated: 0 });
