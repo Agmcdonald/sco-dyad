@@ -20,15 +20,17 @@ const API_BASE_URL = "https://comicvine.gamespot.com/api";
 interface ScraperResult {
     success: boolean;
     data?: {
+        series: string; // Canonical series name from API
+        issue: string;
+        year: number;
         publisher: string;
         volume: string;
-        summary: string;
-        creators: Creator[];
+        summary: string; // Comic Vine description
+        creators?: Creator[];
         confidence: 'High' | 'Medium' | 'Low';
         source: 'knowledge' | 'api';
-        title?: string;
-        publicationDate?: string;
-        series?: string; // Canonical series name from API
+        title?: string;           // Specific issue title
+        publicationDate?: string; // Exact publication date
         genre?: string;           // Genre classification
         characters?: string;      // Featured characters
         price?: string;           // Cover price
@@ -50,6 +52,54 @@ const stripHtml = (html: string | null | undefined): string => {
       .replace(/&gt;/g, '>')   // Replace &gt; with >
       .trim();
 };
+
+// Blacklist for genres that are not actual genres but rather metadata tags
+const genreBlacklist = [
+  'variant cover', 'variant theme', 'all-new', 'all-different', 'cosplay',
+  'one-shot', 'annual', 'digital exclusive', 'web-exclusive', 'preview',
+  'reprint', 'collection', 'omnibus', 'trade paperback', 'hardcover',
+  'graphic novel', 'digest', 'magazine', 'anthology', 'special', 'tie-in',
+  'crossover', 'miniseries', 'maxiseries', 'limited series', 'ongoing series',
+  'comic strip', 'web comic', 'manga', 'manhwa', 'bande dessinee', 'fumetti',
+  'comic book', 'comic', 'issue', 'volume', 'series', 'story arc', 'saga',
+  'event', 'storyline', 'chapter', 'part', 'episode', 'book', 'collection',
+  'cover', 'art', 'pin-up', 'gallery', 'interview', 'editorial', 'letters',
+  'solicitations', 'checklist', 'advertisement', 'promo', 'bonus', 'extra',
+  'backup story', 'short story', 'introduction', 'foreword', 'afterword',
+  'epilogue', 'prologue', 'retrospective', 'history', 'making of', 'behind the scenes',
+  'concept art', 'sketchbook', 'process', 'design', 'character design', 'world building',
+  'creator commentary', 'script', 'script to comic', 'cover gallery', 'variant gallery',
+  'cover art', 'interior art', 'sequential art', 'sequential storytelling',
+  'sequential narrative', 'sequential visual narrative', 'sequential visual storytelling',
+  'sequential visual art', 'sequential visual design', 'sequential visual communication',
+  'sequential visual information', 'sequential visual media', 'sequential visual form',
+  'sequential visual language', 'sequential visual system', 'sequential visual structure',
+  'sequential visual representation', 'sequential visual presentation', 'sequential visual display',
+  'sequential visual experience', 'sequential visual perception', 'sequential visual cognition',
+  'sequential visual processing', 'sequential visual interpretation', 'sequential visual understanding',
+  'sequential visual analysis', 'sequential visual synthesis', 'sequential visual creation',
+  'sequential visual production', 'sequential visual development', 'sequential visual evolution',
+  'sequential visual innovation', 'sequential visual research', 'sequential visual study',
+  'sequential visual theory', 'sequential visual practice', 'sequential visual methodology',
+  'sequential visual framework', 'sequential visual model', 'sequential visual paradigm',
+  'sequential visual approach', 'sequential visual perspective', 'sequential visual viewpoint',
+  'sequential visual angle', 'sequential visual lens', 'sequential visual filter',
+  'sequential visual context', 'sequential visual environment', 'sequential visual setting',
+  'sequential visual background', 'sequential visual foreground', 'sequential visual middleground',
+  'sequential visual plane', 'sequential visual depth', 'sequential visual space',
+  'sequential visual dimension', 'sequential visual form', 'sequential visual shape',
+  'sequential visual line', 'sequential visual color', 'sequential visual texture',
+  'sequential visual pattern', 'sequential visual rhythm', 'sequential visual balance',
+  'sequential visual harmony', 'sequential visual contrast', 'sequential visual emphasis',
+  'sequential visual unity', 'sequential visual variety', 'sequential visual movement',
+  'sequential visual flow', 'sequential visual direction', 'sequential visual tension',
+  'sequential visual weight', 'sequential visual scale', 'sequential visual proportion',
+  'sequential visual hierarchy', 'sequential visual organization', 'sequential visual arrangement',
+  'sequential visual composition', 'sequential visual structure', 'sequential visual system',
+  'sequential visual language', 'sequential visual communication', 'sequential visual information',
+  'sequential visual media', 'sequential visual form',
+];
+
 
 /**
  * Fetch Comic Metadata (from Comic Vine)
@@ -302,12 +352,20 @@ export const fetchComicMetadata = async (
             }
           });
         }
+        console.log(`[COMIC-VINE-SCRAPER] Sample creators:`, creators.slice(0, 3));
+
 
         // Extract characters from character_credits
         const characters = issue.character_credits?.map((char: any) => char.name).filter(Boolean).join(', ') || undefined;
 
-        // Extract genres from concept_credits
-        const genre = issue.concept_credits?.map((g: any) => g.name).filter(Boolean).join(', ') || undefined;
+        // Extract genres from concept_credits, applying blacklist
+        const rawGenres = issue.concept_credits?.map((g: any) => g.name).filter(Boolean) || [];
+        const filteredGenres = rawGenres.filter((genreName: string) => 
+          !genreBlacklist.some(term => genreName.toLowerCase().includes(term))
+        );
+        const genre = filteredGenres.join(', ') || undefined;
+        console.log(`[COMIC-VINE-SCRAPER] Extracted genres (filtered):`, genre);
+
 
         // Determine confidence based on how much data we found
         let confidence: 'High' | 'Medium' | 'Low' = 'Low';
@@ -317,25 +375,26 @@ export const fetchComicMetadata = async (
             confidence = 'Medium';
         }
 
-        console.log(`[COMIC-VINE-SCRAPER] Extracted metadata: Title="${issue.name || 'None'}", Creators=${creators.length}, Characters="${characters || 'None'}", Description=${description.length} chars`);
+        console.log(`[COMIC-VINE-SCRAPER] Extracted metadata: Title="${issue.name || 'None'}", Creators=${creators.length}, Characters="${characters || 'None'}", Genre="${genre || 'None'}", Description=${description.length} chars`);
 
         return {
             success: true,
+            confidence: confidence,
             data: {
                 series: bestVolume.name,
                 issue: parsed.issue,
                 year: parsed.year || (issue.cover_date ? new Date(issue.cover_date).getFullYear() : new Date().getFullYear()),
                 publisher: bestVolume.publisher.name,
                 volume: bestVolume.name, // Using the volume name as the volume identifier
-                summary: description,
+                summary: description, // Explicitly set summary to the cleaned description
                 creators: creators,
-                title: issue.name || undefined,
+                title: issue.name || undefined, // Use issue.name for title, or undefined
                 publicationDate: issue.cover_date || undefined,
                 genre: genre,
                 characters: characters,
                 price: issue.price || undefined,
                 barcode: issue.barcode || undefined,
-                languageCode: issue.language_credits?.map((l: any) => l.name).join(', ') || undefined,
+                languageCode: issue.language_credits?.map((l: any) => l.name).join(', ') || undefined, // Assuming language_credits might contain language info
                 countryCode: undefined, // Comic Vine API doesn't directly provide country code for issues
                 confidence: confidence,
                 source: 'api'
