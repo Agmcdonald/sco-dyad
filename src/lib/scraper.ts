@@ -169,7 +169,7 @@ export const fetchComicMetadata = async (
             score,
             matchDetails: {
               nameMatch: volumeName.includes(searchSeries) || searchSeries.includes(volumeName),
-              publisherMatch: publisherName.includes(searchPublisher) || searchPublisher.includes(volumeName), // Corrected: should be searchPublisher
+              publisherMatch: publisherName.includes(searchPublisher) || searchPublisher.includes(publisherName),
               yearDiff: volumeYear ? Math.abs(volumeYear - searchYear) : 999
             }
           };
@@ -195,31 +195,73 @@ export const fetchComicMetadata = async (
 
         console.log(`[COMIC-VINE-SCRAPER] Best volume selected: "${bestVolume.name}" (${bestVolume.start_year}) - Score: ${bestVolume.score}`);
 
-        // Step 2: Fetch the specific issue from that volume
-        // Removed field_list to get full response
-        const issueUrl = `${API_BASE_URL}/issues/?api_key=${apiKey}&format=json&filter=volume:${bestVolume.id},issue_number:${parsed.issue}`;
-        
-        console.log(`[COMIC-VINE-SCRAPER] Issue search URL: ${issueUrl}`);
-        
-        const issueResponse = await electronAPI.fetchComicVine(issueUrl);
-        
-        if (!issueResponse.success) {
-            throw new Error(issueResponse.error || `Issue API request failed`);
-        }
-        const issueData = issueResponse.data;
-        console.log(`[COMIC-VINE-SCRAPER] Issue search raw response:`, issueData);
+        // Step 2: Get all issues from the volume, then find the matching one
+        const volumeIssuesUrl = `${API_BASE_URL}/issues/?api_key=${apiKey}&format=json&filter=volume:${bestVolume.id}&field_list=id,issue_number,name`;
+        console.log(`[COMIC-VINE-SCRAPER] Getting all issues from volume: ${volumeIssuesUrl}`);
 
-        if (issueData.status_code !== 1 || issueData.number_of_total_results === 0) {
-            console.warn(`[COMIC-VINE-SCRAPER] No issue found for "${parsed.series}" #${parsed.issue}`);
+        const volumeIssuesResponse = await electronAPI.fetchComicVine(volumeIssuesUrl);
+
+        if (!volumeIssuesResponse.success) {
+            throw new Error(volumeIssuesResponse.error || `Volume issues API request failed`);
+        }
+
+        const volumeIssuesData = volumeIssuesResponse.data;
+        console.log(`[COMIC-VINE-SCRAPER] Volume has ${volumeIssuesData.number_of_total_results} total issues`);
+
+        if (volumeIssuesData.status_code !== 1 || volumeIssuesData.number_of_total_results === 0) {
+            console.warn(`[COMIC-VINE-SCRAPER] No issues found in volume "${bestVolume.name}"`);
+            return { success: false, error: `No issues found in volume "${bestVolume.name}"` };
+        }
+
+        // Find the matching issue by trying different formats
+        const issueFormats = [
+          parsed.issue,                           // "001"
+          parseInt(parsed.issue).toString(),      // "1" 
+          parsed.issue.replace(/^0+/, '') || parsed.issue  // "1" (remove leading zeros)
+        ];
+
+        console.log(`[COMIC-VINE-SCRAPER] Trying to match issue formats for #${parsed.issue}:`, issueFormats);
+        console.log(`[COMIC-VINE-SCRAPER] Available issues in volume:`, volumeIssuesData.results.map((i: any) => `#${i.issue_number}`).slice(0, 10));
+
+        let matchingIssue = null;
+        for (const format of issueFormats) {
+            matchingIssue = volumeIssuesData.results.find((issue: any) => 
+                issue.issue_number === format
+            );
+            if (matchingIssue) {
+                console.log(`[COMIC-VINE-SCRAPER] Found issue using format "${format}": Issue ID ${matchingIssue.id}`);
+                break;
+            }
+        }
+
+        if (!matchingIssue) {
+            console.log(`[COMIC-VINE-SCRAPER] No matching issue found in volume. Available issues:`, 
+                volumeIssuesData.results.map((i: any) => i.issue_number).slice(0, 10));
             return { success: false, error: `No issue found for "${parsed.series}" #${parsed.issue}` };
         }
 
-        const issue = issueData.results[0];
+        // Step 3: Get full issue details using direct endpoint
+        const directIssueUrl = `${API_BASE_URL}/issue/4000-${matchingIssue.id}/?api_key=${apiKey}&format=json`;
+        console.log(`[COMIC-VINE-SCRAPER] Getting full issue details: ${directIssueUrl}`);
+
+        const fullIssueResponse = await electronAPI.fetchComicVine(directIssueUrl);
+
+        if (!fullIssueResponse.success) {
+            throw new Error(fullIssueResponse.error || `Full issue details API request failed`);
+        }
+
+        const fullIssueData = fullIssueResponse.data;
+        
+        if (fullIssueData.status_code !== 1) {
+            throw new Error(`Issue details API returned error: ${fullIssueData.error}`);
+        }
+
+        const issue = fullIssueData.results;
 
         // --- START DEBUGGING FULL RESPONSE STRUCTURE ---
         console.log('[COMIC-VINE-SCRAPER] Full response structure analysis:');
-        console.log('Response type:', typeof issueData);
-        console.log('Results array length:', issueData.results?.length || 0);
+        console.log('Response type:', typeof fullIssueData);
+        console.log('Issue object type:', typeof issue);
 
         if (issue) {
           console.log('Issue object keys:', Object.keys(issue));
@@ -242,6 +284,8 @@ export const fetchComicMetadata = async (
           });
         }
         // --- END DEBUGGING FULL RESPONSE STRUCTURE ---
+
+        console.log(`[COMIC-VINE-SCRAPER] Issue details found: ${issue.name || 'Untitled'}`);
 
         // Process and clean HTML description
         const description = stripHtml(issue.description);
@@ -266,16 +310,17 @@ export const fetchComicMetadata = async (
         const genre = issue.concept_credits?.map((g: any) => g.name).filter(Boolean).join(', ') || undefined;
 
         // Determine confidence based on how much data we found
-        let confidence: Confidence = 'Low';
+        let confidence: 'High' | 'Medium' | 'Low' = 'Low';
         if (description && creators.length > 0 && characters && genre) {
             confidence = 'High';
         } else if (description || creators.length > 0 || characters || genre) {
             confidence = 'Medium';
         }
 
+        console.log(`[COMIC-VINE-SCRAPER] Extracted metadata: Title="${issue.name || 'None'}", Creators=${creators.length}, Characters="${characters || 'None'}", Description=${description.length} chars`);
+
         return {
             success: true,
-            confidence: confidence,
             data: {
                 series: bestVolume.name,
                 issue: parsed.issue,
@@ -290,7 +335,7 @@ export const fetchComicMetadata = async (
                 characters: characters,
                 price: issue.price || undefined,
                 barcode: issue.barcode || undefined,
-                languageCode: issue.language_credits?.map((l: any) => l.name).join(', ') || undefined, // Assuming language_credits might contain language info
+                languageCode: issue.language_credits?.map((l: any) => l.name).join(', ') || undefined,
                 countryCode: undefined, // Comic Vine API doesn't directly provide country code for issues
                 confidence: confidence,
                 source: 'api'
