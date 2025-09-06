@@ -22,7 +22,7 @@ const Organize = () => {
     files, 
     lastUndoableAction,
     undoLastAction,
-    skipFile,
+    skipFile, // <-- UNCOMMENTED HERE
     addFilesFromDrop,
     addFiles,
     fileLoadStatus,
