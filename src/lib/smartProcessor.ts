@@ -15,7 +15,7 @@
  * of the detected information.
  */
 
-import { ParsedComicInfo } from "./parser";
+import { parseFilename, ParsedComicInfo } from "./parser"; // Corrected import to include parseFilename
 import { Creator, QueuedFile, Confidence, KnowledgeBase } from "@/types";
 import { fetchComicMetadata } from "./scraper";
 import { GcdDatabaseService } from "@/services/gcdDatabaseService"; // Keep import for type, but won't be used
