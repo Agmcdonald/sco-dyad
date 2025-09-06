@@ -23,6 +23,7 @@ import { SettingsProvider } from "./context/SettingsContext";
 import { KnowledgeBaseProvider } from "./context/KnowledgeBaseContext";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import { useElectron } from "./hooks/useElectron";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"; // Added import for QueryClient
 
 const queryClient = new QueryClient();
 
