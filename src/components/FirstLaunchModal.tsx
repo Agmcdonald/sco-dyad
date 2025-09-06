@@ -8,11 +8,11 @@ import { useSettings } from '@/context/SettingsContext';
 import { useElectron } from '@/hooks/useElectron';
 
 interface FirstLaunchModalProps {
-  isOpen: boolean;
+  isOpen?: boolean; // Made optional
   onClose: () => void;
 }
 
-const FirstLaunchModal: React.FC<FirstLaunchModalProps> = ({ isOpen, onClose }) => {
+const FirstLaunchModal: React.FC<FirstLaunchModalProps> = ({ isOpen = false, onClose }) => {
   const navigate = useNavigate();
   const { settings, setSettings } = useSettings();
   const { isElectron, electronAPI } = useElectron();
