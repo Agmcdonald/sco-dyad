@@ -139,7 +139,6 @@ export const fetchComicMetadata = async (
           const searchPublisher = parsed.publisher?.toLowerCase() || '';
           
           if (publisherName && searchPublisher) {
-            // FIX: Corrected typo from publisherPublisher to searchPublisher
             if (publisherName.includes(searchPublisher) || searchPublisher.includes(publisherName)) {
               score += 25; // Publisher match
             }
@@ -197,7 +196,8 @@ export const fetchComicMetadata = async (
         console.log(`[COMIC-VINE-SCRAPER] Best volume selected: "${bestVolume.name}" (${bestVolume.start_year}) - Score: ${bestVolume.score}`);
 
         // Step 2: Fetch the specific issue from that volume
-        const issueFields = 'name,cover_date,description,person_credits,volume,image,api_detail_url,site_detail_url,characters,genres,price,barcode,language_credits,concept_credits,location_credits,story_arc_credits,team_credits';
+        // FIX: Updated issueFields to use correct Comic Vine API field names
+        const issueFields = 'name,cover_date,description,person_credits,volume,image,api_detail_url,site_detail_url,character_credits,concept_credits,price,barcode,language_credits,team_credits';
         
         // Try multiple issue number formats
         const issueFormats = [
@@ -236,19 +236,20 @@ export const fetchComicMetadata = async (
         console.log('- name:', issue.name);
         console.log('- description length:', issue.description?.length || 0);
         console.log('- person_credits count:', issue.person_credits?.length || 0);
-        console.log('- characters count:', issue.characters?.length || 0);
-        console.log('- genres count:', issue.genres?.length || 0);
+        console.log('- character_credits count:', issue.character_credits?.length || 0); // CHANGED
+        console.log('- concept_credits count:', issue.concept_credits?.length || 0);     // CHANGED
+        console.log('- team_credits count:', issue.team_credits?.length || 0);          // ADDED
         console.log('- cover_date:', issue.cover_date);
 
         // Log the first few creators and characters if they exist
         if (issue.person_credits?.length > 0) {
           console.log('- sample creators:', issue.person_credits.slice(0, 3));
         }
-        if (issue.characters?.length > 0) {
-          console.log('- sample characters:', issue.characters.slice(0, 3));
+        if (issue.character_credits?.length > 0) {  // CHANGED
+          console.log('- sample characters:', issue.character_credits.slice(0, 3));
         }
-        if (issue.genres?.length > 0) {
-          console.log('- sample genres:', issue.genres.slice(0, 3));
+        if (issue.concept_credits?.length > 0) {  // CHANGED
+          console.log('- sample genres:', issue.concept_credits.slice(0, 3));
         }
 
         // Process and clean HTML description
@@ -267,11 +268,11 @@ export const fetchComicMetadata = async (
           });
         }
 
-        // Extract characters
-        const characters = issue.characters?.map((char: any) => char.name).filter(Boolean).join(', ') || undefined;
+        // Extract characters from character_credits (FIXED)
+        const characters = issue.character_credits?.map((char: any) => char.name).filter(Boolean).join(', ') || undefined;
 
-        // Extract genres
-        const genre = issue.genres?.map((g: any) => g.name).filter(Boolean).join(', ') || undefined;
+        // Extract genres from concept_credits (FIXED)
+        const genre = issue.concept_credits?.map((g: any) => g.name).filter(Boolean).join(', ') || undefined;
 
         // Determine confidence based on how much data we found
         let confidence: Confidence = 'Low';
