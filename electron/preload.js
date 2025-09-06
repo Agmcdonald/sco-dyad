@@ -70,6 +70,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getKnowledgeBase: () => ipcRenderer.invoke('get-knowledge-base'),
   saveKnowledgeBase: (data) => ipcRenderer.invoke('save-knowledge-base', data),
 
+  // Comic Vine API Proxy
+  fetchComicVine: (url, options) => ipcRenderer.invoke('comicvine:fetch', url, options),
+
   // Backup and Restore
   saveBackup: (data) => ipcRenderer.invoke('dialog:save-backup', data),
   loadBackup: () => ipcRenderer.invoke('dialog:load-backup'),

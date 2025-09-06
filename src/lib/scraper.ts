@@ -41,7 +41,7 @@ const stripHtml = (html: string | null | undefined): string => {
 
 /**
  * Fetch Comic Metadata (from Comic Vine)
- * Fetches data from the Comic Vine API.
+ * Fetches data from the Comic Vine API via the Electron main process to bypass CORS.
  * 
  * @param parsed - Parsed comic information from filename
  * @param apiKey - API key for Comic Vine
@@ -52,6 +52,12 @@ export const fetchComicMetadata = async (
     apiKey: string
 ): Promise<ScraperResult> => {
     console.log(`[COMIC-VINE-SCRAPER] Starting fetch for:`, parsed);
+
+    const electronAPI = window.electronAPI;
+    if (!electronAPI) {
+        console.error("[COMIC-VINE-SCRAPER] Electron API not available.");
+        return { success: false, error: "This feature is only available in the desktop application." };
+    }
 
     if (!apiKey) {
         console.error("[COMIC-VINE-SCRAPER] API Key is missing.");
@@ -66,14 +72,13 @@ export const fetchComicMetadata = async (
         // Step 1: Search for the volume
         const volumeSearchUrl = `${API_BASE_URL}/search/?api_key=${apiKey}&format=json&query=${encodeURIComponent(parsed.series)}&resources=volume&field_list=name,start_year,publisher,id`;
         console.log(`[COMIC-VINE-SCRAPER] Volume search URL: ${volumeSearchUrl}`);
-        const volumeResponse = await fetch(volumeSearchUrl);
         
-        if (!volumeResponse.ok) {
-            const errorText = await volumeResponse.text();
-            console.error(`[COMIC-VINE-SCRAPER] Volume API request failed with status ${volumeResponse.status}: ${errorText}`);
-            throw new Error(`API request failed with status ${volumeResponse.status}: ${errorText}`);
+        const volumeResponse = await electronAPI.fetchComicVine(volumeSearchUrl);
+        
+        if (!volumeResponse.success) {
+            throw new Error(volumeResponse.error || `Volume API request failed`);
         }
-        const volumeData = await volumeResponse.json();
+        const volumeData = volumeResponse.data;
         console.log(`[COMIC-VINE-SCRAPER] Volume search raw response:`, volumeData);
 
         if (volumeData.status_code !== 1 || volumeData.number_of_total_results === 0) {
@@ -93,14 +98,13 @@ export const fetchComicMetadata = async (
         // Step 2: Fetch the specific issue from that volume
         const issueSearchUrl = `${API_BASE_URL}/issues/?api_key=${apiKey}&format=json&filter=volume:${bestVolume.id},issue_number:${parsed.issue}&field_list=name,cover_date,description,person_credits,volume`;
         console.log(`[COMIC-VINE-SCRAPER] Issue search URL: ${issueSearchUrl}`);
-        const issueResponse = await fetch(issueSearchUrl);
         
-        if (!issueResponse.ok) {
-            const errorText = await issueResponse.text();
-            console.error(`[COMIC-VINE-SCRAPER] Issue API request failed with status ${issueResponse.status}: ${errorText}`);
-            throw new Error(`API request failed with status ${issueResponse.status}: ${errorText}`);
+        const issueResponse = await electronAPI.fetchComicVine(issueSearchUrl);
+        
+        if (!issueResponse.success) {
+            throw new Error(issueResponse.error || `Issue API request failed`);
         }
-        const issueData = await issueResponse.json();
+        const issueData = issueResponse.data;
         console.log(`[COMIC-VINE-SCRAPER] Issue search raw response:`, issueData);
 
         if (issueData.status_code !== 1 || issueData.number_of_total_results === 0) {
@@ -135,12 +139,17 @@ export const fetchComicMetadata = async (
 
 /**
  * Test API Connection (Comic Vine)
- * Simulates testing the connection to the Comic Vine API
+ * Tests the connection to the Comic Vine API via the Electron main process.
  * 
  * @param apiKey - API key to test
  * @returns Object with success status and message
  */
 export const testApiConnection = async (apiKey: string): Promise<{ success: boolean; message: string }> => {
+    const electronAPI = window.electronAPI;
+    if (!electronAPI) {
+        return { success: false, message: "This feature is only available in the desktop application." };
+    }
+
     if (!apiKey) {
         return { success: false, message: "API Key is missing." };
     }
@@ -148,10 +157,16 @@ export const testApiConnection = async (apiKey: string): Promise<{ success: bool
     try {
         const testUrl = `${API_BASE_URL}/search/?api_key=${apiKey}&format=json&query=test&limit=1`;
         console.log(`[COMIC-VINE-SCRAPER] Testing connection URL: ${testUrl}`);
-        const response = await fetch(testUrl);
-        const data = await response.json();
-        console.log(`[COMIC-VINE-SCRAPER] Test connection raw response:`, data);
+        
+        const response = await electronAPI.fetchComicVine(testUrl);
+        console.log(`[COMIC-VINE-SCRAPER] Test connection raw response:`, response);
 
+        if (!response.success) {
+            // This handles network errors or non-2xx HTTP statuses from the IPC handler
+            throw new Error(response.error || "Failed to connect to the API.");
+        }
+
+        const data = response.data;
         if (data.status_code === 1) {
             return { success: true, message: "Connection successful!" };
         } else if (data.status_code === 100) {
@@ -161,6 +176,7 @@ export const testApiConnection = async (apiKey: string): Promise<{ success: bool
         }
     } catch (error) {
         console.error("[COMIC-VINE-SCRAPER] Test connection failed:", error);
-        return { success: false, message: "Failed to connect to the API. Check your network connection." };
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+        return { success: false, message: `Failed to connect to the API. ${errorMessage}` };
     }
 };

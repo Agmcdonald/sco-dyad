@@ -408,6 +408,31 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
+  // Comic Vine API Proxy
+  ipcMain.handle('comicvine:fetch', async (event, url, options) => {
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...(options?.headers || {}),
+          'User-Agent': `SuperComicOrganizer/${app.getVersion()}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[IPC][comicvine:fetch] API request to ${url} failed with status ${response.status}: ${errorText}`);
+        return { success: false, error: `API request failed with status ${response.status}`, status: response.status };
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('[IPC][comicvine:fetch] Network or fetch error:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
   // GCD Importer - Temporarily Disabled
   ipcMain.handle('importer:start', async () => {
     console.warn('GCD Importer is temporarily disabled due to user request.');

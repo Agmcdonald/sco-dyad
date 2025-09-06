@@ -19,7 +19,7 @@ interface ElectronAPI {
   getComics(): Promise<any[]>;
   updateComic(comic: any): Promise<any>;
   batchUpdateComics(updates: (Partial<Comic> & { id: string })[]): Promise<number>;
-  deleteComic(comicId: string): Promise<boolean>;
+  deleteComic(comicId: string, filePath?: string): Promise<boolean>;
   getSettings(): Promise<any>;
   saveSettings(settings: any): Promise<void>;
   showMessageBox(options: any): Promise<any>;
@@ -29,6 +29,7 @@ interface ElectronAPI {
   selectFolderDialog(): Promise<string[]>;
   getKnowledgeBase(): Promise<{ series: ComicKnowledge[], creators: CreatorKnowledge[] }>;
   saveKnowledgeBase(data: { series: ComicKnowledge[], creators: CreatorKnowledge[] }): Promise<void>;
+  fetchComicVine(url: string, options?: RequestInit): Promise<{ success: boolean; data?: any; error?: string; status?: number }>;
 }
 
 declare global {
