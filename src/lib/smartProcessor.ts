@@ -94,81 +94,80 @@ export const processComicFile = async (
       };
     }
 
-    // 1. Attempt Knowledge Base Lookup First (Highest Priority)
+    // Initialize base data with parsed info
+    let currentComicData: ProcessingResult['data'] = {
+      series: parsed.series,
+      issue: parsed.issue,
+      year: parsed.year || new Date().getFullYear(),
+      publisher: parsed.publisher || "Unknown Publisher",
+      volume: parsed.volume || String(parsed.year || new Date().getFullYear()),
+      summary: `Parsed from filename: ${file.name}`,
+      creators: [],
+      confidence: parsed.publisher ? "Medium" : "Low",
+      source: 'filename'
+    };
+
+    // 1. Attempt Knowledge Base Lookup
     const kbMatch = knowledgeBase.series.find(kb => normalize(kb.series) === normalize(parsed.series));
     if (kbMatch) {
       console.log(`[SMART-PROCESSOR] Found match in Knowledge Base for series: ${parsed.series}`);
       const matchingVolume = (kbMatch.volumes || []).find(v => Number(v.year) === Number(parsed.year));
-      return {
-        success: true,
+
+      currentComicData = {
+        ...currentComicData, // Keep existing parsed data
+        series: kbMatch.series, // Override with KB series name
+        publisher: kbMatch.publisher, // Override with KB publisher
+        year: parsed.year || kbMatch.startYear, // Prefer parsed year, fallback to KB start year
+        volume: matchingVolume?.volume || parsed.volume || String(parsed.year || kbMatch.startYear), // Prefer parsed volume, then KB volume, then KB start year
+        summary: `Matched from local Knowledge Base: ${kbMatch.series}`,
         confidence: "High",
-        data: {
-          series: kbMatch.series,
-          issue: parsed.issue,
-          year: parsed.year || kbMatch.startYear,
-          publisher: kbMatch.publisher,
-          volume: matchingVolume?.volume || parsed.volume || String(parsed.year || kbMatch.startYear),
-          summary: `Matched from local Knowledge Base: ${kbMatch.series}`,
-          creators: [], // Knowledge base doesn't store creators directly for series
-          confidence: "High",
-          source: 'knowledge'
-        }
+        source: 'knowledge'
       };
+      console.log(`[SMART-PROCESSOR] Using Knowledge Base data as foundation, now fetching Comic Vine details...`);
+    } else {
+      console.log(`[SMART-PROCESSOR] No Knowledge Base match found for series: ${parsed.series}`);
     }
 
-    // 2. Attempt Comic Vine API fetch
-    if (comicVineApiKey && parsed.series) {
-      console.log(`[SMART-PROCESSOR] Attempting Comic Vine API search for: ${parsed.series}`);
-      const apiResult = await fetchComicMetadata(parsed, comicVineApiKey);
+    // 2. ALWAYS Attempt Comic Vine API fetch for enrichment
+    if (comicVineApiKey && currentComicData.series) {
+      console.log(`[SMART-PROCESSOR] Attempting Comic Vine API search for: ${currentComicData.series} #${currentComicData.issue}`);
+      // Pass currentComicData to fetchComicMetadata so it can use the best available series/publisher/year
+      const apiResult = await fetchComicMetadata(currentComicData, comicVineApiKey);
+
       if (apiResult.success && apiResult.data) {
-        console.log(`[SMART-PROCESSOR] Comic Vine API success for: ${parsed.series}`);
-        return {
-          success: true,
-          confidence: apiResult.data.confidence,
-          data: {
-            series: apiResult.data.series || parsed.series,
-            issue: parsed.issue,
-            year: parsed.year || new Date().getFullYear(),
-            publisher: apiResult.data.publisher,
-            volume: apiResult.data.volume,
-            summary: apiResult.data.summary,
-            creators: apiResult.data.creators,
-            confidence: apiResult.data.confidence,
-            source: 'api'
-          }
+        console.log(`[SMART-PROCESSOR] Comic Vine API success for: ${currentComicData.series} #${currentComicData.issue}`);
+        // Merge API data, prioritizing API for detailed fields
+        currentComicData = {
+          ...currentComicData, // Keep existing data (from parsed or KB)
+          ...apiResult.data, // Overlay with API data
+          // Ensure series and publisher from KB/parsed are not accidentally downgraded if API returns less specific
+          series: currentComicData.series,
+          publisher: currentComicData.publisher,
+          // Use API confidence if it's higher or more specific
+          confidence: apiResult.data.confidence === 'High' ? 'High' : currentComicData.confidence,
+          source: 'api'
         };
       } else {
-        console.log(`[SMART-PROCESSOR] Comic Vine API failed for ${parsed.series}: ${apiResult.error}`);
+        console.log(`[SMART-PROCESSOR] Comic Vine API failed for ${currentComicData.series} #${currentComicData.issue}: ${apiResult.error || 'No data'}`);
       }
     }
 
-    // 3. Fallback to parsed data only
-    if (parsed.year) {
-      console.log(`[SMART-PROCESSOR] Using parsed data as fallback for: ${file.name}`);
+    // Final check for confidence and success
+    if (currentComicData.series && currentComicData.issue && currentComicData.publisher && currentComicData.year) {
       return {
         success: true,
-        confidence: parsed.publisher ? "Medium" : "Low",
-        data: {
-          series: parsed.series,
-          issue: parsed.issue,
-          year: parsed.year,
-          publisher: parsed.publisher || "Unknown Publisher",
-          volume: parsed.volume || String(parsed.year),
-          summary: `Parsed from filename: ${file.name}`,
-          creators: [],
-          confidence: parsed.publisher ? "Medium" : "Low",
-          source: 'filename'
-        }
+        confidence: currentComicData.confidence,
+        data: currentComicData
+      };
+    } else {
+      // If after all attempts, essential data is still missing
+      return {
+        success: false,
+        confidence: "Low",
+        error: "Insufficient information to process file after all lookups",
+        data: currentComicData // Return partial data for manual review
       };
     }
-
-    // 4. Failure
-    console.log(`[SMART-PROCESSOR] Processing failed - insufficient information for: ${file.name}`);
-    return {
-      success: false,
-      confidence: "Low",
-      error: "Insufficient information to process file",
-    };
 
   } catch (error) {
     console.error(`[SMART-PROCESSOR] Processing error for ${file.name}:`, error);
@@ -178,76 +177,4 @@ export const processComicFile = async (
       error: `Processing error: ${error instanceof Error ? error.message : 'Unknown error'}`
     };
   }
-};
-
-/**
- * Batch Process Multiple Files
- * Processes an array of files sequentially with progress reporting
- * 
- * @param files - Array of QueuedFile to process
- * @param comicVineApiKey - Comic Vine API key
- * @param knowledgeBase - Local knowledge base for series/publishers
- * @param onProgress - Callback function for progress updates
- * @returns A map of file IDs to their processing results
- */
-export const batchProcessFiles = async (
-  files: QueuedFile[],
-  comicVineApiKey: string,
-  knowledgeBase: KnowledgeBase,
-  onProgress?: (processed: number, total: number, currentFile: string) => void
-): Promise<Map<string, ProcessingResult>> => {
-  const results = new Map<string, ProcessingResult>();
-  
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    onProgress?.(i, files.length, file.name);
-    
-    const result = await processComicFile(file, comicVineApiKey, knowledgeBase);
-    results.set(file.id, result);
-    
-    // Small delay to prevent UI blocking and API rate limiting
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  
-  onProgress?.(files.length, files.length, "Complete");
-  return results;
-};
-
-/**
- * Get Processing Statistics
- * Calculates statistics from a batch processing result
- * 
- * @param results - Map of file IDs to processing results
- * @returns An object with total, successful, failed, and confidence counts
- */
-export const getProcessingStats = (results: Map<string, ProcessingResult>) => {
-  const stats = {
-    total: results.size,
-    successful: 0,
-    highConfidence: 0,
-    mediumConfidence: 0,
-    lowConfidence: 0,
-    failed: 0
-  };
-
-  for (const result of results.values()) {
-    if (result.success) {
-      stats.successful++;
-      switch (result.confidence) {
-        case 'High':
-          stats.highConfidence++;
-          break;
-        case 'Medium':
-          stats.mediumConfidence++;
-          break;
-        case 'Low':
-          stats.lowConfidence++;
-          break;
-      }
-    } else {
-      stats.failed++;
-    }
-  }
-
-  return stats;
 };
