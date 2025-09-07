@@ -57,12 +57,6 @@ const normalize = (s: string | undefined | null) => (s || "").trim().toLowerCase
  * Process Comic File
  * Main processing function that attempts to extract and enrich metadata for a comic file
  * 
- * Processing Strategy:
- * 1. Parse filename to extract basic information
- * 2. Try local Knowledge Base lookup (highest quality, immediate)
- * 3. Try Comic Vine API
- * 4. Fall back to parsed data only
- * 
  * @param file - QueuedFile to process
  * @param comicVineApiKey - Comic Vine API key
  * @param knowledgeBase - Local knowledge base for series/publishers
@@ -134,19 +128,46 @@ export const processComicFile = async (
       // Pass currentComicData to fetchComicMetadata so it can use the best available series/publisher/year
       const apiResult = await fetchComicMetadata(currentComicData, comicVineApiKey);
 
+      // --- DEBUG LOGGING START ---
+      console.log(`[SMART-PROCESSOR] Comic Vine returned:`, {
+        success: apiResult?.success,
+        summaryLength: apiResult?.data?.summary?.length || 0,
+        creatorsCount: apiResult?.data?.creators?.length || 0
+      });
+      console.log(`[SMART-PROCESSOR] Base data summary (before API merge):`, currentComicData.summary?.substring(0, 50));
+      console.log(`[SMART-PROCESSOR] Comic Vine summary:`, apiResult?.data?.summary?.substring(0, 50));
+      // --- DEBUG LOGGING END ---
+
       if (apiResult.success && apiResult.data) {
         console.log(`[SMART-PROCESSOR] Comic Vine API success for: ${currentComicData.series} #${currentComicData.issue}`);
+        
         // Merge API data, prioritizing API for detailed fields
         currentComicData = {
           ...currentComicData, // Keep existing data (from parsed or KB)
-          ...apiResult.data, // Overlay with API data
-          // Ensure series and publisher from KB/parsed are not accidentally downgraded if API returns less specific
+          ...apiResult.data,   // Overlay with API data
+          // Explicitly ensure summary and creators from API take precedence if available and not empty
+          summary: apiResult.data.summary || currentComicData.summary,
+          creators: apiResult.data.creators || currentComicData.creators,
+          
+          // Ensure series, publisher, year, volume from currentComicData are preserved
+          // if API data is less specific or we want to keep local parsing/KB values.
+          // This prevents API from potentially giving a less specific series name.
           series: currentComicData.series,
           publisher: currentComicData.publisher,
+          year: currentComicData.year,
+          volume: currentComicData.volume,
+
           // Use API confidence if it's higher or more specific
           confidence: apiResult.data.confidence === 'High' ? 'High' : currentComicData.confidence,
           source: 'api'
         };
+        
+        // --- DEBUG LOGGING AFTER MERGE ---
+        console.log(`[SMART-PROCESSOR] Final summary source (after API merge): ${currentComicData.summary.includes('Knowledge Base') ? 'Knowledge Base' : 'Comic Vine'}`);
+        console.log(`[SMART-PROCESSOR] Final summary length (after API merge): ${currentComicData.summary?.length || 0}`);
+        console.log(`[SMART-PROCESSOR] Final creators count (after API merge): ${currentComicData.creators?.length || 0}`);
+        // --- DEBUG LOGGING AFTER MERGE ---
+
       } else {
         console.log(`[SMART-PROCESSOR] Comic Vine API failed for ${currentComicData.series} #${currentComicData.issue}: ${apiResult.error || 'No data'}`);
       }
