@@ -114,6 +114,7 @@ export const processComicFile = async (
         year: parsed.year || kbMatch.startYear, // Prefer parsed year, fallback to KB start year
         volume: matchingVolume?.volume || parsed.volume || String(parsed.year || kbMatch.startYear), // Prefer parsed volume, then KB volume, then KB start year
         summary: `Matched from local Knowledge Base: ${kbMatch.series}`,
+        creators: [], // Reset creators as KB doesn't store them
         confidence: "High",
         source: 'knowledge'
       };
@@ -141,31 +142,49 @@ export const processComicFile = async (
       if (apiResult.success && apiResult.data) {
         console.log(`[SMART-PROCESSOR] Comic Vine API success for: ${currentComicData.series} #${currentComicData.issue}`);
         
-        // Merge API data, prioritizing API for detailed fields
-        currentComicData = {
-          ...currentComicData, // Keep existing data (from parsed or KB)
-          ...apiResult.data,   // Overlay with API data
-          // Explicitly ensure summary and creators from API take precedence if available and not empty
-          summary: apiResult.data.summary || currentComicData.summary,
-          creators: apiResult.data.creators || currentComicData.creators,
+        // Merge API data, but be explicit about what takes precedence
+        const mergedData = {
+          // Start with current data as base
+          ...currentComicData,
           
-          // Ensure series, publisher, year, volume from currentComicData are preserved
-          // if API data is less specific or we want to keep local parsing/KB values.
-          // This prevents API from potentially giving a less specific series name.
-          series: currentComicData.series,
-          publisher: currentComicData.publisher,
-          year: currentComicData.year,
-          volume: currentComicData.volume,
-
-          // Use API confidence if it's higher or more specific
+          // Override with all API data fields
+          ...apiResult.data,
+          
+          // Explicitly set fields that should come from API if available
+          summary: apiResult.data.summary && apiResult.data.summary.length > 0 
+            ? apiResult.data.summary 
+            : currentComicData.summary,
+          
+          creators: apiResult.data.creators && apiResult.data.creators.length > 0
+            ? apiResult.data.creators
+            : currentComicData.creators || [],
+          
+          // These fields should preserve local/KB data if better
+          series: apiResult.data.series || currentComicData.series,
+          publisher: apiResult.data.publisher || currentComicData.publisher,
+          year: apiResult.data.year || currentComicData.year,
+          volume: apiResult.data.volume || currentComicData.volume,
+          
+          // Extended metadata from API
+          title: apiResult.data.title,
+          characters: apiResult.data.characters,
+          genre: apiResult.data.genre,
+          publicationDate: apiResult.data.publicationDate,
+          
+          // Set confidence and source
           confidence: apiResult.data.confidence === 'High' ? 'High' : currentComicData.confidence,
-          source: 'api'
+          source: 'api' as const
         };
         
+        // Assign the merged data
+        currentComicData = mergedData;
+        
         // --- DEBUG LOGGING AFTER MERGE ---
-        console.log(`[SMART-PROCESSOR] Final summary source (after API merge): ${currentComicData.summary.includes('Knowledge Base') ? 'Knowledge Base' : 'Comic Vine'}`);
-        console.log(`[SMART-PROCESSOR] Final summary length (after API merge): ${currentComicData.summary?.length || 0}`);
-        console.log(`[SMART-PROCESSOR] Final creators count (after API merge): ${currentComicData.creators?.length || 0}`);
+        console.log(`[SMART-PROCESSOR] After merge - Summary:`, currentComicData.summary?.substring(0, 100));
+        console.log(`[SMART-PROCESSOR] After merge - Summary length:`, currentComicData.summary?.length || 0);
+        console.log(`[SMART-PROCESSOR] After merge - Creators count:`, currentComicData.creators?.length || 0);
+        console.log(`[SMART-PROCESSOR] After merge - First creator:`, currentComicData.creators?.[0]);
+        console.log(`[SMART-PROCESSOR] After merge - Characters:`, currentComicData.characters);
         // --- DEBUG LOGGING AFTER MERGE ---
 
       } else {

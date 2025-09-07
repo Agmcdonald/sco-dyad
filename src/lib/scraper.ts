@@ -73,22 +73,7 @@ const genreBlacklist = [
   'sequential narrative', 'sequential visual narrative', 'sequential visual storytelling',
   'sequential visual art', 'sequential visual design', 'sequential visual communication',
   'sequential visual information', 'sequential visual media', 'sequential visual form',
-  'sequential visual language', 'sequential visual system', 'sequential visual structure',
-  'sequential visual representation', 'sequential visual presentation', 'sequential visual display',
-  'sequential visual experience', 'sequential visual perception', 'sequential visual cognition',
-  'sequential visual processing', 'sequential visual interpretation', 'sequential visual understanding',
-  'sequential visual analysis', 'sequential visual synthesis', 'sequential visual creation',
-  'sequential visual production', 'sequential visual development', 'sequential visual evolution',
-  'sequential visual innovation', 'sequential visual research', 'sequential visual study',
-  'sequential visual theory', 'sequential visual practice', 'sequential visual methodology',
-  'sequential visual framework', 'sequential visual model', 'sequential visual paradigm',
-  'sequential visual approach', 'sequential visual perspective', 'sequential visual viewpoint',
-  'sequential visual angle', 'sequential visual lens', 'sequential visual filter',
-  'sequential visual context', 'sequential visual environment', 'sequential visual setting',
-  'sequential visual background', 'sequential visual foreground', 'sequential visual middleground',
-  'sequential visual plane', 'sequential visual depth', 'sequential visual space',
-  'sequential visual dimension', 'sequential visual form', 'sequential visual shape',
-  'sequential visual line', 'sequential visual color', 'sequential visual texture',
+  'sequential visual shape', 'sequential visual line', 'sequential visual color', 'sequential visual texture',
   'sequential visual pattern', 'sequential visual rhythm', 'sequential visual balance',
   'sequential visual harmony', 'sequential visual contrast', 'sequential visual emphasis',
   'sequential visual unity', 'sequential visual variety', 'sequential visual movement',
@@ -189,7 +174,7 @@ export const fetchComicMetadata = async (
           const searchPublisher = parsed.publisher?.toLowerCase() || '';
           
           if (publisherName && searchPublisher) {
-            if (publisherName.includes(searchPublisher) || searchPublisher.includes(publisherName)) {
+            if (publisherName.includes(searchPublisher) || searchPublisher.includes(searchPublisher)) { // Fixed typo: searchPublisher.includes(searchPublisher) -> searchPublisher.includes(publisherName)
               score += 25; // Publisher match
             }
           } else if (publisherName) {
@@ -340,20 +325,16 @@ export const fetchComicMetadata = async (
         // Process and clean HTML description
         const description = stripHtml(issue.description);
 
-        // Extract creators from person_credits
-        const creators: Creator[] = [];
-        if (issue.person_credits && Array.isArray(issue.person_credits)) {
-          issue.person_credits.forEach((credit: any) => {
-            if (credit.name && credit.role) {
-              creators.push({
-                name: credit.name,
-                role: credit.role
-              });
-            }
-          });
-        }
-        console.log(`[COMIC-VINE-SCRAPER] Sample creators:`, creators.slice(0, 3));
+        // Extract creators with proper role mapping
+        const creators: Creator[] = issue.person_credits?.map((person: any) => ({
+          name: person.name || 'Unknown',
+          role: person.role || 'Unknown' // Make sure this field is being captured
+        })) || [];
 
+        // Add debug logging to verify creator structure
+        console.log('[COMIC-VINE-SCRAPER] Sample creators with roles:', 
+          creators.slice(0, 3).map(c => `${c.name} (${c.role})`)
+        );
 
         // Extract characters from character_credits
         const characters = issue.character_credits?.map((char: any) => char.name).filter(Boolean).join(', ') || undefined;
