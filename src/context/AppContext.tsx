@@ -245,8 +245,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       volumes: [{ volume: comicData.volume, year: comicData.year }]
     });
 
-    const baseSummary = comicData.summary || '';
-    const finalSummary = originalFile.ofTotal ? `${baseSummary} (of ${originalFile.ofTotal})` : baseSummary;
+    // Use the summary directly from comicData, which should already be enriched by smartProcessor
+    const finalSummary = comicData.summary; 
 
     if (isMockFile(originalFile.path)) {
       const newComic: Comic = {
@@ -310,7 +310,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           filePath: organizeResult.newPath || originalFile.path, 
           fileSize,
           coverUrl,
-          summary: finalSummary // Use the final summary
+          summary: finalSummary // Use the final summary from comicData
         };
         
         console.log(`[ADD-COMIC] Saving comic to database:`, comicToSave);
