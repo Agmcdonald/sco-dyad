@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import { cn } from "@/lib/utils";
+import { useLocation } from "react-router-dom"; // Import useLocation
 
 interface SidebarProps {
   isCollapsed?: boolean; // New prop to control collapse state
@@ -85,29 +86,24 @@ const Sidebar = ({ isCollapsed = false, onToggleExpansion }: SidebarProps) => {
 
   // Navigation item component that handles tooltips
   const NavItem = ({ item }: { item: typeof navItems[0] }) => {
-    const navLink = (
-      <NavLink
-        to={item.to}
-        className={({ isActive }) =>
-          cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-            isActive ? "bg-muted text-primary font-semibold" : "",
-            effectiveCollapsed && "justify-center px-2 py-2"
-          )
-        }
+    const location = useLocation(); // Get current location
+    const isActive = location.pathname === item.to; // Determine active state manually
+
+    return (
+      <button // Changed from NavLink to button
+        onClick={() => navigate(item.to)} // Explicitly navigate
+        className={cn(
+          "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+          isActive ? "bg-muted text-primary font-semibold" : "", // Apply active class manually
+          effectiveCollapsed && "justify-center px-2 py-2"
+        )}
         aria-label={item.label}
         title={effectiveCollapsed ? item.label : undefined} // Use native title for collapsed state
-        onClick={(e) => {
-          e.preventDefault(); // Prevent default NavLink behavior
-          navigate(item.to); // Manually navigate
-        }}
       >
         <item.icon className="h-4 w-4" />
         {!effectiveCollapsed && <span className="whitespace-nowrap">{item.label}</span>}
-      </NavLink>
+      </button>
     );
-
-    return navLink;
   };
 
   return (
