@@ -191,6 +191,12 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
         case "year-asc":
           primaryCompare = a.year - b.year;
           break;
+        case "date-added-desc":
+          primaryCompare = new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime();
+          break;
+        case "date-added-asc":
+          primaryCompare = new Date(a.dateAdded).getTime() - new Date(b.dateAdded).getTime();
+          break;
         default:
           return 0;
       }
@@ -206,6 +212,10 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
             return a.year - b.year;
           case "year-desc":
             return b.year - a.year;
+          case "date-added-desc":
+            return new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime();
+          case "date-added-asc":
+            return new Date(a.dateAdded).getTime() - new Date(b.dateAdded).getTime();
           case "issue-count-desc":
             // Count issues per series for each comic
             const aIssueCount = comicsToSort.filter(c => c.series === a.series && c.publisher === a.publisher).length;
@@ -243,14 +253,17 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
   return (
     <TooltipProvider>
       <div className="h-full flex flex-col space-y-4">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Library</h1>
+          <p className="text-muted-foreground mt-1">
+            Browse your collection of {comics.length} comics
+            {searchTerm && ` (${sortedAndGroupedComics.length} matching "${searchTerm}")`}.
+          </p>
+        </div>
+        
+        {/* Controls Row */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Library</h1>
-            <p className="text-muted-foreground mt-1">
-              Browse your collection of {comics.length} comics
-              {searchTerm && ` (${sortedAndGroupedComics.length} matching "${searchTerm}")`}.
-            </p>
-          </div>
           <div className="flex items-center gap-2 flex-wrap">
             {isDrilledDown && (
               <Button variant="outline" onClick={handleBackToSeriesView}>
@@ -324,6 +337,8 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                 <SelectItem value="publisher-desc">Publisher (Z-A)</SelectItem>
                 <SelectItem value="year-desc">Year (Newest)</SelectItem>
                 <SelectItem value="year-asc">Year (Oldest)</SelectItem>
+                <SelectItem value="date-added-desc">Recently Added</SelectItem>
+                <SelectItem value="date-added-asc">Oldest Added</SelectItem>
               </SelectContent>
             </Select>
             
@@ -338,6 +353,8 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                   <SelectItem value="series-desc">Series (Z-A)</SelectItem>
                   <SelectItem value="year-asc">Year (Oldest)</SelectItem>
                   <SelectItem value="year-desc">Year (Newest)</SelectItem>
+                  <SelectItem value="date-added-desc">Recently Added</SelectItem>
+                  <SelectItem value="date-added-asc">Oldest Added</SelectItem>
                   <SelectItem value="issue-count-desc">Most Issues</SelectItem>
                   <SelectItem value="issue-count-asc">Fewest Issues</SelectItem>
                 </SelectContent>
@@ -404,6 +421,8 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
             </div>
           </div>
         </div>
+        
+        {/* Main Content Area */}
         <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-auto pb-4 pr-4">
           {viewMode === "grid" ? (
             <LibraryGrid 

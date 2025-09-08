@@ -9,7 +9,7 @@ import { useElectron } from '@/hooks/useElectron';
 
 interface FirstLaunchModalProps {
   isOpen?: boolean; // Made optional
-  onClose: () => void;
+  onClose: (shouldNavigateToSettings: boolean) => void;
 }
 
 const FirstLaunchModal: React.FC<FirstLaunchModalProps> = ({ isOpen = false, onClose }) => {
@@ -23,12 +23,16 @@ const FirstLaunchModal: React.FC<FirstLaunchModalProps> = ({ isOpen = false, onC
     if (isElectron && electronAPI) {
       await electronAPI.saveSettings(updatedSettings);
     }
-    onClose();
+    onClose(false); // Don't navigate to settings
   };
 
   const handleOpenSettings = async () => {
-    await handleDismiss();
-    navigate('/settings');
+    const updatedSettings = { ...settings, hasLaunchedBefore: true };
+    setSettings(updatedSettings);
+    if (isElectron && electronAPI) {
+      await electronAPI.saveSettings(updatedSettings);
+    }
+    onClose(true); // Navigate to settings
   };
 
   const handleSkip = async () => {
@@ -41,7 +45,7 @@ const FirstLaunchModal: React.FC<FirstLaunchModalProps> = ({ isOpen = false, onC
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose(false)}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Welcome to Super Comic Organizer</DialogTitle>

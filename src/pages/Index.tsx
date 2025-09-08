@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { BookOpen, FolderPlus, GraduationCap, Library } from "lucide-react";
 import { useElectron } from "@/hooks/useElectron";
+import { useSettings } from "@/context/SettingsContext";
 import FirstLaunchModal from "@/components/FirstLaunchModal"; // Import FirstLaunchModal
 
 // Key for storing the welcome screen preference in localStorage
@@ -15,6 +16,7 @@ const SCO_FIRST_LAUNCH_PREFERENCE = "sco_first_launch_preference"; // Re-declare
 const Index = () => {
   const navigate = useNavigate();
   const { isElectron, electronAPI } = useElectron();
+  const { settings } = useSettings();
   const [doNotShowWelcome, setDoNotShowWelcome] = useState(false);
   const [showFirstLaunchModal, setShowFirstLaunchModal] = useState(false);
 
@@ -63,8 +65,14 @@ const Index = () => {
         doNotShowWelcome: doNotShowWelcome,
       };
       localStorage.setItem(SCO_WELCOME_SCREEN_PREFERENCE, JSON.stringify(welcomePreference));
-
-      // Now check if the FirstLaunchModal needs to be shown
+      
+      // If the app has already been launched before, skip the FirstLaunchModal entirely
+      if (settings.hasLaunchedBefore) {
+        navigate('/app/dashboard');
+        return;
+      }
+      
+      // Now check if the FirstLaunchModal needs to be shown (only for first-time users)
       const storedFirstLaunchPreference = localStorage.getItem(SCO_FIRST_LAUNCH_PREFERENCE);
       let shouldShowFirstLaunchModal = true;
 

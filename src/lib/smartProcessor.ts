@@ -150,10 +150,15 @@ export const processComicFile = async (
           // Override with all API data fields
           ...apiResult.data,
           
-          // Explicitly set fields that should come from API if available
-          summary: apiResult.data.summary && apiResult.data.summary.length > 0 
-            ? apiResult.data.summary 
-            : currentComicData.summary,
+          // Explicitly prioritize Comic Vine summary over KB placeholders
+          summary: apiResult.data.summary && apiResult.data.summary.length > 50
+            ? apiResult.data.summary
+            : (currentComicData.summary && 
+               !currentComicData.summary.includes('Matched from local Knowledge Base') && 
+               !currentComicData.summary.includes('Parsed from filename') &&
+               !currentComicData.summary.includes('Manually added from file:'))
+              ? currentComicData.summary
+              : apiResult.data.summary || currentComicData.summary,
           
           creators: apiResult.data.creators && apiResult.data.creators.length > 0
             ? apiResult.data.creators

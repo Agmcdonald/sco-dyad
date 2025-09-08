@@ -26,6 +26,28 @@ export const useElectronDatabaseService = () => {
     },
     importComics: (comics: Comic[]): Promise<{ added: number; skipped: number }> => {
       return electronAPI.importComics(comics);
+    },
+    // Comic Vine rate limiting and processing methods
+    checkRateLimit: (): Promise<{ canProceed: boolean; requestsRemaining: number; nextReset?: string }> => {
+      return electronAPI.checkRateLimit();
+    },
+    incrementRateLimit: (): Promise<void> => {
+      return electronAPI.incrementRateLimit();
+    },
+    getComicsForComicVineProcessing: (limit?: number): Promise<Comic[]> => {
+      return electronAPI.getComicsForComicVineProcessing(limit);
+    },
+    updateComicVineStatus: (comicId: string, status: string, fetchedAt?: string | null, retryAfter?: string | null): Promise<void> => {
+      return electronAPI.updateComicVineStatus(comicId, status, fetchedAt, retryAfter);
+    },
+    getComicVineStats: (): Promise<{ pending: number; fetched: number; failed: number; skipped: number }> => {
+      return electronAPI.getComicVineStats();
+    },
+    getComicsByComicVineStatus: (status: string, limit?: number): Promise<Comic[]> => {
+      return electronAPI.getComicsByComicVineStatus(status, limit);
+    },
+    resetComicVineStatus: (comicIds: string[], newStatus?: string): Promise<number> => {
+      return electronAPI.resetComicVineStatus(comicIds, newStatus);
     }
   };
 };

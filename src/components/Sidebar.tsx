@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 
 interface SidebarProps {
   isCollapsed?: boolean; // New prop to control collapse state
+  onToggleExpansion?: (expanded: boolean) => void; // Callback for manual expansion
 }
 
 const navItems = [
@@ -34,7 +35,7 @@ const navItems = [
   { to: "/app/settings", icon: Settings, label: "Settings" },
 ];
 
-const Sidebar = ({ isCollapsed = false }: SidebarProps) => {
+const Sidebar = ({ isCollapsed = false, onToggleExpansion }: SidebarProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const { comics } = useAppContext();
   const navigate = useNavigate();
@@ -82,109 +83,130 @@ const Sidebar = ({ isCollapsed = false }: SidebarProps) => {
           .slice(0, 5)
       : [];
 
+  // Navigation item component that handles tooltips
+  const NavItem = ({ item }: { item: typeof navItems[0] }) => {
+    const navLink = (
+      <NavLink
+        to={item.to}
+        className={({ isActive }) =>
+          cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+            isActive ? "bg-muted text-primary font-semibold" : "",
+            effectiveCollapsed && "justify-center px-2 py-2"
+          )
+        }
+        aria-label={item.label}
+        title={effectiveCollapsed ? item.label : undefined} // Use native title for collapsed state
+        onClick={(e) => {
+          e.preventDefault(); // Prevent default NavLink behavior
+          navigate(item.to); // Manually navigate
+        }}
+      >
+        <item.icon className="h-4 w-4" />
+        {!effectiveCollapsed && <span className="whitespace-nowrap">{item.label}</span>}
+      </NavLink>
+    );
+
+    return navLink;
+  };
+
   return (
     <aside 
       className={cn(
         "h-full flex flex-col bg-muted/40 border-r transition-all duration-300 ease-in-out",
-        effectiveCollapsed ? "w-[72px] items-center" : "min-w-0"
+        effectiveCollapsed ? "w-[72px] items-center" : "w-64"
       )}
     >
-      <div className="border-b">
-        <div className={cn("flex justify-center px-4 py-2", effectiveCollapsed && "py-4")}>
-          <img
-            src="./logo.png"
-            alt="Super Comic Organizer Logo"
-            className={cn("scale-125 transition-transform duration-300", effectiveCollapsed && "scale-100")}
-            style={{ transformOrigin: "center" }}
-          />
-        </div>
-        <div className={cn("px-4 pb-4", effectiveCollapsed && "hidden")}>
-          <form onSubmit={handleSearch} className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search comics..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+        <div className="border-b">
+          <div className={cn("flex justify-center px-4 py-2", effectiveCollapsed && "py-4")}>
+            <img
+              src="./logo.png"
+              alt="Super Comic Organizer Logo"
+              className={cn("scale-125 transition-transform duration-300", effectiveCollapsed && "scale-100")}
+              style={{ transformOrigin: "center" }}
             />
-          </form>
+          </div>
+          <div className={cn("px-4 pb-4", effectiveCollapsed && "hidden")}>
+            <form onSubmit={handleSearch} className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search comics..."
+                className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </form>
 
-          {searchResults.length > 0 && (
-            <div className="mt-2 bg-background border rounded-md shadow-lg">
-              <div className="p-2 text-xs font-medium text-muted-foreground border-b">
-                Search Results
+            {searchResults.length > 0 && (
+              <div className="mt-2 bg-background border rounded-md shadow-lg">
+                <div className="p-2 text-xs font-medium text-muted-foreground border-b">
+                  Search Results
+                </div>
+                {searchResults.map((comic) => (
+                  <button
+                    key={comic.id}
+                    className="w-full text-left p-2 hover:bg-muted text-sm"
+                    onClick={() => {
+                      navigate("/app/library", { state: { searchTerm: comic.series } });
+                      setSearchTerm("");
+                    }}
+                  >
+                    <div className="font-medium">{comic.series}</div>
+                    <div className="text-xs text-muted-foreground">
+                      #{comic.issue} • {comic.publisher}
+                    </div>
+                  </button>
+                ))}
               </div>
-              {searchResults.map((comic) => (
-                <button
-                  key={comic.id}
-                  className="w-full text-left p-2 hover:bg-muted text-sm"
-                  onClick={() => {
-                    navigate("/app/library", { state: { searchTerm: comic.series } });
-                    setSearchTerm("");
-                  }}
-                >
-                  <div className="font-medium">{comic.series}</div>
-                  <div className="text-xs text-muted-foreground">
-                    #{comic.issue} • {comic.publisher}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
 
-      <nav className="flex-1 px-2 py-4 space-y-1">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                isActive ? "bg-muted text-primary font-semibold" : "",
-                effectiveCollapsed && "justify-center px-2 py-2"
-              )
-            }
-            aria-label={item.label}
+        <nav className="flex-1 px-2 py-4 space-y-1">
+          {navItems.map((item) => (
+            <NavItem key={item.to} item={item} />
+          ))}
+        </nav>
+
+        <div className="mt-auto p-4 border-t">
+          {/* Theme toggle button with native title tooltip when collapsed */}
+          <Button
+            variant="outline"
+            className={cn("w-full", effectiveCollapsed ? "justify-center" : "justify-start")}
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            aria-label={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            title={effectiveCollapsed ? (theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode") : undefined}
           >
-            <item.icon className="h-4 w-4" />
-            {!effectiveCollapsed && <span className="whitespace-nowrap">{item.label}</span>}
-          </NavLink>
-        ))}
-      </nav>
+            <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            {!effectiveCollapsed && (
+              <span className="ml-2">
+                {theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              </span>
+            )}
+          </Button>
 
-      <div className="mt-auto p-4 border-t">
-        <Button
-          variant="outline"
-          className={cn("w-full justify-start", effectiveCollapsed && "justify-center")}
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          aria-label={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
-        >
-          <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          {!effectiveCollapsed && (
-            <span className="ml-2">
-              {theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            </span>
-          )}
-        </Button>
-        <Button
-          variant="ghost"
-          className={cn("w-full justify-start mt-2", effectiveCollapsed && "justify-center")}
-          onClick={() => setManualCollapsed(!manualCollapsed)}
-          aria-label={effectiveCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-        >
-          {effectiveCollapsed ? (
-            <PanelLeftOpen className="h-4 w-4" />
-          ) : (
-            <>
-              <PanelLeftClose className="h-4 w-4 mr-2" />
-              <span>Collapse Sidebar</span>
-            </>
-          )}
-        </Button>
-      </div>
+          {/* Expand/Collapse button with native title tooltip when collapsed */}
+          <Button
+            variant="ghost"
+            className={cn("w-full mt-2", effectiveCollapsed ? "justify-center" : "justify-start")}
+            onClick={() => {
+              setManualCollapsed(!manualCollapsed);
+              onToggleExpansion?.(!effectiveCollapsed);
+            }}
+            aria-label={effectiveCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            title={effectiveCollapsed ? "Expand Sidebar" : undefined}
+          >
+            {effectiveCollapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <>
+                <PanelLeftClose className="h-4 w-4 mr-2" />
+                <span>Collapse Sidebar</span>
+              </>
+            )}
+          </Button>
+        </div>
     </aside>
   );
 };

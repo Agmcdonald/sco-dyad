@@ -182,9 +182,12 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
 
   const loadNextComic = useCallback(() => {
     if (nextComic) {
+      // Update reading context to reflect the new comic being read
+      updateReadingHistory(comic, currentPage, totalPages);
+      updateComicProgress(comic.id, currentPage, totalPages);
       setComicIndex(prev => prev + 1);
     }
-  }, [nextComic, setComicIndex]);
+  }, [nextComic, setComicIndex, comic, currentPage, totalPages, updateReadingHistory, updateComicProgress]);
 
   const nextPage = useCallback(() => {
     if (currentPage === totalPages && nextComic) {
@@ -357,7 +360,11 @@ const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: 
               </p>
             </div>
           ) : currentPage === totalPages && nextComic && viewMode === 'single' ? (
-            <NextIssuePreview nextComic={nextComic} onReadNext={loadNextComic} />
+            <NextIssuePreview 
+              nextComic={nextComic} 
+              onReadNext={loadNextComic}
+              onGoBack={() => goToPage(totalPages - 1)}
+            />
           ) : (
             <div
               className="transition-transform duration-200 flex items-center justify-center gap-4"

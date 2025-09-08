@@ -13,6 +13,7 @@ import { useRecentlyRead } from './hooks/useRecentlyRead';
 import { processComicFile } from '@/lib/smartProcessor';
 import { useKnowledgeBase } from './KnowledgeBaseContext';
 import { parseFilename } from '@/lib/parser';
+import comicVineService from '@/services/comicVineService';
 
 interface FileLoadStatus {
   isLoading: boolean;
@@ -66,8 +67,18 @@ interface AppContextType {
   updateReadingHistory: (comic: Comic, currentPage: number, totalPages: number) => void;
   readingComic: Comic | null;
   setReadingComic: (comic: Comic | null) => void;
-  openComicForReading: (comic: Comic) => void;
+  openComicForReading: (comic: Comic, comicList?: Comic[], currentIndex?: number) => void;
+  // Reading context for navigation
+  readingContext: { comicList: Comic[]; currentIndex: number } | null;
+  setReadingContext: (context: { comicList: Comic[]; currentIndex: number } | null) => void;
   syncKnowledgeBaseToLibrary: () => Promise<void>;
+  extractCreatorsFromLibrary: () => Promise<void>; // New: Extract creators from existing comics
+  // Comic Vine processing
+  isComicVineProcessing: boolean;
+  comicVineProgress: { processed: number; total: number; current?: string };
+  startComicVineProcessing: () => Promise<void>;
+  stopComicVineProcessing: () => void;
+  getComicVineStatus: () => Promise<any>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -118,6 +129,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   
   const [isScanningMetadata, setIsScanningMetadata] = useState(false);
   const [metadataScanProgress, setMetadataScanProgress] = useState({ processed: 0, total: 0, updated: 0 });
+  const [isComicVineProcessing, setIsComicVineProcessing] = useState(false);
+  const [comicVineProgress, setComicVineProgress] = useState({ processed: 0, total: 0, current: undefined });
   const [fileLoadStatus, setFileLoadStatus] = useState<FileLoadStatus>({
     isLoading: false,
     progress: 0,
@@ -125,10 +138,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     currentFile: "",
   });
   const [readingComic, setReadingComic] = useState<Comic | null>(null);
+  const [readingContext, setReadingContext] = useState<{ comicList: Comic[]; currentIndex: number } | null>(null);
   const databaseService = useElectronDatabaseService();
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
-  const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
+  const { knowledgeBase, addToKnowledgeBase, addCreatorsToKnowledgeBase } = useKnowledgeBase();
 
   // Derive lastUndoableAction from the actions array
   const lastUndoableAction = useMemo(() => {
@@ -244,6 +258,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       startYear: comicData.year,
       volumes: [{ volume: comicData.volume, year: comicData.year }]
     });
+    
+    // Auto-populate creators to knowledge base
+    if (comicData.creators && comicData.creators.length > 0) {
+      console.log(`[ADD-COMIC] Auto-populating ${comicData.creators.length} creators to knowledge base`);
+      addCreatorsToKnowledgeBase(comicData.creators);
+      logAction('info', `Auto-populated ${comicData.creators.length} creators to knowledge base`);
+    }
 
     // Use the summary directly from comicData, which should already be enriched by smartProcessor
     const finalSummary = comicData.summary; 
@@ -338,7 +359,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       });
       showSuccess(`Added '${newComic.series} #${newComic.issue}' to library`);
     }
-  }, [isElectron, electronAPI, databaseService, settings, logAction, refreshComics, setComics, addToKnowledgeBase]);
+  }, [isElectron, electronAPI, databaseService, settings, logAction, refreshComics, setComics, addToKnowledgeBase, addCreatorsToKnowledgeBase]);
 
   const quickAddFiles = useCallback(async (filesToQuickAdd: QueuedFile[]) => {
     let addedCount = 0;
@@ -374,7 +395,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
         const processedResult = await processComicFile(
           tempFile,
-          settings.comicVineApiKey,
+          settings.comicVineEnabled ? settings.comicVineApiKey : '', // Only pass API key if Comic Vine is enabled
           knowledgeBase
         );
 
@@ -499,7 +520,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     const result = await processComicFile(
       tempFile,
-      settings.comicVineApiKey,
+      settings.comicVineEnabled ? settings.comicVineApiKey : '', // Only pass API key if Comic Vine is enabled
       knowledgeBase
     );
 
@@ -546,6 +567,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
     
     if (hasNewData) {
+      // Auto-populate any new creators found during metadata scan
+      if (result.data.creators && result.data.creators.length > 0) {
+        console.log(`[METADATA-SCAN] Auto-populating ${result.data.creators.length} creators to knowledge base`);
+        addCreatorsToKnowledgeBase(result.data.creators);
+      }
+      
       await updateComicFunc(updatedComic);
       logAction('success', `Enriched metadata for '${comic.series} #${comic.issue}'`);
       return true; // Indicate that an update occurred
@@ -555,7 +582,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       await updateComicFunc(updatedComic);
       return false; // Indicate no new data, but still processed
     }
-  }, [settings, knowledgeBase, logAction]);
+  }, [settings, knowledgeBase, logAction, addCreatorsToKnowledgeBase]);
 
   const skipFile = useCallback((file: QueuedFile) => {
     removeFile(file.id);
@@ -702,7 +729,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [addToRecentlyRead]);
 
-  const openComicForReading = useCallback((comic: Comic) => {
+  const openComicForReading = useCallback((comic: Comic, comicList?: Comic[], currentIndex?: number) => {
     const isPdf = comic.filePath?.toLowerCase().endsWith('.pdf');
 
     if (isElectron && electronAPI && isPdf && comic.filePath) {
@@ -724,8 +751,49 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       setReadingComic(comic);
+      
+      // Set reading context for navigation if provided
+      if (comicList && currentIndex !== undefined) {
+        setReadingContext({ comicList, currentIndex });
+      } else {
+        setReadingContext(null);
+      }
     }
   }, [isElectron, electronAPI, addToRecentlyRead]);
+
+  const extractCreatorsFromLibrary = useCallback(async () => {
+    const toastId = showLoading("Extracting creators from library...");
+    try {
+      // Extract all creators from existing comics
+      const allCreators: Creator[] = [];
+      let comicsWithCreators = 0;
+      
+      for (const comic of comics) {
+        if (comic.creators && comic.creators.length > 0) {
+          allCreators.push(...comic.creators);
+          comicsWithCreators++;
+        }
+      }
+      
+      if (allCreators.length > 0) {
+        console.log(`[EXTRACT-CREATORS] Found ${allCreators.length} creators from ${comicsWithCreators} comics`);
+        addCreatorsToKnowledgeBase(allCreators);
+        
+        // Count unique creators for better user feedback
+        const uniqueCreatorNames = new Set(allCreators.map(c => c.name.toLowerCase().trim()));
+        
+        showSuccess(`Successfully extracted ${allCreators.length} creator entries (${uniqueCreatorNames.size} unique creators) from ${comicsWithCreators} comics.`);
+        logAction('success', `Extracted ${allCreators.length} creator entries from library to Knowledge Base.`);
+      } else {
+        showSuccess("No creators found in existing library to extract.");
+      }
+    } catch (error) {
+      console.error("Failed to extract creators from library:", error);
+      showError("An error occurred while extracting creators from the library.");
+    } finally {
+      dismissToast(toastId);
+    }
+  }, [comics, addCreatorsToKnowledgeBase, logAction]);
 
   const syncKnowledgeBaseToLibrary = useCallback(async () => {
     if (!databaseService) {
@@ -778,6 +846,53 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dismissToast(toastId);
     }
   }, [knowledgeBase, comics, databaseService, refreshComics, logAction]);
+
+  // Comic Vine Processing Functions
+  const startComicVineProcessing = useCallback(async () => {
+    if (!settings.comicVineApiKey) {
+      showError('Comic Vine API key not configured. Please set it in Settings.');
+      return;
+    }
+
+    if (!settings.comicVineEnabled) {
+      showError('Comic Vine integration is disabled. Please enable it in Settings > Metadata Sources.');
+      return;
+    }
+
+    if (!databaseService) {
+      showError('Database service not available.');
+      return;
+    }
+
+    setIsComicVineProcessing(true);
+    setComicVineProgress({ processed: 0, total: 0 });
+
+    try {
+      await comicVineService.startProcessing(
+        settings.comicVineApiKey,
+        databaseService,
+        (progress) => {
+          setComicVineProgress(progress);
+        }
+      );
+      
+      await refreshComics(); // Refresh comics after processing
+      showSuccess('Comic Vine processing completed!');
+    } catch (error) {
+      showError(`Comic Vine processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsComicVineProcessing(false);
+    }
+  }, [settings.comicVineApiKey, databaseService, refreshComics]);
+
+  const stopComicVineProcessing = useCallback(() => {
+    comicVineService.stopProcessing();
+    setIsComicVineProcessing(false);
+  }, []);
+
+  const getComicVineStatus = useCallback(async () => {
+    return await comicVineService.getStatus(databaseService);
+  }, [databaseService]);
 
   // Placeholder for addMockFiles, triggerSelectFiles, triggerScanFolder, triggerQuickAddFiles
   // These functions are typically implemented in the AppProvider or related hooks
@@ -891,7 +1006,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       updateReadingHistory,
       readingComic, setReadingComic,
       openComicForReading,
-      syncKnowledgeBaseToLibrary
+      readingContext, setReadingContext,
+      syncKnowledgeBaseToLibrary,
+      extractCreatorsFromLibrary, // New function
+      // Comic Vine processing
+      isComicVineProcessing,
+      comicVineProgress,
+      startComicVineProcessing,
+      stopComicVineProcessing,
+      getComicVineStatus
     }}>
       {children}
     </AppContext.Provider>

@@ -17,6 +17,8 @@ interface ComicCardProps {
   selectionMode?: boolean;
   isSelectedForBulk?: boolean;
   onBulkSelect?: () => void;
+  comicList?: Comic[];
+  currentIndex?: number;
 }
 
 const ComicCard = ({ 
@@ -25,7 +27,9 @@ const ComicCard = ({
   onToggleInspector,
   selectionMode = false,
   isSelectedForBulk = false,
-  onBulkSelect
+  onBulkSelect,
+  comicList,
+  currentIndex
 }: ComicCardProps) => {
   const { selectedItem, setSelectedItem } = useSelection();
   const { openComicForReading } = useAppContext();
@@ -102,7 +106,7 @@ const ComicCard = ({
               variant="secondary"
               onClick={(e) => {
                 e.stopPropagation();
-                openComicForReading(comic);
+                openComicForReading(comic, comicList, currentIndex);
               }}
             >
               <BookOpen className="h-4 w-4 mr-2" />

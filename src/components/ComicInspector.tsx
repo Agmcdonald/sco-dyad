@@ -52,10 +52,13 @@ import { useAppContext } from "@/context/AppContext";
 import { useSelection } from "@/context/SelectionContext";
 import { useElectron } from "@/hooks/useElectron";
 import { RATING_EMOJIS, CONTENT_RATINGS } from "@/lib/ratings";
-import { showError, showSuccess } from "@/utils/toast";
+import { showError, showSuccess, showLoading, dismissToast } from "@/utils/toast";
 import { getCoverUrl } from "@/lib/cover";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
+import comicVineService from "@/services/comicVineService";
+import { useSettings } from "@/context/SettingsContext";
+import { useElectronDatabaseService } from "@/services/electronDatabaseService";
 
 interface ComicInspectorProps {
   comic: Comic;
@@ -67,6 +70,8 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
   const { comics, readingList, addToReadingList, removeComic, updateComicRating, updateComic, toggleComicReadStatus, openComicForReading, scanComicForMetadata } = useAppContext();
   const { setSelectedItem } = useSelection();
   const { isElectron } = useElectron();
+  const { settings } = useSettings();
+  const databaseService = useElectronDatabaseService();
   const dropdownTriggerRef = useRef<HTMLButtonElement>(null);
 
   const comic = useMemo(() => {
@@ -157,6 +162,33 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
   };
 
   const handleScanForDetails = async () => {
+    // If Comic Vine API is available, try that first, then fall back to general scan
+    if (settings.comicVineApiKey && databaseService) {
+      const toastId = showLoading(`Scanning '${comic.series} #${comic.issue}' for details...`);
+      try {
+        // Try Comic Vine first
+        const result = await comicVineService.processSingleComic(comic, settings.comicVineApiKey, databaseService);
+        dismissToast(toastId);
+        
+        if (result.success && result.updated) {
+          showSuccess(`Enhanced with Comic Vine: ${result.message}`);
+          // Refresh the comic data
+          await scanComicForMetadata(comic.id);
+          return;
+        } else if (result.success) {
+          // Comic Vine succeeded but no updates were made, try fallback
+          console.log('Comic Vine scan completed but no updates made, trying fallback...');
+        } else {
+          // Comic Vine failed, try fallback
+          console.log('Comic Vine scan failed, trying fallback scan...');
+        }
+      } catch (error) {
+        dismissToast(toastId);
+        console.log('Comic Vine scan error, trying fallback scan...', error);
+      }
+    }
+    
+    // Fall back to general metadata scan
     await scanComicForMetadata(comic.id);
   };
 
@@ -224,6 +256,15 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
             <Badge variant="default" className="mt-1 text-xs">
               <Image className="h-3 w-3 mr-1" />
               Series Cover
+            </Badge>
+          )}
+          {comic.comicVineStatus && comic.comicVineStatus !== 'pending' && (
+            <Badge 
+              variant={comic.comicVineStatus === 'fetched' ? 'default' : comic.comicVineStatus === 'failed' ? 'secondary' : 'secondary'} 
+              className="mt-1 text-xs"
+            >
+              <Sparkles className="h-3 w-3 mr-1" />
+              Comic Vine: {comic.comicVineStatus === 'fetched' ? 'Enhanced' : 'Skipped'}
             </Badge>
           )}
         </div>
@@ -425,6 +466,7 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
               )}
               <DropdownMenuItem onClick={handleScanForDetails} aria-label="Scan for Details">
                 <Sparkles className="mr-2 h-4 w-4" /> Scan for Details
+                {settings.comicVineApiKey && <span className="ml-1 text-xs text-muted-foreground">(includes Comic Vine)</span>}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

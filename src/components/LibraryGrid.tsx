@@ -124,17 +124,23 @@ const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onTog
             
             {/* Comics Grid */}
             <div className={`grid ${gridClass} gap-4`}>
-              {groupComics.map((comic) => (
-                <ComicCard 
-                  key={comic.id}
-                  comic={comic} 
-                  onDoubleClick={onSeriesDoubleClick}
-                  onToggleInspector={onToggleInspector}
-                  selectionMode={selectionMode}
-                  isSelectedForBulk={selectedComics.includes(comic.id)}
-                  onBulkSelect={() => handleComicSelection(comic.id, !selectedComics.includes(comic.id))}
-                />
-              ))}
+              {groupComics.map((comic, index) => {
+                // Calculate the global index in the full comics array for navigation
+                const globalIndex = comics.findIndex(c => c.id === comic.id);
+                return (
+                  <ComicCard 
+                    key={comic.id}
+                    comic={comic} 
+                    onDoubleClick={onSeriesDoubleClick}
+                    onToggleInspector={onToggleInspector}
+                    selectionMode={selectionMode}
+                    isSelectedForBulk={selectedComics.includes(comic.id)}
+                    onBulkSelect={() => handleComicSelection(comic.id, !selectedComics.includes(comic.id))}
+                    comicList={comics}
+                    currentIndex={globalIndex}
+                  />
+                );
+              })}
             </div>
           </div>
         ))}

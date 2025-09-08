@@ -4,6 +4,7 @@ import { AppSettings } from '@/types';
 
 const defaultSettings: AppSettings = {
   comicVineApiKey: '',
+  comicVineEnabled: true, // Default to enabled if API key is provided
   keepOriginalFiles: true,
   autoScanOnStartup: true,
   folderNameFormat: '{publisher}/{series} ({volume})',

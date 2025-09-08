@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus, Save, Search as SearchIcon } from "lucide-react";
+import { Trash2, Plus, Save, Search as SearchIcon, Download } from "lucide-react";
 import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 import { useAppContext } from "@/context/AppContext";
 import type { CreatorKnowledge } from "@/types";
@@ -28,7 +28,7 @@ const roleOptions = creatorRoles.map(role => ({ value: role, label: role }));
 
 const CreatorsKBEditor = () => {
   const { knowledgeBase, replaceCreators } = useKnowledgeBase();
-  const { comics } = useAppContext();
+  const { comics, extractCreatorsFromLibrary } = useAppContext();
   const [localCreators, setLocalCreators] = useState<CreatorKnowledge[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [query, setQuery] = useState("");
@@ -96,6 +96,9 @@ const CreatorsKBEditor = () => {
           <div className="flex items-center gap-2">
             <Button variant="ghost" onClick={addCreator} size="sm">
               <Plus className="mr-2 h-4 w-4" /> Add Creator
+            </Button>
+            <Button variant="outline" onClick={extractCreatorsFromLibrary} size="sm">
+              <Download className="mr-2 h-4 w-4" /> Extract from Library
             </Button>
             <Button onClick={handleSaveAll} size="sm" disabled={isSaving}>
               <Save className="mr-2 h-4 w-4" /> Save All

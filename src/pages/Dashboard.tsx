@@ -9,6 +9,7 @@ import LibraryStats from "@/components/LibraryStats";
 import CollectionInsights from "@/components/CollectionInsights";
 import ReadingList from "@/components/ReadingList";
 import LibraryHealth from "@/components/LibraryHealth";
+import ComicVineStatusWidget from "@/components/ComicVineStatusWidget";
 import { useAppContext } from "@/context/AppContext";
 
 const Dashboard = () => {
@@ -101,6 +102,9 @@ const Dashboard = () => {
             <div className="space-y-6">
               {/* Progress Strip */}
               <ProgressStrip />
+
+              {/* Comic Vine Status */}
+              <ComicVineStatusWidget />
 
               {/* Quick Actions */}
               <Card>

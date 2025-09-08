@@ -97,7 +97,7 @@ const Settings = () => {
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="library">Library</TabsTrigger>
-          <TabsTrigger value="scrapers">Scrapers</TabsTrigger>
+          <TabsTrigger value="metadata-sources">Metadata Sources</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
@@ -198,7 +198,7 @@ const Settings = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="scrapers">
+        <TabsContent value="metadata-sources">
           <Card>
             <CardHeader>
               <CardTitle>Comic Vine API</CardTitle>
@@ -207,17 +207,32 @@ const Settings = () => {
                 You can get a free key by registering on their website.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Input 
-                type="password" 
-                value={settings.comicVineApiKey} 
-                onChange={(e) => setSettings({ ...settings, comicVineApiKey: e.target.value })} 
-                placeholder="Enter your Comic Vine API Key"
-              />
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label>Enable Comic Vine Integration</Label>
+                  <p className="text-sm text-muted-foreground">Enable or disable Comic Vine metadata fetching while keeping your API key saved.</p>
+                </div>
+                <Switch 
+                  checked={settings.comicVineEnabled} 
+                  onCheckedChange={(enabled) => setSettings({ ...settings, comicVineEnabled: enabled })} 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="comic-vine-key">API Key</Label>
+                <Input 
+                  id="comic-vine-key"
+                  type="password" 
+                  value={settings.comicVineApiKey} 
+                  onChange={(e) => setSettings({ ...settings, comicVineApiKey: e.target.value })} 
+                  placeholder="Enter your Comic Vine API Key"
+                  disabled={!settings.comicVineEnabled}
+                />
+              </div>
             </CardContent>
             <CardFooter className="border-t px-6 py-4 flex justify-between">
               <Button onClick={handleSave}>Save API Key</Button>
-              <Button variant="secondary" onClick={handleTestConnection} disabled={isTesting || !settings.comicVineApiKey}>
+              <Button variant="secondary" onClick={handleTestConnection} disabled={isTesting || !settings.comicVineApiKey || !settings.comicVineEnabled}>
                 {isTesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Test Connection
               </Button>
             </CardFooter>

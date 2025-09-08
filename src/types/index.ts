@@ -36,6 +36,10 @@ export interface Comic extends NewComic {
   isSeriesCover?: boolean; // Whether this comic's cover should be used for the series
   lastReadPage?: number;
   totalPages?: number;
+  // Comic Vine tracking fields
+  comicVineStatus?: 'pending' | 'fetched' | 'failed' | 'skipped';
+  comicVineFetchedAt?: string;
+  comicVineRetryAfter?: string;
 }
 
 export interface ReadingListItem {
@@ -102,6 +106,7 @@ export interface RecentAction {
 
 export interface AppSettings {
   comicVineApiKey: string;
+  comicVineEnabled: boolean; // New: Enable/disable Comic Vine integration
   keepOriginalFiles: boolean;
   autoScanOnStartup: boolean;
   folderNameFormat: string;

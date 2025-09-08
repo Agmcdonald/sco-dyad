@@ -12,6 +12,13 @@ A comprehensive comic book collection management application that automatically 
 - **Confidence Scoring**: Rates matches as High/Medium/Low confidence to help users identify uncertain results
 - **Batch Processing**: Process multiple files simultaneously with progress tracking
 
+### 🧭 **Intuitive Navigation**
+- **Smart Sidebar**: Automatically adapts between expanded and collapsed modes for optimal screen space usage
+- **Tooltip Navigation**: Hover over collapsed sidebar icons to see page names and navigation hints
+- **Manual Controls**: Override automatic sidebar behavior with expand/collapse buttons for personal preference
+- **Visual Feedback**: Active page highlighting and smooth transitions provide clear navigation context
+- **Keyboard Shortcuts**: Quick navigation between pages using Ctrl+number combinations
+
 ### 📚 **Library Management**
 - **Organized Collection**: Browse comics in grid or series-grouped views
 - **Advanced Search & Filtering**: Search by series, publisher, or use advanced filters

@@ -50,7 +50,10 @@ class ComicDatabase {
         lastModified TEXT,
         metadataLastChecked TEXT,
         ignoreInScans INTEGER DEFAULT 0,
-        isSeriesCover INTEGER DEFAULT 0
+        isSeriesCover INTEGER DEFAULT 0,
+        comicVineStatus TEXT DEFAULT 'pending',
+        comicVineFetchedAt TEXT,
+        comicVineRetryAfter TEXT
       );
 
       CREATE TABLE IF NOT EXISTS creators (
@@ -77,6 +80,13 @@ class ComicDatabase {
         dateRead TEXT,
         FOREIGN KEY (comicId) REFERENCES comics(id) ON DELETE CASCADE
       );
+
+      CREATE TABLE IF NOT EXISTS comic_vine_rate_limit (
+        id INTEGER PRIMARY KEY,
+        requests_made INTEGER DEFAULT 0,
+        hour_started TEXT,
+        next_reset TEXT
+      );
     `);
 
     // --- Schema Migration ---
@@ -92,6 +102,18 @@ class ComicDatabase {
       if (!columnNames.includes('ignoreInScans')) {
         this.db.exec('ALTER TABLE comics ADD COLUMN ignoreInScans INTEGER DEFAULT 0');
         console.log('Database schema migrated: Added "ignoreInScans" column to "comics" table.');
+      }
+      if (!columnNames.includes('comicVineStatus')) {
+        this.db.exec('ALTER TABLE comics ADD COLUMN comicVineStatus TEXT DEFAULT "pending"');
+        console.log('Database schema migrated: Added "comicVineStatus" column to "comics" table.');
+      }
+      if (!columnNames.includes('comicVineFetchedAt')) {
+        this.db.exec('ALTER TABLE comics ADD COLUMN comicVineFetchedAt TEXT');
+        console.log('Database schema migrated: Added "comicVineFetchedAt" column to "comics" table.');
+      }
+      if (!columnNames.includes('comicVineRetryAfter')) {
+        this.db.exec('ALTER TABLE comics ADD COLUMN comicVineRetryAfter TEXT');
+        console.log('Database schema migrated: Added "comicVineRetryAfter" column to "comics" table.');
       }
     } catch (error) {
       console.error('Failed to migrate database schema:', error);
@@ -109,9 +131,9 @@ class ComicDatabase {
   saveComic(comic) {
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO comics (
-        id, series, issue, year, publisher, volume, title, publicationDate, summary, rating, genre, characters, price, barcode, languageCode, countryCode, coverUrl, filePath, fileSize, totalPages, lastReadPage, dateAdded, lastModified, metadataLastChecked, ignoreInScans, isSeriesCover, contentRating
+        id, series, issue, year, publisher, volume, title, publicationDate, summary, rating, genre, characters, price, barcode, languageCode, countryCode, coverUrl, filePath, fileSize, totalPages, lastReadPage, dateAdded, lastModified, metadataLastChecked, ignoreInScans, isSeriesCover, contentRating, comicVineStatus, comicVineFetchedAt, comicVineRetryAfter
       ) VALUES (
-        @id, @series, @issue, @year, @publisher, @volume, @title, @publicationDate, @summary, @rating, @genre, @characters, @price, @barcode, @languageCode, @countryCode, @coverUrl, @filePath, @fileSize, @totalPages, @lastReadPage, @dateAdded, @lastModified, @metadataLastChecked, @ignoreInScans, @isSeriesCover, @contentRating
+        @id, @series, @issue, @year, @publisher, @volume, @title, @publicationDate, @summary, @rating, @genre, @characters, @price, @barcode, @languageCode, @countryCode, @coverUrl, @filePath, @fileSize, @totalPages, @lastReadPage, @dateAdded, @lastModified, @metadataLastChecked, @ignoreInScans, @isSeriesCover, @contentRating, @comicVineStatus, @comicVineFetchedAt, @comicVineRetryAfter
       )
     `);
     
@@ -149,6 +171,9 @@ class ComicDatabase {
         ignoreInScans: c.ignoreInScans ? 1 : 0,
         isSeriesCover: c.isSeriesCover ? 1 : 0,
         contentRating: c.contentRating || null,
+        comicVineStatus: c.comicVineStatus || 'pending',
+        comicVineFetchedAt: c.comicVineFetchedAt || null,
+        comicVineRetryAfter: c.comicVineRetryAfter || null,
       };
 
       stmt.run(comicData);
@@ -272,6 +297,128 @@ class ComicDatabase {
       return { added, skipped };
     });
     return transaction(comics);
+  }
+
+  // Comic Vine Rate Limiting Functions
+  checkRateLimit() {
+    const currentHour = new Date();
+    currentHour.setMinutes(0, 0, 0);
+    const hourStarted = currentHour.toISOString();
+    
+    const rateLimitRecord = this.db.prepare('SELECT * FROM comic_vine_rate_limit WHERE hour_started = ?').get(hourStarted);
+    
+    if (!rateLimitRecord) {
+      // New hour, reset counter
+      const nextReset = new Date(currentHour.getTime() + 3600000).toISOString();
+      this.db.prepare('INSERT OR REPLACE INTO comic_vine_rate_limit (requests_made, hour_started, next_reset) VALUES (0, ?, ?)').run(hourStarted, nextReset);
+      return { canProceed: true, requestsRemaining: 200 };
+    }
+    
+    const requestsRemaining = 200 - rateLimitRecord.requests_made;
+    return { 
+      canProceed: rateLimitRecord.requests_made < 200, 
+      requestsRemaining,
+      nextReset: rateLimitRecord.next_reset
+    };
+  }
+
+  incrementRateLimit() {
+    const currentHour = new Date();
+    currentHour.setMinutes(0, 0, 0);
+    const hourStarted = currentHour.toISOString();
+    
+    this.db.prepare('UPDATE comic_vine_rate_limit SET requests_made = requests_made + 1 WHERE hour_started = ?').run(hourStarted);
+  }
+
+  getComicsForComicVineProcessing(limit = 10) {
+    return this.db.prepare(`
+      SELECT * FROM comics 
+      WHERE comicVineStatus = 'pending' 
+      AND ignoreInScans != 1
+      AND (comicVineRetryAfter IS NULL OR comicVineRetryAfter < datetime('now'))
+      ORDER BY dateAdded ASC 
+      LIMIT ?
+    `).all(limit);
+  }
+
+  updateComicVineStatus(comicId, status, fetchedAt = null, retryAfter = null) {
+    const stmt = this.db.prepare(`
+      UPDATE comics 
+      SET comicVineStatus = ?, 
+          comicVineFetchedAt = ?, 
+          comicVineRetryAfter = ? 
+      WHERE id = ?
+    `);
+    return stmt.run(status, fetchedAt, retryAfter, comicId);
+  }
+
+  getComicVineStats() {
+    const stats = this.db.prepare(`
+      SELECT 
+        comicVineStatus,
+        COUNT(*) as count
+      FROM comics 
+      WHERE ignoreInScans != 1
+      GROUP BY comicVineStatus
+    `).all();
+    
+    const result = {
+      pending: 0,
+      fetched: 0,
+      failed: 0,
+      skipped: 0
+    };
+    
+    stats.forEach(stat => {
+      result[stat.comicVineStatus] = stat.count;
+    });
+    
+    return result;
+  }
+
+  getComicsByComicVineStatus(status, limit = 50) {
+    const comics = this.db.prepare(`
+      SELECT * FROM comics 
+      WHERE comicVineStatus = ? 
+      AND ignoreInScans != 1
+      ORDER BY dateAdded DESC 
+      LIMIT ?
+    `).all(status, limit);
+    
+    const creators = this.db.prepare('SELECT * FROM creators').all();
+    const creatorsByComic = creators.reduce((acc, creator) => {
+      if (!acc[creator.comicId]) acc[creator.comicId] = [];
+      acc[creator.comicId].push({ name: creator.name, role: creator.role });
+      return acc;
+    }, {});
+
+    return comics.map(c => ({
+      ...c,
+      creators: creatorsByComic[c.id] || [],
+      ignoreInScans: Boolean(c.ignoreInScans),
+      isSeriesCover: Boolean(c.isSeriesCover),
+    }));
+  }
+
+  resetComicVineStatus(comicIds, newStatus = 'pending') {
+    const stmt = this.db.prepare(`
+      UPDATE comics 
+      SET comicVineStatus = ?, 
+          comicVineFetchedAt = NULL, 
+          comicVineRetryAfter = NULL 
+      WHERE id = ?
+    `);
+    
+    const transaction = this.db.transaction((ids) => {
+      let updatedCount = 0;
+      for (const comicId of ids) {
+        const info = stmt.run(newStatus, comicId);
+        if (info.changes > 0) updatedCount++;
+      }
+      return updatedCount;
+    });
+    
+    return transaction(comicIds);
   }
 
   close() {

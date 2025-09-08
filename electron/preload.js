@@ -72,6 +72,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Comic Vine API Proxy
   fetchComicVine: (url, options) => ipcRenderer.invoke('comicvine:fetch', url, options),
+  
+  // Comic Vine Rate Limiting and Processing
+  checkRateLimit: () => ipcRenderer.invoke('comicvine:check-rate-limit'),
+  incrementRateLimit: () => ipcRenderer.invoke('comicvine:increment-rate-limit'),
+  getComicsForComicVineProcessing: (limit) => ipcRenderer.invoke('comicvine:get-comics-for-processing', limit),
+  updateComicVineStatus: (comicId, status, fetchedAt, retryAfter) => ipcRenderer.invoke('comicvine:update-status', comicId, status, fetchedAt, retryAfter),
+  getComicVineStats: () => ipcRenderer.invoke('comicvine:get-stats'),
+  getComicsByComicVineStatus: (status, limit) => ipcRenderer.invoke('comicvine:get-comics-by-status', status, limit),
+  resetComicVineStatus: (comicIds, newStatus) => ipcRenderer.invoke('comicvine:reset-status', comicIds, newStatus),
 
   // Backup and Restore
   saveBackup: (data) => ipcRenderer.invoke('dialog:save-backup', data),

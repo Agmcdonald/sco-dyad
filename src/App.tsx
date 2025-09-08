@@ -101,7 +101,7 @@ const App = () => {
               <AppProvider>
                 <SelectionProvider>
                   <Toaster />
-                  <Sonner />
+                  <Sonner position="top-right" />
                   <RouterProvider router={router} />
                 </SelectionProvider>
               </AppProvider>

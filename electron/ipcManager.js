@@ -498,7 +498,17 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
-  console.log('Comic Vine IPC handler registered successfully in ipcManager.js'); // Added logging
+  // Comic Vine Rate Limiting and Processing IPC handlers
+  ipcMain.handle('comicvine:check-rate-limit', () => database.checkRateLimit());
+  ipcMain.handle('comicvine:increment-rate-limit', () => database.incrementRateLimit());
+  ipcMain.handle('comicvine:get-comics-for-processing', (event, limit) => database.getComicsForComicVineProcessing(limit));
+  ipcMain.handle('comicvine:update-status', (event, comicId, status, fetchedAt, retryAfter) => 
+    database.updateComicVineStatus(comicId, status, fetchedAt, retryAfter));
+  ipcMain.handle('comicvine:get-stats', () => database.getComicVineStats());
+  ipcMain.handle('comicvine:get-comics-by-status', (event, status, limit) => database.getComicsByComicVineStatus(status, limit));
+  ipcMain.handle('comicvine:reset-status', (event, comicIds, newStatus) => database.resetComicVineStatus(comicIds, newStatus));
+
+  console.log('IPC handlers registered successfully in ipcManager.js');
 }
 
 module.exports = { registerIpcHandlers };
