@@ -5,11 +5,27 @@ const Store = require('electron-store');
 
 class ComicDatabase {
   constructor() {
-    this.db = null;
+    console.log('[ComicDatabase] Constructor called. this.db is:', this.db);
+    this.db = null; // Ensure it starts as null
     this.settingsStore = new Store();
   }
 
   async initialize() {
+    console.log('[ComicDatabase] initialize() called. Before check, this.db is:', this.db);
+    if (this.db && this.db.open) { // Check if already open and valid
+      console.log('[ComicDatabase] Database already open, skipping re-initialization.');
+      return;
+    }
+    if (this.db) { // If db exists but is not open (stale connection)
+      console.log('[ComicDatabase] Database exists but is not open, closing stale connection.');
+      try {
+        this.db.close();
+      } catch (e) {
+        console.error('[ComicDatabase] Error closing stale DB:', e);
+      }
+      this.db = null;
+    }
+    
     const dbPath = this.settingsStore.get('dbPath', path.join(require('electron').app.getPath('userData'), 'comics.sqlite'));
     
     try {
@@ -19,10 +35,13 @@ class ComicDatabase {
     }
 
     this.db = new Database(dbPath);
+    console.log('[ComicDatabase] Database opened. this.db is now:', this.db);
     this.setupSchema();
+    console.log('[ComicDatabase] Database schema setup complete.');
   }
 
   setupSchema() {
+    this._ensureDbOpen(); // Ensure DB is open before schema setup
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS comics (
         id TEXT PRIMARY KEY,
@@ -120,6 +139,16 @@ class ComicDatabase {
     }
   }
 
+  _ensureDbOpen() {
+    if (!this.db || !this.db.open) {
+      console.error('Database operation attempted when database is not open. Current state:', {
+        dbExists: !!this.db,
+        dbIsOpen: this.db ? this.db.open : 'N/A'
+      });
+      throw new Error('Database is not open or initialized.');
+    }
+  }
+
   saveSetting(key, value) {
     this.settingsStore.set(key, value);
   }
@@ -129,6 +158,7 @@ class ComicDatabase {
   }
 
   saveComic(comic) {
+    this._ensureDbOpen();
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO comics (
         id, series, issue, year, publisher, volume, title, publicationDate, summary, rating, genre, characters, price, barcode, languageCode, countryCode, coverUrl, filePath, fileSize, totalPages, lastReadPage, dateAdded, lastModified, metadataLastChecked, ignoreInScans, isSeriesCover, contentRating, comicVineStatus, comicVineFetchedAt, comicVineRetryAfter
@@ -190,6 +220,7 @@ class ComicDatabase {
   }
 
   updateComic(comic) {
+    this._ensureDbOpen();
     const { creators, ...comicData } = comic;
     const fields = Object.keys(comicData).filter(k => k !== 'id');
     const setClause = fields.map(f => `${f} = @${f}`).join(', ');
@@ -220,6 +251,7 @@ class ComicDatabase {
   }
 
   batchUpdateComics(updates) {
+    this._ensureDbOpen();
     const transaction = this.db.transaction((updatesToApply) => {
       let updatedCount = 0;
       for (const update of updatesToApply) {
@@ -249,6 +281,7 @@ class ComicDatabase {
   }
 
   getComic(id) {
+    this._ensureDbOpen();
     const comic = this.db.prepare('SELECT * FROM comics WHERE id = ?').get(id);
     if (comic) {
       comic.creators = this.db.prepare('SELECT name, role FROM creators WHERE comicId = ?').all(id);
@@ -259,6 +292,7 @@ class ComicDatabase {
   }
 
   getComics() {
+    this._ensureDbOpen();
     const comics = this.db.prepare('SELECT * FROM comics ORDER BY series, CAST(issue AS REAL), issue').all();
     const creators = this.db.prepare('SELECT * FROM creators').all();
     const creatorsByComic = creators.reduce((acc, creator) => {
@@ -276,12 +310,14 @@ class ComicDatabase {
   }
 
   deleteComic(id) {
+    this._ensureDbOpen();
     const stmt = this.db.prepare('DELETE FROM comics WHERE id = ?');
     const info = stmt.run(id);
     return info.changes > 0;
   }
 
   importComics(comics) {
+    this._ensureDbOpen();
     const transaction = this.db.transaction((comicsToImport) => {
       let added = 0;
       let skipped = 0;
@@ -301,6 +337,7 @@ class ComicDatabase {
 
   // Comic Vine Rate Limiting Functions
   checkRateLimit() {
+    this._ensureDbOpen();
     const currentHour = new Date();
     currentHour.setMinutes(0, 0, 0);
     const hourStarted = currentHour.toISOString();
@@ -323,6 +360,7 @@ class ComicDatabase {
   }
 
   incrementRateLimit() {
+    this._ensureDbOpen();
     const currentHour = new Date();
     currentHour.setMinutes(0, 0, 0);
     const hourStarted = currentHour.toISOString();
@@ -331,6 +369,7 @@ class ComicDatabase {
   }
 
   getComicsForComicVineProcessing(limit = 10) {
+    this._ensureDbOpen();
     return this.db.prepare(`
       SELECT * FROM comics 
       WHERE comicVineStatus = 'pending' 
@@ -342,6 +381,7 @@ class ComicDatabase {
   }
 
   updateComicVineStatus(comicId, status, fetchedAt = null, retryAfter = null) {
+    this._ensureDbOpen();
     const stmt = this.db.prepare(`
       UPDATE comics 
       SET comicVineStatus = ?, 
@@ -353,6 +393,7 @@ class ComicDatabase {
   }
 
   getComicVineStats() {
+    this._ensureDbOpen();
     const stats = this.db.prepare(`
       SELECT 
         comicVineStatus,
@@ -377,6 +418,7 @@ class ComicDatabase {
   }
 
   getComicsByComicVineStatus(status, limit = 50) {
+    this._ensureDbOpen();
     const comics = this.db.prepare(`
       SELECT * FROM comics 
       WHERE comicVineStatus = ? 
@@ -401,6 +443,7 @@ class ComicDatabase {
   }
 
   resetComicVineStatus(comicIds, newStatus = 'pending') {
+    this._ensureDbOpen();
     const stmt = this.db.prepare(`
       UPDATE comics 
       SET comicVineStatus = ?, 
@@ -422,8 +465,12 @@ class ComicDatabase {
   }
 
   close() {
-    if (this.db) {
+    if (this.db && this.db.open) {
+      console.log('[ComicDatabase] Closing database connection.');
       this.db.close();
+      this.db = null; // Explicitly set to null after closing
+    } else {
+      console.log('[ComicDatabase] Database not open, no need to close.');
     }
   }
 }
