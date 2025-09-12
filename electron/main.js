@@ -11,7 +11,7 @@
  * - Security settings for the web contents
  */
 
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const ComicFileHandler = require('./fileHandler');
@@ -115,6 +115,7 @@ async function initializeServices() {
     console.log('Services initialized successfully');
   } catch (error) {
     console.error('Failed to initialize services:', error);
+    throw error; // Re-throw the error to be caught by the whenReady handler
   }
 }
 
@@ -206,7 +207,17 @@ async function initializeKnowledgeBaseFile() {
  * This event is fired when Electron has finished initialization
  */
 app.whenReady().then(async () => {
-  await initializeServices();
+  try {
+    await initializeServices();
+  } catch (error) {
+    console.error('A fatal error occurred during application startup:', error);
+    dialog.showErrorBox(
+      'Application Startup Error',
+      `Failed to initialize critical services. Please check for permission issues or corrupted files in the application's data directory.\n\nError: ${error.message}\n\nThe application will now exit.`
+    );
+    app.quit();
+    return;
+  }
   
   createWindow();
   createMenu(mainWindow);
@@ -218,6 +229,13 @@ app.whenReady().then(async () => {
       createWindow();
     }
   });
+}).catch(error => {
+  console.error('A fatal error occurred during app.whenReady:', error);
+  dialog.showErrorBox(
+    'Fatal Error',
+    'An unexpected error occurred during startup. The application will now exit.'
+  );
+  app.quit();
 });
 
 /**
