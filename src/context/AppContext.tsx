@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback, useMemo, useRef } from 'react';
 import { QueuedFile, Comic, NewComic, UndoPayload, ComicKnowledge } from '@/types';
 import { useElectronDatabaseService } from '@/services/electronDatabaseService';
 import { useElectron } from '@/hooks/useElectron';
@@ -19,6 +19,7 @@ interface FileLoadStatus {
   progress: number;
   total: number;
   currentFile: string;
+  isCancellable: boolean; // New field
 }
 
 interface AppContextType {
@@ -44,6 +45,7 @@ interface AppContextType {
   addFilesFromPaths: (paths: string[]) => Promise<void>;
   quickAddFiles: (files: QueuedFile[]) => Promise<void>;
   fileLoadStatus: FileLoadStatus;
+  cancelFileLoading: () => void; // New function
   readingList: any[];
   addToReadingList: (comic: Comic) => void;
   removeFromReadingList: (itemId: string) => void;
@@ -123,12 +125,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     progress: 0,
     total: 0,
     currentFile: "",
+    isCancellable: false, // Initialize as not cancellable
   });
   const [readingComic, setReadingComic] = useState<Comic | null>(null);
   const databaseService = useElectronDatabaseService();
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
   const { knowledgeBase, addToKnowledgeBase } = useKnowledgeBase();
+
+  // Ref to store the AbortController for file loading operations
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Derive lastUndoableAction from the actions array
   const lastUndoableAction = useMemo(() => {
@@ -139,47 +145,92 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const addFilesFromPaths = useCallback(async (paths: string[]) => {
     if (paths.length === 0) return;
 
-    setFileLoadStatus({ isLoading: true, progress: 0, total: paths.length, currentFile: "" });
+    // Create a new AbortController for this operation
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const { signal } = controller;
+
+    setFileLoadStatus({ isLoading: true, progress: 0, total: paths.length, currentFile: "", isCancellable: true });
     
     const filesToAdd: QueuedFile[] = [];
-    for (let i = 0; i < paths.length; i++) {
-      const filePath = paths[i];
-      const fileName = filePath ? filePath.split(/[\\/]/).pop() || 'Unknown File' : 'Unknown File';
-      
-      setFileLoadStatus(prev => ({ ...prev, progress: i + 1, currentFile: fileName }));
+    let loadingToastId: string | number | null = null;
 
-      const parsed = parseFilename(filePath);
+    try {
+      loadingToastId = showLoading(`Loading ${paths.length} files...`);
 
-      const newFile: QueuedFile = {
-        id: `file-${fileIdCounter++}`,
-        name: fileName,
-        path: filePath || '',
-        series: parsed.series,
-        issue: parsed.issue,
-        year: parsed.year,
-        publisher: parsed.publisher,
-        volume: parsed.volume,
-        ofTotal: parsed.ofTotal, // Populate ofTotal from parser
-        confidence: null,
-        status: 'Pending',
-      };
-
-      if (isElectron && electronAPI && filePath) {
-        try {
-          const fileInfo = await electronAPI.readComicFile(filePath);
-          newFile.pageCount = fileInfo?.pageCount || undefined;
-        } catch (error) {
-          console.warn(`Could not read info for ${newFile.name}:`, error);
+      for (let i = 0; i < paths.length; i++) {
+        if (signal.aborted) {
+          console.log("File loading aborted by user.");
+          logAction('info', 'File loading cancelled by user.');
+          showError('File loading cancelled.');
+          break;
         }
-      }
-      filesToAdd.push(newFile);
-      await new Promise(res => setTimeout(res, 5));
-    }
 
-    addFiles(filesToAdd);
-    showSuccess(`Added ${filesToAdd.length} comic file${filesToAdd.length !== 1 ? 's' : ''} to queue`);
-    setFileLoadStatus({ isLoading: false, progress: 0, total: 0, currentFile: "" });
-  }, [addFiles, isElectron, electronAPI]);
+        const filePath = paths[i];
+        const fileName = filePath ? filePath.split(/[\\/]/).pop() || 'Unknown File' : 'Unknown File';
+        
+        setFileLoadStatus(prev => ({ ...prev, progress: i + 1, currentFile: fileName }));
+
+        const parsed = parseFilename(filePath);
+
+        const newFile: QueuedFile = {
+          id: `file-${fileIdCounter++}`,
+          name: fileName,
+          path: filePath || '',
+          series: parsed.series,
+          issue: parsed.issue,
+          year: parsed.year,
+          publisher: parsed.publisher,
+          volume: parsed.volume,
+          ofTotal: parsed.ofTotal, // Populate ofTotal from parser
+          confidence: null,
+          status: 'Pending',
+        };
+
+        if (isElectron && electronAPI && filePath) {
+          try {
+            // Pass the signal to the Electron main process for cancellable operations
+            const fileInfo = await electronAPI.readComicFile(filePath, signal);
+            newFile.pageCount = fileInfo?.pageCount || undefined;
+          } catch (error: any) {
+            if (error.name === 'AbortError') {
+              console.log(`Reading info for ${newFile.name} aborted.`);
+              break; // Stop processing further files
+            }
+            console.warn(`Could not read info for ${newFile.name}:`, error);
+          }
+        }
+        filesToAdd.push(newFile);
+        await new Promise(res => setTimeout(res, 5));
+      }
+
+      if (!signal.aborted) {
+        addFiles(filesToAdd);
+        showSuccess(`Added ${filesToAdd.length} comic file${filesToAdd.length !== 1 ? 's' : ''} to queue`);
+      }
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log("File loading aborted due to an internal signal.");
+        logAction('info', 'File loading cancelled.');
+        showError('File loading cancelled.');
+      } else {
+        console.error("Error during file loading:", error);
+        logAction('error', `Error during file loading: ${error.message}`);
+        showError(`Error loading files: ${error.message}`);
+      }
+    } finally {
+      if (loadingToastId) dismissToast(loadingToastId);
+      setFileLoadStatus({ isLoading: false, progress: 0, total: 0, currentFile: "", isCancellable: false });
+      abortControllerRef.current = null; // Clear the controller reference
+    }
+  }, [addFiles, isElectron, electronAPI, logAction]);
+
+  const cancelFileLoading = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      // The finally block in addFilesFromPaths will handle cleanup and toast dismissal
+    }
+  }, []);
 
   const updateComic = useCallback(async (comic: Comic) => {
     if (databaseService) {
@@ -816,14 +867,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const folderPath = folderPaths[0];
         const loadingToast = showLoading(`Scanning folder: ${folderPath}...`);
         try {
-          const fileInfos = await electronAPI.scanFolder(folderPath);
+          // Pass the AbortSignal to the scanFolder IPC call
+          const fileInfos = await electronAPI.scanFolder(folderPath, abortControllerRef.current?.signal);
           const paths = fileInfos.map(f => f.path);
           await addFilesFromPaths(paths);
           dismissToast(loadingToast);
           showSuccess(`Found ${paths.length} comic files in folder.`);
-        } catch (error) {
+        } catch (error: any) {
           dismissToast(loadingToast);
-          showError(`Failed to scan folder: ${error instanceof Error ? error.message : String(error)}`);
+          if (error.name === 'AbortError') {
+            showError('Folder scan cancelled.');
+          } else {
+            showError(`Failed to scan folder: ${error instanceof Error ? error.message : String(error)}`);
+          }
         }
       }
     } else {
@@ -875,7 +931,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       comics, addComic, updateComic, removeComic, updateComicRating,
       actions, logAction, lastUndoableAction, undoLastAction,
       addMockFiles, triggerSelectFiles, triggerScanFolder, triggerQuickAddFiles, addFilesFromDrop,
-      addFilesFromPaths, quickAddFiles, fileLoadStatus,
+      addFilesFromPaths, quickAddFiles, fileLoadStatus, cancelFileLoading, // Added cancelFileLoading
       readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted,
       toggleComicReadStatus,
       setReadingItemPriority, setReadingItemRating,

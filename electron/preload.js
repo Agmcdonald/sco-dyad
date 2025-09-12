@@ -39,9 +39,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   
   // File System Operations
-  readComicFile: (filePath) => ipcRenderer.invoke('read-comic-file', filePath),
+  // Modified to accept an operationId for cancellation
+  readComicFile: (filePath, operationId) => ipcRenderer.invoke('read-comic-file', filePath, operationId),
   extractCover: (filePath) => ipcRenderer.invoke('extract-cover', filePath),
-  scanFolder: (folderPath) => ipcRenderer.invoke('scan-folder', folderPath),
+  scanFolder: (folderPath, operationId) => ipcRenderer.invoke('scan-folder', folderPath, operationId),
   organizeFile: (filePath, targetPath) => ipcRenderer.invoke('organize-file', filePath, targetPath),
   moveFile: (sourcePath, relativeTargetPath) => ipcRenderer.invoke('move-file', sourcePath, relativeTargetPath),
   
@@ -58,9 +59,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveComic: (comic) => ipcRenderer.invoke('save-comic', comic),
   getComics: () => ipcRenderer.invoke('get-comics'),
   updateComic: (comic) => ipcRenderer.invoke('update-comic', comic),
+  batchUpdateComics: (updates) => ipcRenderer.invoke('db:batch-update-comics', updates),
   deleteComic: (comicId, filePath) => ipcRenderer.invoke('delete-comic', comicId, filePath),
   importComics: (comics) => ipcRenderer.invoke('db:import-comics', comics),
-  batchUpdateComics: (updates) => ipcRenderer.invoke('db:batch-update-comics', updates),
   
   // Settings
   getSettings: () => ipcRenderer.invoke('get-settings'),
@@ -92,6 +93,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);
   },
+
+  // New cancellation method
+  cancelFileLoading: () => ipcRenderer.invoke('cancel-file-loading'),
 
   // Cover Management
   getCoversDir: () => ipcRenderer.invoke('app:get-covers-dir'),

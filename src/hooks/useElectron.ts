@@ -7,29 +7,61 @@ interface ElectronAPI {
   onNavigateTo(callback: (path: string) => void): void;
   onFilesSelected(callback: (filePaths: string[]) => void): void;
   onFolderSelected(callback: (folderPath: string) => void): void;
-  readComicFile(filePath: string): Promise<any>;
+  readComicFile(filePath: string, signal?: AbortSignal): Promise<any>; // Added signal
   extractCover(filePath: string): Promise<string>;
-  scanFolder(folderPath: string): Promise<string[]>;
+  scanFolder(folderPath: string, signal?: AbortSignal): Promise<string[]>; // Added signal
   organizeFile(filePath: string, targetPath: string): Promise<{ success: boolean; newPath?: string; error?: string; }>;
+  moveFile(sourcePath: string, relativeTargetPath: string): Promise<boolean>;
+  
+  // Comic Reader Operations
   getComicPages(filePath: string): Promise<string[]>;
   getComicPageDataUrl(filePath: string, pageName: string): Promise<string>;
+  prepareCbrForReading(filePath: string): Promise<{ tempDir: string; pages: string[] }>;
+  getPageDataUrlFromTemp(tempDir: string, pageName: string): Promise<string>;
+  cleanupTempDir(tempDir: string): Promise<void>;
   openPdf(filePath: string): Promise<{ success: boolean; error?: string }>;
+
+  // Database Operations
   initDatabase(): Promise<void>;
   saveComic(comic: any): Promise<any>;
   getComics(): Promise<any[]>;
   updateComic(comic: any): Promise<any>;
   batchUpdateComics(updates: (Partial<Comic> & { id: string })[]): Promise<number>;
   deleteComic(comicId: string, filePath?: string): Promise<boolean>;
+  
+  // Settings
   getSettings(): Promise<any>;
   saveSettings(settings: any): Promise<void>;
-  showMessageBox(options: any): Promise<any>;
-  platform: string;
-  removeAllListeners(channel: string): void;
-  selectFilesDialog(): Promise<string[]>;
-  selectFolderDialog(): Promise<string[]>;
+
+  // Knowledge Base
   getKnowledgeBase(): Promise<{ series: ComicKnowledge[], creators: CreatorKnowledge[] }>;
   saveKnowledgeBase(data: { series: ComicKnowledge[], creators: CreatorKnowledge[] }): Promise<void>;
+
+  // Comic Vine API Proxy
   fetchComicVine(url: string, options?: RequestInit): Promise<{ success: boolean; data?: any; error?: string; status?: number }>;
+
+  // Backup and Restore
+  saveBackup(data: string): Promise<{ success: boolean; path?: string; error?: string; }>;
+  loadBackup(): Promise<{ success: boolean; data?: string; error?: string; }>;
+
+  // General Dialogs
+  showMessageBox(options: any): Promise<any>;
+  
+  // Help Manual
+  onOpenManual(callback: () => void): void;
+
+  // Platform Information
+  platform: string;
+  
+  // Event Listener Management
+  removeAllListeners(channel: string): void;
+
+  // New cancellation method
+  cancelFileLoading(): Promise<void>;
+
+  // Cover Management
+  getCoversDir(): Promise<string>;
+  migrateCovers(): Promise<any>;
 }
 
 declare global {

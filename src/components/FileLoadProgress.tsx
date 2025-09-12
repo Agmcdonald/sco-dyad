@@ -1,11 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useAppContext } from "@/context/AppContext";
-import { FolderSearch } from "lucide-react";
+import { FolderSearch, XCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const FileLoadProgress = () => {
-  const { fileLoadStatus } = useAppContext();
-  const { isLoading, progress, total, currentFile } = fileLoadStatus;
+  const { fileLoadStatus, cancelFileLoading } = useAppContext();
+  const { isLoading, progress, total, currentFile, isCancellable } = fileLoadStatus;
 
   if (!isLoading) {
     return null;
@@ -16,10 +17,18 @@ const FileLoadProgress = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <FolderSearch className="h-4 w-4 animate-pulse" />
-          Loading Files...
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FolderSearch className="h-4 w-4 animate-pulse" />
+            Loading Files...
+          </CardTitle>
+          {isCancellable && (
+            <Button variant="outline" size="sm" onClick={cancelFileLoading}>
+              <XCircle className="h-4 w-4 mr-2" />
+              Cancel
+            </Button>
+          )}
+        </div>
         <CardDescription>
           Reading file information from your disk. Please wait.
         </CardDescription>

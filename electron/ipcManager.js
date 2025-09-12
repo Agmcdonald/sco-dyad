@@ -4,6 +4,9 @@ const fs = require('fs').promises;
 const { pathToFileURL } = require('url');
 const https = require('https'); // Added Node.js https module
 
+// Map to store AbortController instances for cancellable operations
+const cancellableOperations = new Map();
+
 function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBasePath, publicCoversDir }) {
   // App info
   ipcMain.handle('get-app-version', () => app.getVersion());
@@ -169,40 +172,49 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   });
 
   // File system operations
-  ipcMain.handle('read-comic-file', (event, filePath) => fileHandler.readComicFile(filePath));
-  ipcMain.handle('scan-folder', (event, folderPath) => fileHandler.scanFolder(folderPath));
-
-  // FIXED: Extract cover with proper path handling and existence verification
-  ipcMain.handle('extract-cover', async (event, filePath) => {
+  ipcMain.handle('read-comic-file', async (event, filePath, operationId) => {
+    const controller = new AbortController();
+    cancellableOperations.set(operationId, controller);
     try {
-      console.log('[IPC] extract-cover called for:', filePath);
-      
-      // Ensure covers directory exists
-      await fs.mkdir(publicCoversDir, { recursive: true });
-      console.log('[IPC] Covers directory ensured:', publicCoversDir);
-
-      // Extract cover and get the absolute path
-      const absoluteCoverPath = await fileHandler.extractCoverToPublic(filePath, publicCoversDir);
-      console.log('[IPC] Cover extracted to absolute path:', absoluteCoverPath);
-      
-      // Verify the file actually exists before returning success
-      try {
-        await fs.access(absoluteCoverPath);
-        console.log('[IPC] Cover file existence verified');
-      } catch (accessError) {
-        console.error('[IPC] Cover file does not exist after extraction:', absoluteCoverPath);
-        throw new Error(`Cover extraction failed - file not found: ${absoluteCoverPath}`);
-      }
-      
-      // Convert to proper file URL using Node.js pathToFileURL
-      const fileUrl = pathToFileURL(absoluteCoverPath).href;
-      console.log('[IPC] Final file URL:', fileUrl);
-      
-      return fileUrl;
+      const result = await fileHandler.readComicFile(filePath, controller.signal);
+      return result;
     } catch (error) {
-      console.error('[IPC] Error in extract-cover handler:', error);
+      if (error.name === 'AbortError') {
+        console.log(`Operation ${operationId} aborted: read-comic-file`);
+        throw error;
+      }
+      console.error(`Error in read-comic-file for ${filePath}:`, error);
       throw error;
+    } finally {
+      cancellableOperations.delete(operationId);
     }
+  });
+
+  ipcMain.handle('scan-folder', async (event, folderPath, operationId) => {
+    const controller = new AbortController();
+    cancellableOperations.set(operationId, controller);
+    try {
+      const result = await fileHandler.scanFolder(folderPath, controller.signal);
+      return result;
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log(`Operation ${operationId} aborted: scan-folder`);
+        throw error;
+      }
+      console.error(`Error in scan-folder for ${folderPath}:`, error);
+      throw error;
+    } finally {
+      cancellableOperations.delete(operationId);
+    }
+  });
+
+  // New IPC handler for cancelling ongoing file loading operations
+  ipcMain.handle('cancel-file-loading', async () => {
+    // For simplicity, we'll abort all active cancellable operations.
+    // In a more complex app, you might pass an operationId to cancel a specific one.
+    cancellableOperations.forEach(controller => controller.abort());
+    cancellableOperations.clear(); // Clear all controllers after aborting
+    console.log('All ongoing file loading operations cancelled.');
   });
 
   ipcMain.handle('organize-file', async (event, sourcePath, relativeTargetPath) => {
@@ -227,7 +239,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       const fullTargetPath = path.join(libraryRoot, relativeTargetPath);
 
       if (sourcePath === fullTargetPath) {
-        return { success: true, newPath: sourcePath };
+        return { success: true, newPath: fullTargetPath };
       }
 
       await fileHandler.moveFile(sourcePath, fullTargetPath);
@@ -293,16 +305,16 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
               copy.coverUrl = pathToFileURL(url).href;
             } else if (url === '/placeholder.svg' || url.includes('placeholder')) {
               // FIXED: Use a data URL for placeholder instead of file path
-              copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCI yeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K';
+              copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQ yeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCI yeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K';
             }
           } else {
             // No cover URL - use placeholder
-            copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCI yeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K';
+            copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMzMzMiPgogICAgTm8gQ292ZXIKICA8L3RleHQ+CiAgPHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMzgwIiBoZWlnaHQ9IjU4MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KPC9zdmc+Cg==';
           }
         } catch (e) {
           console.error('Error normalizing coverUrl for comic:', copy.id, e);
           // Fallback to placeholder on error
-          copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCI yeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K';
+          copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMzMzMiPgogICAgTm8gQ292ZXIKICA8L3RleHQ+CiAgPHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMzgwIiBoZWlnaHQ9IjU4MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KPC9zdmc+Cg==';
         }
         return copy;
       });
@@ -337,7 +349,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       }
       
       // Default to placeholder
-      comic.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQ xeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCI yeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K';
+      comic.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMzMzMiPgogICAgTm8gQ292ZXIKICA8L3RleHQ+CiAgPHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMzgwIiBoZWlnaHQ9IjU4MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KPC9zdmc+Cg==';
       
       if (comic.filePath) {
         try {

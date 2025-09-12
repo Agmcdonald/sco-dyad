@@ -124,16 +124,23 @@ class ComicFileHandler {
   /**
    * Recursively walk a directory to find all files
    * @param dir - Directory to walk
+   * @param signal - AbortSignal for cancellation
    * @returns Array of full file paths
    */
-  async _walk(dir) {
+  async _walk(dir, signal) {
+    if (signal && signal.aborted) {
+      throw new Error('Operation aborted', { name: 'AbortError' });
+    }
     try {
       let files = await fs.readdir(dir);
       files = await Promise.all(files.map(async file => {
+          if (signal && signal.aborted) {
+            throw new Error('Operation aborted', { name: 'AbortError' });
+          }
           const filePath = path.join(dir, file);
           try {
             const stats = await fs.stat(filePath);
-            if (stats.isDirectory()) return this._walk(filePath);
+            if (stats.isDirectory()) return this._walk(filePath, signal);
             else if(stats.isFile()) return filePath;
           } catch (error) {
             console.warn(`[FileHandler] Could not stat file ${filePath}:`, error.message);
@@ -142,6 +149,7 @@ class ComicFileHandler {
       }));
       return files.reduce((all, folderContents) => all.concat(folderContents), []).filter(Boolean);
     } catch (error) {
+      if (error.name === 'AbortError') throw error;
       console.error(`[FileHandler] Error walking directory ${dir}:`, error);
       return [];
     }
@@ -160,14 +168,21 @@ class ComicFileHandler {
   /**
    * Scan a folder for comic files
    * @param folderPath - Path to the folder to scan
+   * @param signal - AbortSignal for cancellation
    * @returns Array of comic file information objects
    */
-  async scanFolder(folderPath) {
+  async scanFolder(folderPath, signal) {
+    if (signal && signal.aborted) {
+      throw new Error('Operation aborted', { name: 'AbortError' });
+    }
     try {
       const files = [];
       const entries = await fs.readdir(folderPath, { withFileTypes: true });
 
       for (const entry of entries) {
+        if (signal && signal.aborted) {
+          throw new Error('Operation aborted', { name: 'AbortError' });
+        }
         const fullPath = path.join(folderPath, entry.name);
         
         if (entry.isFile() && this.isComicFile(fullPath)) {
@@ -180,12 +195,13 @@ class ComicFileHandler {
             lastModified: stats.mtime
           });
         } else if (entry.isDirectory()) {
-          const subFiles = await this.scanFolder(fullPath);
+          const subFiles = await this.scanFolder(fullPath, signal); // Pass signal recursively
           files.push(...subFiles);
         }
       }
       return files;
     } catch (error) {
+      if (error.name === 'AbortError') throw error;
       console.error('[FileHandler] Error scanning folder:', error);
       throw error;
     }
@@ -205,9 +221,13 @@ class ComicFileHandler {
   /**
    * Read comic file information (metadata)
    * @param filePath - Path to the comic file
+   * @param signal - AbortSignal for cancellation
    * @returns File information object, including page count
    */
-  async readComicFile(filePath) {
+  async readComicFile(filePath, signal) {
+    if (signal && signal.aborted) {
+      throw new Error('Operation aborted', { name: 'AbortError' });
+    }
     try {
       const stats = await fs.stat(filePath);
       const fileInfo = {
@@ -220,13 +240,15 @@ class ComicFileHandler {
 
       if (['cbz', 'cbr', 'pdf'].includes(fileInfo.type)) {
         try {
-          fileInfo.pageCount = await this.getPageCount(filePath);
+          fileInfo.pageCount = await this.getPageCount(filePath, signal);
         } catch (error) {
+          if (error.name === 'AbortError') throw error;
           console.warn(`[FileHandler] Could not get page count for ${filePath}:`, error.message);
         }
       }
       return fileInfo;
     } catch (error) {
+      if (error.name === 'AbortError') throw error;
       console.error(`[FileHandler] Error reading comic file ${filePath}:`, error);
       throw error;
     }
@@ -235,9 +257,13 @@ class ComicFileHandler {
   /**
    * Get page count from a comic archive or PDF
    * @param filePath - Path to the comic file
+   * @param signal - AbortSignal for cancellation
    * @returns Number of image pages in the archive
    */
-  async getPageCount(filePath) {
+  async getPageCount(filePath, signal) {
+    if (signal && signal.aborted) {
+      throw new Error('Operation aborted', { name: 'AbortError' });
+    }
     const fileType = this.getFileType(filePath);
     
     if (fileType === 'cbz') {
@@ -247,6 +273,7 @@ class ComicFileHandler {
         const entries = await zip.entries();
         return Object.values(entries).filter(e => !e.isDirectory && this.isImageFile(e.name)).length;
       } catch (error) {
+        if (error.name === 'AbortError') throw error;
         console.error(`[FileHandler] Error getting page count from CBZ file ${filePath}:`, error);
         throw new Error(`Failed to get page count from CBZ: ${error.message}`);
       } finally {
@@ -264,9 +291,10 @@ class ComicFileHandler {
           this.unrar(filePath, tempDir),
           new Promise((_, reject) => setTimeout(() => reject(new Error('CBR page count timeout')), 300000)) // Increased timeout to 5 minutes
         ]);
-        const allFiles = await this._walk(tempDir);
+        const allFiles = await this._walk(tempDir, signal); // Pass signal to _walk
         return allFiles.filter(file => this.isImageFile(file)).length;
       } catch (error) {
+        if (error.name === 'AbortError') throw error;
         console.error(`[FileHandler] Error getting page count from CBR file ${filePath}:`, error);
         throw new Error(`Failed to get page count from CBR: ${error.message}`);
       } finally {
@@ -282,6 +310,7 @@ class ComicFileHandler {
         const pdf = await getDocument(data).promise;
         return pdf.numPages;
       } catch (error) {
+        if (error.name === 'AbortError') throw error;
         console.error(`[FileHandler] Error getting page count from PDF file ${filePath}:`, error);
         throw new Error(`Failed to get page count from PDF: ${error.message}`);
       }
