@@ -99,7 +99,12 @@ class ComicDatabase {
   }
 
   saveSetting(key, value) {
-    this.settingsStore.set(key, value);
+    try {
+      this.settingsStore.set(key, value);
+    } catch (error) {
+      console.error(`[DB] Failed to save setting '${key}' with value '${value}':`, error);
+      throw new Error(`Failed to save setting '${key}'. Please check file permissions. Error: ${error.message}`);
+    }
   }
 
   getAllSettings() {
