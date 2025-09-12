@@ -1,7 +1,12 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs').promises;
-const Store = require('electron-store');
+let Store = require('electron-store');
+
+// Handle cases where the module is wrapped in a default export, which can happen with some bundlers.
+if (Store && Store.default) {
+  Store = Store.default;
+}
 
 class ComicDatabase {
   constructor() {
