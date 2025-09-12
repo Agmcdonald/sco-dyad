@@ -1,0 +1,3203 @@
+[
+  {
+    "series": "The Amazing Spider-Man",
+    "publisher": "Marvel Comics",
+    "startYear": 1963,
+    "volumes": [
+      {
+        "volume": "1963",
+        "year": 1963
+      },
+      {
+        "volume": "1999",
+        "year": 1999
+      },
+      {
+        "volume": "2018",
+        "year": 2018
+      }
+    ]
+  },
+  {
+    "series": "Batman",
+    "publisher": "DC Comics",
+    "startYear": 1940,
+    "volumes": [
+      {
+        "volume": "1940",
+        "year": 1940
+      },
+      {
+        "volume": "2016",
+        "year": 2016
+      }
+    ]
+  },
+  {
+    "series": "Action Comics",
+    "publisher": "DC Comics",
+    "startYear": 1938,
+    "volumes": [
+      {
+        "volume": "1938",
+        "year": 1938
+      }
+    ]
+  },
+  {
+    "series": "Detective Comics",
+    "publisher": "DC Comics",
+    "startYear": 1937,
+    "volumes": [
+      {
+        "volume": "1937",
+        "year": 1937
+      }
+    ]
+  },
+  {
+    "series": "Superman",
+    "publisher": "DC Comics",
+    "startYear": 1939,
+    "volumes": [
+      {
+        "volume": "1939",
+        "year": 1939
+      },
+      {
+        "volume": "1987",
+        "year": 1987
+      },
+      {
+        "volume": "2006",
+        "year": 2006
+      },
+      {
+        "volume": "2011",
+        "year": 2011
+      },
+      {
+        "volume": "2016",
+        "year": 2016
+      }
+    ]
+  },
+  {
+    "series": "Wonder Woman",
+    "publisher": "DC Comics",
+    "startYear": 1942,
+    "volumes": [
+      {
+        "volume": "1942",
+        "year": 1942
+      },
+      {
+        "volume": "1987",
+        "year": 1987
+      },
+      {
+        "volume": "2006",
+        "year": 2006
+      },
+      {
+        "volume": "2011",
+        "year": 2011
+      },
+      {
+        "volume": "2016",
+        "year": 2016
+      }
+    ]
+  },
+  {
+    "series": "The Flash",
+    "publisher": "DC Comics",
+    "startYear": 1940,
+    "volumes": [
+      {
+        "volume": "1940",
+        "year": 1940
+      },
+      {
+        "volume": "1959",
+        "year": 1959
+      },
+      {
+        "volume": "1987",
+        "year": 1987
+      },
+      {
+        "volume": "2010",
+        "year": 2010
+      },
+      {
+        "volume": "2016",
+        "year": 2016
+      }
+    ]
+  },
+  {
+    "series": "Green Lantern",
+    "publisher": "DC Comics",
+    "startYear": 1941,
+    "volumes": [
+      {
+        "volume": "1941",
+        "year": 1941
+      },
+      {
+        "volume": "1960",
+        "year": 1960
+      },
+      {
+        "volume": "1990",
+        "year": 1990
+      },
+      {
+        "volume": "2005",
+        "year": 2005
+      },
+      {
+        "volume": "2011",
+        "year": 2011
+      }
+    ]
+  },
+  {
+    "series": "Fantastic Four",
+    "publisher": "Marvel Comics",
+    "startYear": 1961,
+    "volumes": [
+      {
+        "volume": "1961",
+        "year": 1961
+      },
+      {
+        "volume": "1996",
+        "year": 1996
+      },
+      {
+        "volume": "1998",
+        "year": 1998
+      },
+      {
+        "volume": "2014",
+        "year": 2014
+      },
+      {
+        "volume": "2018",
+        "year": 2018
+      }
+    ]
+  },
+  {
+    "series": "The Incredible Hulk",
+    "publisher": "Marvel Comics",
+    "startYear": 1962,
+    "volumes": [
+      {
+        "volume": "1962",
+        "year": 1962
+      },
+      {
+        "volume": "1968",
+        "year": 1968
+      },
+      {
+        "volume": "2000",
+        "year": 2000
+      },
+      {
+        "volume": "2011",
+        "year": 2011
+      }
+    ]
+  },
+  {
+    "series": "The Avengers",
+    "publisher": "Marvel Comics",
+    "startYear": 1963,
+    "volumes": [
+      {
+        "volume": "1963",
+        "year": 1963
+      },
+      {
+        "volume": "1996",
+        "year": 1996
+      },
+      {
+        "volume": "1998",
+        "year": 1998
+      },
+      {
+        "volume": "2010",
+        "year": 2010
+      },
+      {
+        "volume": "2012",
+        "year": 2012
+      },
+      {
+        "volume": "2018",
+        "year": 2018
+      }
+    ]
+  },
+  {
+    "series": "The X-Men",
+    "publisher": "Marvel Comics",
+    "startYear": 1963,
+    "volumes": [
+      {
+        "volume": "1963",
+        "year": 1963
+      },
+      {
+        "volume": "1991",
+        "year": 1991
+      },
+      {
+        "volume": "2004",
+        "year": 2004
+      },
+      {
+        "volume": "2010",
+        "year": 2010
+      },
+      {
+        "volume": "2013",
+        "year": 2013
+      },
+      {
+        "volume": "2019",
+        "year": 2019
+      }
+    ]
+  },
+  {
+    "series": "Iron Man",
+    "publisher": "Marvel Comics",
+    "startYear": 1968,
+    "volumes": [
+      {
+        "volume": "1968",
+        "year": 1968
+      },
+      {
+        "volume": "1996",
+        "year": 1996
+      },
+      {
+        "volume": "1998",
+        "year": 1998
+      },
+      {
+        "volume": "2005",
+        "year": 2005
+      },
+      {
+        "volume": "2012",
+        "year": 2012
+      },
+      {
+        "volume": "2020",
+        "year": 2020
+      }
+    ]
+  },
+  {
+    "series": "Captain America",
+    "publisher": "Marvel Comics",
+    "startYear": 1968,
+    "volumes": [
+      {
+        "volume": "1968",
+        "year": 1968
+      },
+      {
+        "volume": "1996",
+        "year": 1996
+      },
+      {
+        "volume": "1998",
+        "year": 1998
+      },
+      {
+        "volume": "2005",
+        "year": 2005
+      },
+      {
+        "volume": "2011",
+        "year": 2011
+      },
+      {
+        "volume": "2017",
+        "year": 2017
+      }
+    ]
+  },
+  {
+    "series": "Thor",
+    "publisher": "Marvel Comics",
+    "startYear": 1966,
+    "volumes": [
+      {
+        "volume": "1966",
+        "year": 1966
+      },
+      {
+        "volume": "1998",
+        "year": 1998
+      },
+      {
+        "volume": "2007",
+        "year": 2007
+      },
+      {
+        "volume": "2011",
+        "year": 2011
+      },
+      {
+        "volume": "2014",
+        "year": 2014
+      },
+      {
+        "volume": "2018",
+        "year": 2018
+      },
+      {
+        "volume": "2020",
+        "year": 2020
+      }
+    ]
+  },
+  {
+    "series": "What If?",
+    "publisher": "Marvel Comics",
+    "startYear": 1977,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1977
+      },
+      {
+        "volume": "2",
+        "year": 1989
+      }
+    ]
+  },
+  {
+    "series": "Saga",
+    "publisher": "Image Comics",
+    "startYear": 2012,
+    "volumes": [
+      {
+        "volume": "2012",
+        "year": 2012
+      }
+    ]
+  },
+  {
+    "series": "The Walking Dead",
+    "publisher": "Image Comics",
+    "startYear": 2003,
+    "volumes": [
+      {
+        "volume": "2003",
+        "year": 2003
+      }
+    ]
+  },
+  {
+    "series": "Invincible",
+    "publisher": "Image Comics",
+    "startYear": 2003,
+    "volumes": [
+      {
+        "volume": "2003",
+        "year": 2003
+      }
+    ]
+  },
+  {
+    "series": "Spawn",
+    "publisher": "Image Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "Savage Dragon",
+    "publisher": "Image Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Black September",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1995,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1995
+      }
+    ]
+  },
+  {
+    "series": "Break-Thru",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Elven",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1994,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1994
+      }
+    ]
+  },
+  {
+    "series": "Exiles",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Firearm",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Firearm Special",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Freex",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Giant-Size Mantra",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1994,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1994
+      }
+    ]
+  },
+  {
+    "series": "Hardcase",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Mantra",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Night Man",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Prime",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Prototype",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Rune",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1994,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1994
+      }
+    ]
+  },
+  {
+    "series": "Rune vs. Venom",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1995,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1995
+      }
+    ]
+  },
+  {
+    "series": "Rune/Silver Surfer",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1995,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1995
+      }
+    ]
+  },
+  {
+    "series": "Sludge",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Solution",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Ultraforce",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1994,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1994
+      }
+    ]
+  },
+  {
+    "series": "Ultraforce/Avengers",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1995,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1995
+      }
+    ]
+  },
+  {
+    "series": "Ultraverse Unlimited",
+    "publisher": "Malibu (Ultraverse)",
+    "startYear": 1995,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1995
+      }
+    ]
+  },
+  {
+    "series": "Aliens",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1988,
+    "volumes": [
+      {
+        "volume": "1988",
+        "year": 1988
+      }
+    ]
+  },
+  {
+    "series": "Aliens: The Original Series",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1988,
+    "volumes": [
+      {
+        "volume": "1988",
+        "year": 1988
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Book One",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1988,
+    "volumes": [
+      {
+        "volume": "1988",
+        "year": 1988
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Book Two",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1989,
+    "volumes": [
+      {
+        "volume": "1989",
+        "year": 1989
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Earth War",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1990,
+    "volumes": [
+      {
+        "volume": "1990",
+        "year": 1990
+      }
+    ]
+  },
+  {
+    "series": "The American",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1987,
+    "volumes": [
+      {
+        "volume": "1987",
+        "year": 1987
+      }
+    ]
+  },
+  {
+    "series": "The American: Lost in America",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "Barb Wire",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1994,
+    "volumes": [
+      {
+        "volume": "1994",
+        "year": 1994
+      }
+    ]
+  },
+  {
+    "series": "Big Guy and Rusty the Boy Robot",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1995,
+    "volumes": [
+      {
+        "volume": "1995",
+        "year": 1995
+      }
+    ]
+  },
+  {
+    "series": "Black Cross",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1986,
+    "volumes": [
+      {
+        "volume": "1986",
+        "year": 1986
+      }
+    ]
+  },
+  {
+    "series": "Boris the Bear",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1986,
+    "volumes": [
+      {
+        "volume": "1986",
+        "year": 1986
+      }
+    ]
+  },
+  {
+    "series": "Concrete",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1986,
+    "volumes": [
+      {
+        "volume": "1986",
+        "year": 1986
+      }
+    ]
+  },
+  {
+    "series": "Concrete: Fragile Creature",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1991,
+    "volumes": [
+      {
+        "volume": "1991",
+        "year": 1991
+      }
+    ]
+  },
+  {
+    "series": "Dark Horse Presents",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1986,
+    "volumes": [
+      {
+        "volume": "1986",
+        "year": 1986
+      }
+    ]
+  },
+  {
+    "series": "Godzilla",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1987,
+    "volumes": [
+      {
+        "volume": "1987",
+        "year": 1987
+      }
+    ]
+  },
+  {
+    "series": "Godzilla Color Special",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "Grendel",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Grendel Tales",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Grendel: War Child",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "Hard Boiled",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1990,
+    "volumes": [
+      {
+        "volume": "1990",
+        "year": 1990
+      }
+    ]
+  },
+  {
+    "series": "Hellboy: Seed of Destruction",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1994,
+    "volumes": [
+      {
+        "volume": "1994",
+        "year": 1994
+      }
+    ]
+  },
+  {
+    "series": "Hellboy: The Wolves of Saint August",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1994,
+    "volumes": [
+      {
+        "volume": "1994",
+        "year": 1994
+      }
+    ]
+  },
+  {
+    "series": "The Mask",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1991,
+    "volumes": [
+      {
+        "volume": "1991",
+        "year": 1991
+      }
+    ]
+  },
+  {
+    "series": "The Mask Returns",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "The Mask Strikes Back",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1995,
+    "volumes": [
+      {
+        "volume": "1995",
+        "year": 1995
+      }
+    ]
+  },
+  {
+    "series": "Monkeyman and O'Brien",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Next Men",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "Predator",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1989,
+    "volumes": [
+      {
+        "volume": "1989",
+        "year": 1989
+      }
+    ]
+  },
+  {
+    "series": "Predator: Big Game",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1991,
+    "volumes": [
+      {
+        "volume": "1991",
+        "year": 1991
+      }
+    ]
+  },
+  {
+    "series": "Predator: Cold War",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1991,
+    "volumes": [
+      {
+        "volume": "1991",
+        "year": 1991
+      }
+    ]
+  },
+  {
+    "series": "Predator: Concrete Jungle",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1989,
+    "volumes": [
+      {
+        "volume": "1989",
+        "year": 1989
+      }
+    ]
+  },
+  {
+    "series": "Robocop",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "Robocop Versus The Terminator",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "Sin City",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1991,
+    "volumes": [
+      {
+        "volume": "1991",
+        "year": 1991
+      }
+    ]
+  },
+  {
+    "series": "Sin City: A Dame to Kill For",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Sin City: The Big Fat Kill",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1994,
+    "volumes": [
+      {
+        "volume": "1994",
+        "year": 1994
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Dark Empire",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1991,
+    "volumes": [
+      {
+        "volume": "1991",
+        "year": 1991
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Dark Empire II",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1994,
+    "volumes": [
+      {
+        "volume": "1994",
+        "year": 1994
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Heir to the Empire",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1995,
+    "volumes": [
+      {
+        "volume": "1995",
+        "year": 1995
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Tales of the Jedi",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "The Terminator",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1990,
+    "volumes": [
+      {
+        "volume": "1990",
+        "year": 1990
+      }
+    ]
+  },
+  {
+    "series": "The Terminator: The Enemy Within",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1991,
+    "volumes": [
+      {
+        "volume": "1991",
+        "year": 1991
+      }
+    ]
+  },
+  {
+    "series": "The Terminator: Secondary Objectives",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1991,
+    "volumes": [
+      {
+        "volume": "1991",
+        "year": 1991
+      }
+    ]
+  },
+  {
+    "series": "Trekker",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1987,
+    "volumes": [
+      {
+        "volume": "1987",
+        "year": 1987
+      }
+    ]
+  },
+  {
+    "series": "X",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1994,
+    "volumes": [
+      {
+        "volume": "1994",
+        "year": 1994
+      }
+    ]
+  },
+  {
+    "series": "Aliens vs. Predator",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1990,
+    "volumes": [
+      {
+        "volume": "1990",
+        "year": 1990
+      }
+    ]
+  },
+  {
+    "series": "Aliens vs. Predator: The Deadliest of the Species",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Aliens vs. Predator: Booty",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1996,
+    "volumes": [
+      {
+        "volume": "1996",
+        "year": 1996
+      }
+    ]
+  },
+  {
+    "series": "Aliens vs. Predator: War",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1995,
+    "volumes": [
+      {
+        "volume": "1995",
+        "year": 1995
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Colonial Marines",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1995,
+    "volumes": [
+      {
+        "volume": "1995",
+        "year": 1995
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Hive",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Labyrinth",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Music of the Spears",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1994,
+    "volumes": [
+      {
+        "volume": "1994",
+        "year": 1994
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Newt's Tale",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Rogue",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Salvation",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Stronghold",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1994,
+    "volumes": [
+      {
+        "volume": "1994",
+        "year": 1994
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Tribes",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "American Splendor",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Archie vs. Predator",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2015,
+    "volumes": [
+      {
+        "volume": "2015",
+        "year": 2015
+      }
+    ]
+  },
+  {
+    "series": "Astro Boy",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2002,
+    "volumes": [
+      {
+        "volume": "2002",
+        "year": 2002
+      }
+    ]
+  },
+  {
+    "series": "B.P.R.D.",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2002,
+    "volumes": [
+      {
+        "volume": "2002",
+        "year": 2002
+      }
+    ]
+  },
+  {
+    "series": "B.P.R.D.: Hollow Earth",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2002,
+    "volumes": [
+      {
+        "volume": "2002",
+        "year": 2002
+      }
+    ]
+  },
+  {
+    "series": "Battle Gods",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1998,
+    "volumes": [
+      {
+        "volume": "1998",
+        "year": 1998
+      }
+    ]
+  },
+  {
+    "series": "Beasts of Burden",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2009,
+    "volumes": [
+      {
+        "volume": "2009",
+        "year": 2009
+      }
+    ]
+  },
+  {
+    "series": "Berserk",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2003,
+    "volumes": [
+      {
+        "volume": "2003",
+        "year": 2003
+      }
+    ]
+  },
+  {
+    "series": "Black Hammer",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2016,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2016
+      }
+    ]
+  },
+  {
+    "series": "Blade of the Immortal",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1996,
+    "volumes": [
+      {
+        "volume": "1996",
+        "year": 1996
+      }
+    ]
+  },
+  {
+    "series": "The Goon",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1999,
+    "volumes": [
+      {
+        "volume": "1999",
+        "year": 1999
+      }
+    ]
+  },
+  {
+    "series": "The Goon: Chinatown and the Mystery of Mr. Wicker",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "The Goon: Nothin' But Misery",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2003,
+    "volumes": [
+      {
+        "volume": "2003",
+        "year": 2003
+      }
+    ]
+  },
+  {
+    "series": "Ghost",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Ghost/Batgirl",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2000,
+    "volumes": [
+      {
+        "volume": "2000",
+        "year": 2000
+      }
+    ]
+  },
+  {
+    "series": "Ghost Special",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1994,
+    "volumes": [
+      {
+        "volume": "1994",
+        "year": 1994
+      }
+    ]
+  },
+  {
+    "series": "Grendel: Batman",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1996,
+    "volumes": [
+      {
+        "volume": "1996",
+        "year": 1996
+      }
+    ]
+  },
+  {
+    "series": "Grendel: Devil's Legacy",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Grendel: The Devil Inside",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2000,
+    "volumes": [
+      {
+        "volume": "2000",
+        "year": 2000
+      }
+    ]
+  },
+  {
+    "series": "Groo",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1998,
+    "volumes": [
+      {
+        "volume": "1998",
+        "year": 1998
+      }
+    ]
+  },
+  {
+    "series": "Harlan Ellison's Dream Corridor",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1995,
+    "volumes": [
+      {
+        "volume": "1995",
+        "year": 1995
+      }
+    ]
+  },
+  {
+    "series": "Heartbreakers",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "Hellboy: The Chained Coffin",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1998,
+    "volumes": [
+      {
+        "volume": "1998",
+        "year": 1998
+      }
+    ]
+  },
+  {
+    "series": "Hellboy: The Corpse",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1998,
+    "volumes": [
+      {
+        "volume": "1998",
+        "year": 1998
+      }
+    ]
+  },
+  {
+    "series": "Hellboy: Wake the Devil",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1996,
+    "volumes": [
+      {
+        "volume": "1996",
+        "year": 1996
+      }
+    ]
+  },
+  {
+    "series": "Indiana Jones and the Fate of Atlantis",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1991,
+    "volumes": [
+      {
+        "volume": "1991",
+        "year": 1991
+      }
+    ]
+  },
+  {
+    "series": "Indiana Jones and the Iron Phoenix",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1994,
+    "volumes": [
+      {
+        "volume": "1994",
+        "year": 1994
+      }
+    ]
+  },
+  {
+    "series": "Indiana Jones and the Sargasso Pirates",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1995,
+    "volumes": [
+      {
+        "volume": "1995",
+        "year": 1995
+      }
+    ]
+  },
+  {
+    "series": "Indiana Jones and the Spear of Destiny",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1995,
+    "volumes": [
+      {
+        "volume": "1995",
+        "year": 1995
+      }
+    ]
+  },
+  {
+    "series": "Indiana Jones and the Thunder in the Orient",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "The Mask: The Hunt for Green October",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1995,
+    "volumes": [
+      {
+        "volume": "1995",
+        "year": 1995
+      }
+    ]
+  },
+  {
+    "series": "The Mask: World Tour",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1995,
+    "volumes": [
+      {
+        "volume": "1995",
+        "year": 1995
+      }
+    ]
+  },
+  {
+    "series": "Madman Comics",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1994,
+    "volumes": [
+      {
+        "volume": "1994",
+        "year": 1994
+      }
+    ]
+  },
+  {
+    "series": "Madman Adventures",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "Mind MGMT",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2012,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2012
+      }
+    ]
+  },
+  {
+    "series": "Nexus",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "Predator vs. Magnus Robot Fighter",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "Predator vs. Judge Dredd",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1997,
+    "volumes": [
+      {
+        "volume": "1997",
+        "year": 1997
+      }
+    ]
+  },
+  {
+    "series": "Predator: Bad Blood",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Predator: Hell & Hot Water",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1996,
+    "volumes": [
+      {
+        "volume": "1996",
+        "year": 1996
+      }
+    ]
+  },
+  {
+    "series": "Predator: Race War",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "The Ring of the Nibelung",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2000,
+    "volumes": [
+      {
+        "volume": "2000",
+        "year": 2000
+      }
+    ]
+  },
+  {
+    "series": "Serenity: Those Left Behind",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Crimson Empire",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1997,
+    "volumes": [
+      {
+        "volume": "1997",
+        "year": 1997
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Crimson Empire II - Council of Blood",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1998,
+    "volumes": [
+      {
+        "volume": "1998",
+        "year": 1998
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Dark Lords of the Sith",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1994,
+    "volumes": [
+      {
+        "volume": "1994",
+        "year": 1994
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: The Fall of the Sith Empire",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1997,
+    "volumes": [
+      {
+        "volume": "1997",
+        "year": 1997
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: The Golden Age of the Sith",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1996,
+    "volumes": [
+      {
+        "volume": "1996",
+        "year": 1996
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Jedi Academy - Leviathan",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1998,
+    "volumes": [
+      {
+        "volume": "1998",
+        "year": 1998
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Jedi vs. Sith",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2001,
+    "volumes": [
+      {
+        "volume": "2001",
+        "year": 2001
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Mara Jade - By the Emperor's Hand",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1998,
+    "volumes": [
+      {
+        "volume": "1998",
+        "year": 1998
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: The Protocol Offensive",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1997,
+    "volumes": [
+      {
+        "volume": "1997",
+        "year": 1997
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Republic",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1998,
+    "volumes": [
+      {
+        "volume": "1998",
+        "year": 1998
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Shadows of the Empire",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1996,
+    "volumes": [
+      {
+        "volume": "1996",
+        "year": 1996
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Splinter of the Mind's Eye",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1995,
+    "volumes": [
+      {
+        "volume": "1995",
+        "year": 1995
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Union",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1999,
+    "volumes": [
+      {
+        "volume": "1999",
+        "year": 1999
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: X-Wing Rogue Squadron",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1995,
+    "volumes": [
+      {
+        "volume": "1995",
+        "year": 1995
+      }
+    ]
+  },
+  {
+    "series": "The Terminator: Hunters and Killers",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "The Terminator: RoboCop - Kill Human",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "The Terminator: The Burning Earth",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1990,
+    "volumes": [
+      {
+        "volume": "1990",
+        "year": 1990
+      }
+    ]
+  },
+  {
+    "series": "The Thing from Another World",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1991,
+    "volumes": [
+      {
+        "volume": "1991",
+        "year": 1991
+      }
+    ]
+  },
+  {
+    "series": "The Thing from Another World: Climate of Fear",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1992,
+    "volumes": [
+      {
+        "volume": "1992",
+        "year": 1992
+      }
+    ]
+  },
+  {
+    "series": "The Thing from Another World: Eternal Vows",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "The Thing from Another World: The Questionable Research",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "Usagi Yojimbo",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1993,
+    "volumes": [
+      {
+        "volume": "1993",
+        "year": 1993
+      }
+    ]
+  },
+  {
+    "series": "The Umbrella Academy: Apocalypse Suite",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "The Umbrella Academy: Dallas",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2008,
+    "volumes": [
+      {
+        "volume": "2008",
+        "year": 2008
+      }
+    ]
+  },
+  {
+    "series": "Vampire Hunter D",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "Will to Power",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1994,
+    "volumes": [
+      {
+        "volume": "1994",
+        "year": 1994
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Republic",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2002,
+    "volumes": [
+      {
+        "volume": "2002",
+        "year": 2002
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Empire",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2002,
+    "volumes": [
+      {
+        "volume": "2002",
+        "year": 2002
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Legacy",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2006,
+    "volumes": [
+      {
+        "volume": "2006",
+        "year": 2006
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Knights of the Old Republic",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2006,
+    "volumes": [
+      {
+        "volume": "2006",
+        "year": 2006
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Tales",
+    "publisher": "Dark Horse Comics",
+    "startYear": 1999,
+    "volumes": [
+      {
+        "volume": "1999",
+        "year": 1999
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Dark Times",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2006,
+    "volumes": [
+      {
+        "volume": "2006",
+        "year": 2006
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Infinities",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2001,
+    "volumes": [
+      {
+        "volume": "2001",
+        "year": 2001
+      }
+    ]
+  },
+  {
+    "series": "Lobster Johnson",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "Abe Sapien",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2008,
+    "volumes": [
+      {
+        "volume": "2008",
+        "year": 2008
+      }
+    ]
+  },
+  {
+    "series": "Witchfinder",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2009,
+    "volumes": [
+      {
+        "volume": "2009",
+        "year": 2009
+      }
+    ]
+  },
+  {
+    "series": "Buffy the Vampire Slayer Season 8",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "Conan",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2003,
+    "volumes": [
+      {
+        "volume": "2003",
+        "year": 2003
+      }
+    ]
+  },
+  {
+    "series": "The Goon (Dark Horse run)",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2003,
+    "volumes": [
+      {
+        "volume": "2003",
+        "year": 2003
+      }
+    ]
+  },
+  {
+    "series": "Serenity",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "Alien vs. Predator: Thrill of the Hunt",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2004,
+    "volumes": [
+      {
+        "volume": "2004",
+        "year": 2004
+      }
+    ]
+  },
+  {
+    "series": "Chronicles of Conan",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2003,
+    "volumes": [
+      {
+        "volume": "2003",
+        "year": 2003
+      }
+    ]
+  },
+  {
+    "series": "Fear Agent",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "Concrete: The Human Dilemma",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2004,
+    "volumes": [
+      {
+        "volume": "2004",
+        "year": 2004
+      }
+    ]
+  },
+  {
+    "series": "The Escapist",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2004,
+    "volumes": [
+      {
+        "volume": "2004",
+        "year": 2004
+      }
+    ]
+  },
+  {
+    "series": "Grendel: Black, White, and Red",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2000,
+    "volumes": [
+      {
+        "volume": "2000",
+        "year": 2000
+      }
+    ]
+  },
+  {
+    "series": "Hellboy: Conqueror Worm",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2001,
+    "volumes": [
+      {
+        "volume": "2001",
+        "year": 2001
+      }
+    ]
+  },
+  {
+    "series": "Hellboy: The Third Wish",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2002,
+    "volumes": [
+      {
+        "volume": "2002",
+        "year": 2002
+      }
+    ]
+  },
+  {
+    "series": "Hellboy: The Island",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "Hellboy: Darkness Calls",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "Hellboy: The Wild Hunt",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2008,
+    "volumes": [
+      {
+        "volume": "2008",
+        "year": 2008
+      }
+    ]
+  },
+  {
+    "series": "Grendel: Devil's Reign",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2002,
+    "volumes": [
+      {
+        "volume": "2002",
+        "year": 2002
+      }
+    ]
+  },
+  {
+    "series": "Grendel: Behold the Devil",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "Conan and the Jewels of Gwahlur",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "Conan: The Blood-Stained Crown",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2006,
+    "volumes": [
+      {
+        "volume": "2006",
+        "year": 2006
+      }
+    ]
+  },
+  {
+    "series": "Conan and the Midnight God",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2007,
+    "volumes": [
+      {
+        "volume": "2007",
+        "year": 2007
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Clone Wars Adventures",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2004,
+    "volumes": [
+      {
+        "volume": "2004",
+        "year": 2004
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: General Grievous",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Obsession",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2004,
+    "volumes": [
+      {
+        "volume": "2004",
+        "year": 2004
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Purge",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "Star Wars: Visionaries",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2005,
+    "volumes": [
+      {
+        "volume": "2005",
+        "year": 2005
+      }
+    ]
+  },
+  {
+    "series": "Lady Killer",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2015,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2015
+      }
+    ]
+  },
+  {
+    "series": "Dept. H",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2016,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2016
+      }
+    ]
+  },
+  {
+    "series": "Resident Alien",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2012,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2012
+      }
+    ]
+  },
+  {
+    "series": "The Massive",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2012,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2012
+      }
+    ]
+  },
+  {
+    "series": "Colder",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2012,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2012
+      }
+    ]
+  },
+  {
+    "series": "B.P.R.D.: Hell on Earth",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2010,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2010
+      }
+    ]
+  },
+  {
+    "series": "Hellboy in Hell",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2012,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2012
+      }
+    ]
+  },
+  {
+    "series": "Baltimore",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2010,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2010
+      }
+    ]
+  },
+  {
+    "series": "Hellboy and the B.P.R.D.",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2014,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2014
+      }
+    ]
+  },
+  {
+    "series": "Witchfinder: Mysteries of Unland",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2014,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2014
+      }
+    ]
+  },
+  {
+    "series": "Frankenstein Underground",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2015,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2015
+      }
+    ]
+  },
+  {
+    "series": "Buffy the Vampire Slayer Season 9",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2011,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2011
+      }
+    ]
+  },
+  {
+    "series": "Buffy the Vampire Slayer Season 10",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2014,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2014
+      }
+    ]
+  },
+  {
+    "series": "Buffy the Vampire Slayer Season 11",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2016,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2016
+      }
+    ]
+  },
+  {
+    "series": "Buffy the Vampire Slayer Season 12",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2018,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2018
+      }
+    ]
+  },
+  {
+    "series": "Angel & Faith",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2011,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2011
+      }
+    ]
+  },
+  {
+    "series": "Conan the Barbarian",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2012,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2012
+      }
+    ]
+  },
+  {
+    "series": "Avatar: The Last Airbender",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2012,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2012
+      }
+    ]
+  },
+  {
+    "series": "The Legend of Korra",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2017,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2017
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Fire and Stone",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2014,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2014
+      }
+    ]
+  },
+  {
+    "series": "Predator: Fire and Stone",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2014,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2014
+      }
+    ]
+  },
+  {
+    "series": "Prometheus: Fire and Stone",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2014,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2014
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Defiance",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2016,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2016
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Dead Orbit",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2017,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2017
+      }
+    ]
+  },
+  {
+    "series": "Aliens: Resistance",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2019,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2019
+      }
+    ]
+  },
+  {
+    "series": "Dark Horse Presents (revival)",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2011,
+    "volumes": [
+      {
+        "volume": "2",
+        "year": 2011
+      }
+    ]
+  },
+  {
+    "series": "Ether",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2016,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2016
+      }
+    ]
+  },
+  {
+    "series": "American Gods",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2017,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2017
+      }
+    ]
+  },
+  {
+    "series": "Fight Club 2",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2015,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2015
+      }
+    ]
+  },
+  {
+    "series": "Fight Club 3",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2019,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2019
+      }
+    ]
+  },
+  {
+    "series": "X (revival)",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2013,
+    "volumes": [
+      {
+        "volume": "2",
+        "year": 2013
+      }
+    ]
+  },
+  {
+    "series": "Hellboy and the B.P.R.D. (2020s minis)",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2020,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2020
+      }
+    ]
+  },
+  {
+    "series": "Frankenstein: New World",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2022,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2022
+      }
+    ]
+  },
+  {
+    "series": "Koschei in Hell",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2022,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2022
+      }
+    ]
+  },
+  {
+    "series": "Sir Edward Grey: Acheron",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2021,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2021
+      }
+    ]
+  },
+  {
+    "series": "Hellboy in Love",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2022,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2022
+      }
+    ]
+  },
+  {
+    "series": "Stranger Things: Into the Fire",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2020,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2020
+      }
+    ]
+  },
+  {
+    "series": "Stranger Things: Tomb of Ybwen",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2021,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2021
+      }
+    ]
+  },
+  {
+    "series": "Stranger Things: Kamchatka",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2022,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2022
+      }
+    ]
+  },
+  {
+    "series": "The Witcher: Fading Memories",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2020,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2020
+      }
+    ]
+  },
+  {
+    "series": "The Witcher: Witch’s Lament",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2021,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2021
+      }
+    ]
+  },
+  {
+    "series": "The Witcher: The Ballad of Two Wolves",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2022,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2022
+      }
+    ]
+  },
+  {
+    "series": "Cyberpunk 2077: Trauma Team",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2020,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2020
+      }
+    ]
+  },
+  {
+    "series": "Cyberpunk 2077: You Have My Word",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2021,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2021
+      }
+    ]
+  },
+  {
+    "series": "Cyberpunk 2077: XOXO",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2023,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2023
+      }
+    ]
+  },
+  {
+    "series": "Overwatch: New Blood",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2022,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2022
+      }
+    ]
+  },
+  {
+    "series": "Dragon Age: The Missing",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2023,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2023
+      }
+    ]
+  },
+  {
+    "series": "Critical Role: Vox Machina Origins (Vol 3+)",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2020,
+    "volumes": [
+      {
+        "volume": "3",
+        "year": 2020
+      }
+    ]
+  },
+  {
+    "series": "Avatar: The Last Airbender (OGNs 2020s)",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2020,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2020
+      }
+    ]
+  },
+  {
+    "series": "The Legend of Korra (OGNs 2020s)",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2020,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2020
+      }
+    ]
+  },
+  {
+    "series": "Blue Book",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2023,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2023
+      }
+    ]
+  },
+  {
+    "series": "Minor Threats",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2022,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2022
+      }
+    ]
+  },
+  {
+    "series": "Maskerade",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2022,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2022
+      }
+    ]
+  },
+  {
+    "series": "The Oddly Pedestrian Life of Christopher Chaos",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2023,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2023
+      }
+    ]
+  },
+  {
+    "series": "Hairball",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2023,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2023
+      }
+    ]
+  },
+  {
+    "series": "Survival Street",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2022,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2022
+      }
+    ]
+  },
+  {
+    "series": "Quick Stops",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2022,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2022
+      }
+    ]
+  },
+  {
+    "series": "We Have Demons",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2022,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2022
+      }
+    ]
+  },
+  {
+    "series": "Clear",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2023,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2023
+      }
+    ]
+  },
+  {
+    "series": "Barnstormers",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2023,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2023
+      }
+    ]
+  },
+  {
+    "series": "Duck and Cover",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2023,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2023
+      }
+    ]
+  },
+  {
+    "series": "Count Crowley: Amateur Midnight Monster Hunter",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2020,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2020
+      }
+    ]
+  },
+  {
+    "series": "Lucky Devil",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2021,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2021
+      }
+    ]
+  },
+  {
+    "series": "Masters of the Universe: Revelation",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2021,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2021
+      }
+    ]
+  },
+  {
+    "series": "Resident Alien: The Book of Love",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2022,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2022
+      }
+    ]
+  },
+  {
+    "series": "Assassin’s Creed: Valhalla",
+    "publisher": "Dark Horse Comics",
+    "startYear": 2021,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 2021
+      }
+    ]
+  },
+  {
+    "series": "Animosity",
+    "publisher": "AfterShock Comics",
+    "startYear": 2016,
+    "volumes": [
+      {
+        "volume": "2016",
+        "year": 2016
+      },
+      {
+        "volume": "2017",
+        "year": 2017
+      },
+      {
+        "volume": "2018",
+        "year": 2018
+      }
+    ]
+  }
+]

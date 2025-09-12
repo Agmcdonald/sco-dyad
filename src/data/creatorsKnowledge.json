@@ -1,0 +1,691 @@
+[
+  {
+    "id": "creator-1755991000006-f",
+    "name": "Al Ewing",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000001-a",
+    "name": "Amanda Conner",
+    "roles": [
+      "Artist",
+      "Cover Artist",
+      "Inks",
+      "Pencils",
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000002-b",
+    "name": "Becky Cloonan",
+    "roles": [
+      "Artist",
+      "Cover Artist",
+      "Inks",
+      "Pencils",
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000003-c",
+    "name": "Ben Percy",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000004-d",
+    "name": "Brandon Thomas",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000036-p",
+    "name": "Brian Azzarello",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000021-a",
+    "name": "Brian K. Vaughan",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000016-p",
+    "name": "Brian Michael Bendis",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000005-e",
+    "name": "Bryan Edward Hill",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000006-f",
+    "name": "Bryan Hill",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000040-t",
+    "name": "Charles Soule",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000002-b",
+    "name": "Chip Zdarsky",
+    "roles": [
+      "Artist",
+      "Cover Artist",
+      "Inks",
+      "Pencils",
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000007-g",
+    "name": "Christos Gage",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000008-h",
+    "name": "Christopher Cantwell",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000009-i",
+    "name": "Christopher Golden",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000029-i",
+    "name": "Christopher Priest",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000010-j",
+    "name": "Christopher Sebela",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000034-n",
+    "name": "Cullen Bunn",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000011-k",
+    "name": "Dan Jurgens",
+    "roles": [
+      "Artist",
+      "Cover Artist",
+      "Inks",
+      "Pencils",
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000033-m",
+    "name": "Dan Slott",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000012-l",
+    "name": "David Walker",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000013-m",
+    "name": "Dennis Hopeless",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000008-h",
+    "name": "Donny Cates",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000017-q",
+    "name": "Ed Brubaker",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000014-n",
+    "name": "Fabian Nicieza",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000011-k",
+    "name": "G. Willow Wilson",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000015-o",
+    "name": "Gail Simone",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000030-j",
+    "name": "Garth Ennis",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000020-t",
+    "name": "Gene Luen Yang",
+    "roles": [
+      "Artist",
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000039-s",
+    "name": "Geoff Johns",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000027-g",
+    "name": "Grant Morrison",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000018-r",
+    "name": "Greg Rucka",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000016-p",
+    "name": "Howard Chaykin",
+    "roles": [
+      "Artist",
+      "Cover Artist",
+      "Inks",
+      "Pencils",
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000001-a",
+    "name": "James Tynion IV",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000009-i",
+    "name": "Jason Aaron",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000003-c",
+    "name": "Jeff Lemire",
+    "roles": [
+      "Artist",
+      "Colors",
+      "Cover Artist",
+      "Inks",
+      "Pencils",
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000017-q",
+    "name": "Jim Zub",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000018-r",
+    "name": "Jimmy Palmiotti",
+    "roles": [
+      "Inks",
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000019-s",
+    "name": "Jody Houser",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000010-j",
+    "name": "Jonathan Hickman",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000020-t",
+    "name": "Joshua Williamson",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000021-u",
+    "name": "Justin Jordan",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000023-c",
+    "name": "Kelly Sue DeConnick",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000022-v",
+    "name": "Kelly Sue McCormick",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000005-e",
+    "name": "Kelly Thompson",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000007-g",
+    "name": "Kieron Gillen",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000023-w",
+    "name": "Marc Guggenheim",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000024-x",
+    "name": "Marguerite Bennett",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000037-q",
+    "name": "Mark Millar",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000025-y",
+    "name": "Mark Russell",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000019-s",
+    "name": "Mark Waid",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000022-b",
+    "name": "Matt Fraction",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000026-z",
+    "name": "Matt Kindt",
+    "roles": [
+      "Artist",
+      "Colors",
+      "Cover Artist",
+      "Inks",
+      "Pencils",
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000027-aa",
+    "name": "Matthew Rosenberg",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000024-d",
+    "name": "Marjorie Liu",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000038-r",
+    "name": "Mike Mignola",
+    "roles": [
+      "Artist",
+      "Cover Artist",
+      "Inks",
+      "Pencils",
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000028-h",
+    "name": "Neil Gaiman",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000028-ab",
+    "name": "Paul Jenkins",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000029-ac",
+    "name": "Peter David",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000032-l",
+    "name": "Peter J. Tomasi",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000030-ad",
+    "name": "Peter Milligan",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000031-ae",
+    "name": "Phillip Kennedy Johnson",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000025-e",
+    "name": "Rainbow Rowell",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000013-m",
+    "name": "Ram V",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000035-o",
+    "name": "Robert Kirkman",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000012-l",
+    "name": "Saladin Ahmed",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000032-af",
+    "name": "Sam Humphries",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000033-ag",
+    "name": "Scott Lobdell",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000015-o",
+    "name": "Scott Snyder",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000034-ah",
+    "name": "Si Spurrier",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000035-ai",
+    "name": "Siya Oum",
+    "roles": [
+      "Artist",
+      "Colors",
+      "Cover Artist",
+      "Inks",
+      "Pencils",
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000036-aj",
+    "name": "Skottie Young",
+    "roles": [
+      "Artist",
+      "Cover Artist",
+      "Inks",
+      "Pencils",
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000037-ak",
+    "name": "Steve Orlando",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000026-f",
+    "name": "Ta-Nehisi Coates",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000038-al",
+    "name": "Tim Seeley",
+    "roles": [
+      "Artist",
+      "Cover Artist",
+      "Inks",
+      "Pencils",
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000039-am",
+    "name": "Tini Howard",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000004-d",
+    "name": "Tom King",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755991000014-n",
+    "name": "Tom Taylor",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1756000000040-an",
+    "name": "Vita Ayala",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "creator-1755992000031-k",
+    "name": "Warren Ellis",
+    "roles": [
+      "Writer"
+    ],
+    "notes": ""
+  }
+]

@@ -1,0 +1,133 @@
+export type ContentRating = 'E' | 'T' | 'T+' | 'M';
+
+export interface Creator {
+  name: string;
+  role: string;
+}
+
+export interface NewComic {
+  id: string; // Add id to NewComic
+  series: string;
+  issue: string;
+  year: number;
+  publisher: string;
+  volume: string;
+  title?: string; // Name of the specific issue
+  publicationDate?: string; // Specific publication date, e.g., "2023-10-25"
+  summary?: string;
+  creators?: Creator[];
+  rating?: number;
+  contentRating?: ContentRating;
+  genre?: string;
+  characters?: string;
+  price?: string; // Issue price
+  barcode?: string; // Issue barcode
+  languageCode?: string; // Language code
+  countryCode?: string; // Series country code
+}
+
+export interface Comic extends NewComic {
+  // id: string; // Already inherited from NewComic
+  coverUrl: string;
+  dateAdded: Date;
+  filePath?: string;
+  metadataLastChecked?: string;
+  ignoreInScans?: boolean; // New field to exclude from metadata scans
+  isSeriesCover?: boolean; // Whether this comic's cover should be used for the series
+  lastReadPage?: number;
+  totalPages?: number;
+}
+
+export interface ReadingListItem {
+  id: string;
+  comicId: string;
+  title: string;
+  series: string;
+  issue: string;
+  publisher: string;
+  year: number;
+  priority: 'low' | 'medium' | 'high';
+  completed: boolean;
+  dateAdded: Date;
+  rating?: number; // 0-6 rating system
+  dateCompleted?: Date;
+}
+
+export interface RecentlyReadComic {
+  id: string;
+  comicId: string;
+  title: string;
+  series: string;
+  issue: string;
+  publisher: string;
+  year: number;
+  coverUrl: string;
+  dateRead: Date;
+  rating?: number; // 0-6 rating system
+}
+
+export type FileStatus = "Pending" | "Success" | "Warning" | "Error";
+export type Confidence = "High" | "Medium" | "Low";
+
+export interface QueuedFile {
+  id: string;
+  name: string;
+  path: string;
+  series: string | null;
+  issue: string | null;
+  year: number | null;
+  publisher: string | null;
+  volume?: string | null;
+  ofTotal?: string | null; // New field to store the 'of #' part
+  confidence: Confidence | null;
+  status: FileStatus;
+  pageCount?: number;
+}
+
+export type SelectableItem = (Comic & { type: 'comic' }) | (QueuedFile & { type: 'file' });
+
+export type ActionType = "success" | "error" | "info" | "warning";
+
+export type UndoPayload =
+  | { type: 'ADD_COMIC'; payload: { comicId: string, originalFile: QueuedFile } }
+  | { type: 'SKIP_FILE'; payload: { skippedFile: QueuedFile } };
+
+export interface RecentAction {
+  id: number;
+  type: ActionType;
+  message: string;
+  timestamp: Date;
+  undo?: UndoPayload;
+}
+
+export interface AppSettings {
+  comicVineApiKey: string;
+  keepOriginalFiles: boolean;
+  autoScanOnStartup: boolean;
+  folderNameFormat: string;
+  fileNameFormat: string;
+  libraryPath: string;
+  hasLaunchedBefore?: boolean; // New property
+}
+
+export interface ComicKnowledge {
+  series: string;
+  publisher: string;
+  startYear: number;
+  volumes: Array<{
+    volume: string;
+    year: number;
+  }>;
+}
+
+export interface CreatorKnowledge {
+  id: string;
+  name: string;
+  roles: string[];
+  notes?: string;
+}
+
+export interface KnowledgeBase {
+  series: ComicKnowledge[];
+  creators: CreatorKnowledge[];
+}
