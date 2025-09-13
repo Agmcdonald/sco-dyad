@@ -12,7 +12,7 @@ import { Comic } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess, showError } from "@/utils/toast";
 import BulkEditComicsModal from "./BulkEditComicsModal";
-import BulkFixCoversModal from "./components/BulkFixCoversModal";
+import BulkFixCoversModal from "./BulkFixCoversModal"; // Corrected import path
 
 interface LibraryBulkActionsProps {
   comics: Comic[]; // All comics in the current filtered/sorted view
