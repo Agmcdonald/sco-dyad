@@ -36,6 +36,7 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
   const [isLoadingPages, setIsLoadingPages] = useState(false);
   const [pageImages, setPageImages] = useState<Record<string, string>>({});
   const [pageLoadError, setPageLoadError] = useState("");
+  const [cbrTempDir, setCbrTempDir] = useState<string | null>(null); // State for CBR temp directory
 
   // Load available pages from the comic file
   useEffect(() => {
@@ -44,36 +45,54 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
       
       setIsLoadingPages(true);
       setPageLoadError("");
+      setAvailablePages([]); // Clear previous pages
+      setPageImages({}); // Clear previous images
+
+      const isCbrFile = comic.filePath.toLowerCase().endsWith('.cbr');
+
       try {
-        console.log('[FIX-COVER] Loading pages for:', comic.filePath);
-        const pages = await electronAPI.getComicPages(comic.filePath);
-        console.log('[FIX-COVER] Found pages:', pages);
+        let pagesList: string[] = [];
+        let currentCbrTempDir: string | null = null;
+
+        if (isCbrFile) {
+          console.log('[FIX-COVER] Preparing CBR for reading:', comic.filePath);
+          const { tempDir, pages } = await electronAPI.prepareCbrForReading(comic.filePath);
+          currentCbrTempDir = tempDir;
+          pagesList = pages;
+          setCbrTempDir(tempDir); // Store tempDir in state
+        } else {
+          console.log('[FIX-COVER] Loading pages for:', comic.filePath);
+          pagesList = await electronAPI.getComicPages(comic.filePath);
+        }
         
-        if (!pages || pages.length === 0) {
+        if (!pagesList || pagesList.length === 0) {
           setPageLoadError("No pages found in comic file. The file might be corrupted or in an unsupported format.");
-          setAvailablePages([]);
           return;
         }
         
-        setAvailablePages(pages.slice(0, 10)); // Show first 10 pages
-        
-        // Load thumbnails for the first few pages
+        setAvailablePages(pagesList.slice(0, 10)); // Show first 10 pages
+
         const thumbnails: Record<string, string> = {};
-        for (let i = 0; i < Math.min(pages.length, 5); i++) {
+        for (let i = 0; i < Math.min(pagesList.length, 5); i++) {
+          const pageName = pagesList[i];
           try {
-            console.log(`[FIX-COVER] Loading thumbnail for page: ${pages[i]}`);
-            const pageDataUrl = await electronAPI.getComicPageDataUrl(comic.filePath!, pages[i]);
-            thumbnails[pages[i]] = pageDataUrl;
-            console.log(`[FIX-COVER] Successfully loaded thumbnail for page: ${pages[i]}`);
+            console.log(`[FIX-COVER] Loading thumbnail for page: ${pageName}`);
+            let pageDataUrl;
+            if (isCbrFile && currentCbrTempDir) {
+              pageDataUrl = await electronAPI.getPageDataUrlFromTemp(currentCbrTempDir, pageName);
+            } else {
+              pageDataUrl = await electronAPI.getComicPageDataUrl(comic.filePath!, pageName);
+            }
+            thumbnails[pageName] = pageDataUrl;
+            console.log(`[FIX-COVER] Successfully loaded thumbnail for page: ${pageName}`);
           } catch (error) {
-            console.warn(`[FIX-COVER] Could not load thumbnail for page ${pages[i]}:`, error);
+            console.warn(`[FIX-COVER] Could not load thumbnail for page ${pageName}:`, error);
           }
         }
         setPageImages(thumbnails);
       } catch (error) {
         console.error('[FIX-COVER] Error loading comic pages:', error);
         setPageLoadError(`Error loading pages: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        setAvailablePages([]);
       } finally {
         setIsLoadingPages(false);
       }
@@ -84,6 +103,17 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
     }
   }, [isOpen, isElectron, electronAPI, comic.filePath]);
 
+  // Cleanup temporary directory when modal closes or component unmounts
+  useEffect(() => {
+    return () => {
+      if (cbrTempDir && electronAPI) {
+        console.log('[FIX-COVER] Cleaning up CBR temp directory:', cbrTempDir);
+        electronAPI.cleanupTempDir(cbrTempDir);
+        setCbrTempDir(null); // Reset state
+      }
+    };
+  }, [cbrTempDir, electronAPI]);
+
   const handleReextractCover = async () => {
     if (!isElectron || !electronAPI || !comic.filePath) {
       showError("Cover re-extraction is only available in the desktop app.");
@@ -92,6 +122,7 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
 
     setIsExtracting(true);
     try {
+      // The IPC handler 'extract-cover' now correctly calls fileHandler.extractCoverToPublic
       const newCoverUrl = await electronAPI.extractCover(comic.filePath);
       const updatedComic = { ...comic, coverUrl: newCoverUrl };
       await updateComic(updatedComic);
@@ -110,10 +141,13 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
 
     try {
       console.log('[FIX-COVER] Using page as cover:', pageName);
-      // Get the page as a data URL
-      const pageDataUrl = await electronAPI.getComicPageDataUrl(comic.filePath, pageName);
+      let pageDataUrl;
+      if (cbrTempDir) { // If it's a CBR, use the temp directory
+        pageDataUrl = await electronAPI.getPageDataUrlFromTemp(cbrTempDir, pageName);
+      } else { // For CBZ/PDF, use the original file path
+        pageDataUrl = await electronAPI.getComicPageDataUrl(comic.filePath, pageName);
+      }
       
-      // Use the data URL directly as the cover
       const updatedComic = { ...comic, coverUrl: pageDataUrl };
       await updateComic(updatedComic);
       showSuccess(`Set page "${pageName}" as the cover!`);
