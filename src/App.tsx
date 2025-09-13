@@ -52,7 +52,7 @@ const Root = () => {
     <>
       <ElectronIntegration />
       <HelpManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
-      {/* <FirstLaunchModal /> */}
+      <FirstLaunchModal /> {/* Uncommented FirstLaunchModal */}
       <Outlet />
     </>
   );
