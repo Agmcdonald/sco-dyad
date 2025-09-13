@@ -10,11 +10,12 @@ interface LibraryGridProps {
   sortOption: string;
   onSeriesDoubleClick?: (seriesName: string) => void;
   onToggleInspector?: () => void;
+  selectionMode: boolean; // Added selectionMode prop
 }
 
-const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onToggleInspector }: LibraryGridProps) => {
+const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onToggleInspector, selectionMode }: LibraryGridProps) => {
   const [selectedComics, setSelectedComics] = useState<string[]>([]);
-  const [selectionMode, setSelectionMode] = useState(false);
+  // selectionMode is now passed as a prop, no longer managed internally
 
   // Group comics by publisher when sorting by publisher
   const groupedComics = useMemo(() => {
@@ -42,12 +43,7 @@ const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onTog
     return [{ publisher: null, comics }];
   }, [comics, sortOption]);
 
-  const handleToggleSelectionMode = () => {
-    setSelectionMode(!selectionMode);
-    if (selectionMode) {
-      setSelectedComics([]);
-    }
-  };
+  // No longer need handleToggleSelectionMode here
 
   const handleComicSelection = (comicId: string, selected: boolean) => {
     if (selected) {
@@ -80,24 +76,7 @@ const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onTog
 
   return (
     <div className="space-y-4">
-      {/* Selection Mode Toggle */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="selection-mode"
-            checked={selectionMode}
-            onCheckedChange={handleToggleSelectionMode}
-          />
-          <label htmlFor="selection-mode" className="text-sm font-medium">
-            Selection Mode
-          </label>
-        </div>
-        {selectionMode && selectedComics.length > 0 && (
-          <div className="text-sm text-muted-foreground">
-            {selectedComics.length} comic{selectedComics.length !== 1 ? 's' : ''} selected
-          </div>
-        )}
-      </div>
+      {/* Removed Selection Mode Toggle from here */}
 
       {/* Bulk Actions */}
       {selectionMode && (

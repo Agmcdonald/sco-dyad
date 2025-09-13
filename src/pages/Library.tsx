@@ -24,6 +24,8 @@ import { useAppContext } from "@/context/AppContext";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { Comic, LibraryViewMode } from "@/types";
 import { RATING_EMOJIS, CONTENT_RATINGS } from "@/lib/ratings";
+import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
+import { Label } from "@/components/ui/label"; // Import Label
 
 interface LibraryProps {
   onToggleInspector?: () => void;
@@ -41,6 +43,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
   const [ratingFilter, setRatingFilter] = useState<string>("all");
   const [readStatusFilter, setReadStatusFilter] = useState<string>("all");
   const [contentRatingFilter, setContentRatingFilter] = useState<string>("all");
+  const [selectionMode, setSelectionMode] = useLocalStorage("library-selection-mode", false); // State for selection mode
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -402,6 +405,17 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                 </TooltipContent>
               </Tooltip>
             </div>
+            {/* Selection Mode Toggle */}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="selection-mode"
+                checked={selectionMode}
+                onCheckedChange={(checked) => setSelectionMode(Boolean(checked))}
+              />
+              <Label htmlFor="selection-mode" className="text-sm font-medium">
+                Selection Mode
+              </Label>
+            </div>
           </div>
         </div>
         <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-auto pb-4 pr-4">
@@ -412,6 +426,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
               sortOption={sortOption}
               onSeriesDoubleClick={sortOption.startsWith('series-') ? handleSeriesDoubleClick : undefined}
               onToggleInspector={onToggleInspector}
+              selectionMode={selectionMode} // Pass selectionMode
             />
           ) : viewMode === "series" ? (
             <SeriesView comics={sortedAndGroupedComics} sortOption={sortOption} />
