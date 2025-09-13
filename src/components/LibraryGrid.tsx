@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react"; // Added useEffect
 import { Checkbox } from "@/components/ui/checkbox";
 import ComicCard from "./ComicCard";
 import LibraryBulkActions from "./LibraryBulkActions";
@@ -11,11 +11,29 @@ interface LibraryGridProps {
   onSeriesDoubleClick?: (seriesName: string) => void;
   onToggleInspector?: () => void;
   selectionMode: boolean; // Added selectionMode prop
+  selectedComics: string[]; // Added selectedComics prop
+  onSelectionChange: (comicIds: string[]) => void; // Added onSelectionChange prop
 }
 
-const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onToggleInspector, selectionMode }: LibraryGridProps) => {
-  const [selectedComics, setSelectedComics] = useState<string[]>([]);
-  // selectionMode is now passed as a prop, no longer managed internally
+const LibraryGrid = ({ 
+  comics, 
+  coverSize, 
+  sortOption, 
+  onSeriesDoubleClick, 
+  onToggleInspector, 
+  selectionMode,
+  selectedComics, // Destructure
+  onSelectionChange // Destructure
+}: LibraryGridProps) => {
+  // selectedComics and onSelectionChange are now props, no longer managed internally
+  // const [selectedComics, setSelectedComics] = useState<string[]>([]); // REMOVED
+
+  // Clear selection when selectionMode is turned off
+  useEffect(() => {
+    if (!selectionMode && selectedComics.length > 0) {
+      onSelectionChange([]);
+    }
+  }, [selectionMode, selectedComics, onSelectionChange]);
 
   // Group comics by publisher when sorting by publisher
   const groupedComics = useMemo(() => {
@@ -43,13 +61,11 @@ const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onTog
     return [{ publisher: null, comics }];
   }, [comics, sortOption]);
 
-  // No longer need handleToggleSelectionMode here
-
   const handleComicSelection = (comicId: string, selected: boolean) => {
     if (selected) {
-      setSelectedComics(prev => [...prev, comicId]);
+      onSelectionChange([...selectedComics, comicId]);
     } else {
-      setSelectedComics(prev => prev.filter(id => id !== comicId));
+      onSelectionChange(selectedComics.filter(id => id !== comicId));
     }
   };
 
@@ -76,16 +92,14 @@ const LibraryGrid = ({ comics, coverSize, sortOption, onSeriesDoubleClick, onTog
 
   return (
     <div className="space-y-4">
-      {/* Removed Selection Mode Toggle from here */}
-
-      {/* Bulk Actions */}
-      {selectionMode && (
+      {/* Bulk Actions - Now handled by parent Library component */}
+      {/* {selectionMode && (
         <LibraryBulkActions
           comics={comics}
           selectedComics={selectedComics}
-          onSelectionChange={setSelectedComics}
+          onSelectionChange={onSelectionChange}
         />
-      )}
+      )} */}
 
       {/* Comics Grid with Publisher Headers */}
       <div className="space-y-6">

@@ -26,6 +26,7 @@ import { Comic, LibraryViewMode } from "@/types";
 import { RATING_EMOJIS, CONTENT_RATINGS } from "@/lib/ratings";
 import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
 import { Label } from "@/components/ui/label"; // Import Label
+import LibraryBulkActions from "@/components/LibraryBulkActions"; // Ensure this is imported
 
 interface LibraryProps {
   onToggleInspector?: () => void;
@@ -43,6 +44,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
   const [ratingFilter, setRatingFilter] = useState<string>("all");
   const [readStatusFilter, setReadStatusFilter] = useState<string>("all");
   const [contentRatingFilter, setContentRatingFilter] = useState<string>("all");
+  const [selectedComics, setSelectedComics] = useState<string[]>([]); // State for selected comics
   const [selectionMode, setSelectionMode] = useLocalStorage("library-selection-mode", false); // State for selection mode
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -194,6 +196,12 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
         case "year-asc":
           primaryCompare = a.year - b.year;
           break;
+        case "date-added-desc": // New sort option
+          primaryCompare = b.dateAdded.getTime() - a.dateAdded.getTime();
+          break;
+        case "date-added-asc": // New sort option
+          primaryCompare = a.dateAdded.getTime() - b.dateAdded.getTime();
+          break;
         default:
           return 0;
       }
@@ -240,6 +248,10 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
     setSortOption('series-asc');
     setIsDrilledDown(false);
   };
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedComics([]);
+  }, []);
 
   const isPublisherSort = sortOption.startsWith('publisher-');
 
@@ -299,7 +311,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
             </Select>
             <Select value={contentRatingFilter} onValueChange={setContentRatingFilter}>
               <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Content Rating" />
+                <SelectValue placeholder="Content Rating" /> {/* Renamed here */}
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Content</SelectItem>
@@ -327,6 +339,8 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                 <SelectItem value="publisher-desc">Publisher (Z-A)</SelectItem>
                 <SelectItem value="year-desc">Year (Newest)</SelectItem>
                 <SelectItem value="year-asc">Year (Oldest)</SelectItem>
+                <SelectItem value="date-added-desc">Recently Added</SelectItem> {/* New */}
+                <SelectItem value="date-added-asc">Earliest Added</SelectItem> {/* New */}
               </SelectContent>
             </Select>
             
@@ -405,7 +419,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                 </TooltipContent>
               </Tooltip>
             </div>
-            {/* Selection Mode Toggle */}
+            {/* Selection Mode Toggle - Moved here */}
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="selection-mode"
@@ -418,6 +432,18 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
             </div>
           </div>
         </div>
+        {/* Bulk Actions - Now conditionally rendered and sticky */}
+        {selectionMode && (
+          <div className="sticky top-0 z-10 bg-background py-4 -mt-4"> {/* Added sticky styling */}
+            <LibraryBulkActions
+              comics={filteredComics} // Pass filtered comics for accurate total
+              selectedComics={selectedComics}
+              onSelectionChange={setSelectedComics}
+              totalComics={filteredComics.length} // Pass total count
+              onClearSelection={handleClearSelection} // Pass clear selection handler
+            />
+          </div>
+        )}
         <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-auto pb-4 pr-4">
           {viewMode === "grid" ? (
             <LibraryGrid 
@@ -427,6 +453,8 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
               onSeriesDoubleClick={sortOption.startsWith('series-') ? handleSeriesDoubleClick : undefined}
               onToggleInspector={onToggleInspector}
               selectionMode={selectionMode} // Pass selectionMode
+              selectedComics={selectedComics} // Pass selectedComics
+              onSelectionChange={setSelectedComics} // Pass onSelectionChange
             />
           ) : viewMode === "series" ? (
             <SeriesView comics={sortedAndGroupedComics} sortOption={sortOption} />

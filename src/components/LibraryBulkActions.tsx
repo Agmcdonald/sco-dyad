@@ -7,20 +7,28 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Trash2, Edit, Check, BookOpen, ImageIcon, Sparkles } from "lucide-react";
+import { ChevronDown, Trash2, Edit, Check, BookOpen, ImageIcon, Sparkles, XCircle } from "lucide-react"; // Added XCircle
 import { Comic } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess, showError } from "@/utils/toast";
 import BulkEditComicsModal from "./BulkEditComicsModal";
-import BulkFixCoversModal from "./BulkFixCoversModal";
+import BulkFixCoversModal from "./components/BulkFixCoversModal";
 
 interface LibraryBulkActionsProps {
-  comics: Comic[];
+  comics: Comic[]; // All comics in the current filtered/sorted view
   selectedComics: string[];
   onSelectionChange: (comicIds: string[]) => void;
+  totalComics: number; // New prop for total count
+  onClearSelection: () => void; // New prop for clear selection
 }
 
-const LibraryBulkActions = ({ comics, selectedComics, onSelectionChange }: LibraryBulkActionsProps) => {
+const LibraryBulkActions = ({ 
+  comics, 
+  selectedComics, 
+  onSelectionChange,
+  totalComics, // Destructure
+  onClearSelection // Destructure
+}: LibraryBulkActionsProps) => {
   const { removeComic, addToReadingList, readingList, scanSelectedComicsForMetadata } = useAppContext();
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
   const [isBulkFixCoversOpen, setIsBulkFixCoversOpen] = useState(false);
@@ -69,22 +77,28 @@ const LibraryBulkActions = ({ comics, selectedComics, onSelectionChange }: Libra
 
   if (comics.length === 0) return null;
 
+  const allComicsSelected = selectedComics.length === totalComics && totalComics > 0;
+
   return (
     <>
       <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg border">
         <div className="flex items-center space-x-2">
           <Checkbox
             id="select-all-comics"
-            checked={selectedComics.length === comics.length && comics.length > 0}
+            checked={allComicsSelected}
             onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
           />
           <label htmlFor="select-all-comics" className="text-sm font-medium">
-            Select All ({selectedComics.length}/{comics.length})
+            {selectedComics.length} selected / {totalComics} total
           </label>
         </div>
 
         {selectedComics.length > 0 && (
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onClearSelection}> {/* New Clear Selection button */}
+              <XCircle className="h-4 w-4 mr-2" />
+              Clear Selection
+            </Button>
             <Button variant="default" size="sm" onClick={handleBulkEdit}>
               <Edit className="h-4 w-4 mr-2" />
               Bulk Edit ({selectedComics.length})
