@@ -62,6 +62,7 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
           setCbrTempDir(tempDir); // Store tempDir in state
         } else {
           console.log('[FIX-COVER] Loading pages for:', comic.filePath);
+          // This branch is only for non-CBR files (CBZ, PDF)
           pagesList = await electronAPI.getComicPages(comic.filePath);
         }
         
