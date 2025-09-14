@@ -221,6 +221,7 @@ app.whenReady().then(async () => {
   
   createWindow();
   createMenu(mainWindow);
+  console.log('[Main] Calling registerIpcHandlers...'); // Added log
   registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBasePath, publicCoversDir });
 
   // Handle macOS dock icon click

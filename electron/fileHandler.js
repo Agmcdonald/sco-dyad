@@ -417,6 +417,14 @@ class ComicFileHandler {
     try {
       tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-cover-'));
       console.log(`[FileHandler] Starting CBR cover extraction for ${filePath} to temp dir ${tempDir}`);
+      
+      // --- DEBUGGING START ---
+      console.log(`[FileHandler][DEBUG] Calling unrar in extractCoverFromRarArchive with:`);
+      console.log(`  filePath: ${filePath}`);
+      console.log(`  tempDir: ${tempDir}`);
+      console.log(`  options: {} (explicitly empty object)`);
+      // --- DEBUGGING END ---
+
       await Promise.race([
         this.unrar(filePath, tempDir, {}), // Pass empty options object
         new Promise((_, reject) => setTimeout(() => reject(new Error('CBR cover extraction timeout')), 300000)) // Increased timeout to 5 minutes

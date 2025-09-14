@@ -8,6 +8,8 @@ const https = require('https'); // Added Node.js https module
 const cancellableOperations = new Map();
 
 function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBasePath, publicCoversDir }) {
+  console.log('[IPCManager] Registering IPC handlers...'); // Added log
+
   // App info
   ipcMain.handle('get-app-version', () => app.getVersion());
 
@@ -305,7 +307,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
               copy.coverUrl = pathToFileURL(url).href;
             } else if (url === '/placeholder.svg' || url.includes('placeholder')) {
               // FIXED: Use a data URL for placeholder instead of file path
-              copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCI yeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4K';
+              copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQ yeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCI yeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Z34K';
             }
           } else {
             // No cover URL - use placeholder
@@ -517,6 +519,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
 
   // IPC handler for extracting cover to public directory
   ipcMain.handle('extract-cover', async (event, filePath) => {
+    console.log('[IPC] extract-cover handler invoked for:', filePath); // Added log
     try {
       // Ensure covers directory exists
       await fs.mkdir(publicCoversDir, { recursive: true });
@@ -528,7 +531,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
-  console.log('Comic Vine IPC handler registered successfully in ipcManager.js'); // Added logging
+  console.log('[IPCManager] All IPC handlers registered.'); // Added log
 }
 
 module.exports = { registerIpcHandlers };

@@ -143,7 +143,9 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
     try {
       console.log('[FIX-COVER] Using page as cover:', pageName);
       let pageDataUrl;
-      if (cbrTempDir) { // If it's a CBR, use the temp directory
+      const isCbrFile = comic.filePath.toLowerCase().endsWith('.cbr');
+
+      if (isCbrFile && cbrTempDir) { // If it's a CBR, use the temp directory
         pageDataUrl = await electronAPI.getPageDataUrlFromTemp(cbrTempDir, pageName);
       } else { // For CBZ/PDF, use the original file path
         pageDataUrl = await electronAPI.getComicPageDataUrl(comic.filePath, pageName);
