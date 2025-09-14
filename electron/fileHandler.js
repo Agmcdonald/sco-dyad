@@ -326,6 +326,9 @@ class ComicFileHandler {
    */
   async extractCover(filePath, outputDir) {
     const ext = path.extname(filePath).toLowerCase();
+    
+    console.log(`[FileHandler] extractCover called for ${ext} file`);
+
     try {
       if (ext === '.cbz') return await this.extractCoverFromZipArchive(filePath, outputDir);
       if (ext === '.cbr') return await this.extractCoverFromRarArchive(filePath, outputDir);
@@ -347,10 +350,14 @@ class ComicFileHandler {
    * @returns Absolute path to the verified cover image
    */
   async extractCoverToPublic(filePath, publicCoversDir) {
+    console.log(`[FileHandler] extractCoverToPublic called for: ${filePath}`);
+
     let tempDir = null;
     try {
       await fs.mkdir(publicCoversDir, { recursive: true });
       tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-cover-'));
+      
+      // Extract to temp directory first - use same approach as working prepareCbrForReading
       const tempCoverPath = await this.extractCover(filePath, tempDir);
       
       const publicCoverFilename = `comic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-cover.jpg`;
@@ -361,6 +368,7 @@ class ComicFileHandler {
       const stats = await fs.stat(publicCoverPath);
       if (stats.size === 0) throw new Error('Cover file is empty');
       
+      console.log(`[FileHandler] extractCoverToPublic completed successfully: ${publicCoverPath}`);
       return publicCoverPath;
     } catch (error) {
       console.error(`[FileHandler] Error extracting cover to public directory for ${filePath}:`, error);
@@ -413,47 +421,77 @@ class ComicFileHandler {
    */
   async extractCoverFromRarArchive(filePath, outputDir) {
     if (!this.unrarAvailable) throw new Error('RAR support is not available');
+
     let tempDir = null;
     try {
+      console.log(`[FileHandler] === CBR COVER EXTRACTION DEBUG START ===`);
+      console.log(`[FileHandler] Input: filePath=${filePath}, outputDir=${outputDir}`);
+      
       tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-cover-'));
-      console.log(`[FileHandler] Starting CBR cover extraction for ${filePath} to temp dir ${tempDir}`);
+      console.log(`[FileHandler] ✓ Created temp dir: ${tempDir}`);
       
-      // --- DEBUGGING START ---
-      console.log(`[FileHandler][DEBUG] Calling unrar in extractCoverFromRarArchive with:`);
-      console.log(`  filePath: ${filePath}`);
-      console.log(`  tempDir: ${tempDir}`);
-      console.log(`  options: {} (explicitly empty object)`);
-      // --- DEBUGGING END ---
-
+      console.log(`[FileHandler] Calling unrar (same as working prepareCbrForReading)...`);
       await Promise.race([
-        this.unrar(filePath, tempDir, {}), // Pass empty options object
-        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR cover extraction timeout')), 300000)) // Increased timeout to 5 minutes
+        this.unrar(filePath, tempDir, {}),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR cover extraction timeout')), 300000))
       ]);
-      console.log(`[FileHandler] CBR extraction complete for cover of ${filePath}`);
+      console.log(`[FileHandler] ✓ Unrar completed successfully`);
       
+      console.log(`[FileHandler] Walking temp directory for image files...`);
       const allFiles = await this._walk(tempDir);
+      console.log(`[FileHandler] ✓ Found ${allFiles.length} total files:`, allFiles.slice(0, 5));
+      
       const imageFiles = allFiles
         .filter(file => this.isImageFile(file))
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+      console.log(`[FileHandler] ✓ Found ${imageFiles.length} image files:`, imageFiles.slice(0, 5));
 
-      if (imageFiles.length === 0) throw new Error('No images found in CBR archive');
+      if (imageFiles.length === 0) {
+        throw new Error('No images found in CBR archive after unrar extraction succeeded');
+      }
 
+      console.log(`[FileHandler] Preparing output path...`);
       const outputPath = path.join(outputDir, `${path.basename(filePath, '.cbr')}_cover.jpg`);
+      console.log(`[FileHandler] ✓ Output path: ${outputPath}`);
+      
+      console.log(`[FileHandler] Creating output directory...`);
       await fs.mkdir(outputDir, { recursive: true });
+      console.log(`[FileHandler] ✓ Output directory created`);
+      
+      console.log(`[FileHandler] Processing first image with Sharp: ${imageFiles[0]}`);
+      console.log(`[FileHandler] Image file stats:`);
+      const firstImageStats = await fs.stat(imageFiles[0]);
+      console.log(`[FileHandler] - Size: ${firstImageStats.size} bytes`);
+      console.log(`[FileHandler] - Exists: ${firstImageStats.isFile()}`);
+      
       await sharp(imageFiles[0])
         .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 85 })
         .toFile(outputPath);
-        
-      console.log(`[FileHandler] Cover saved to ${outputPath}`);
+      console.log(`[FileHandler] ✓ Sharp processing completed successfully`);
+      
+      console.log(`[FileHandler] Verifying output file...`);
+      const outputStats = await fs.stat(outputPath);
+      console.log(`[FileHandler] ✓ Output file size: ${outputStats.size} bytes`);
+      
+      console.log(`[FileHandler] === CBR COVER EXTRACTION DEBUG SUCCESS ===`);
       return outputPath;
+      
     } catch (error) {
-      console.error(`[FileHandler] Error extracting cover from CBR ${filePath}:`, error);
-      throw new Error(`Failed to extract cover from CBR: ${error.message}`);
+      console.error(`[FileHandler] === CBR COVER EXTRACTION DEBUG FAILED ===`);
+      console.error(`[FileHandler] Error type: ${error.constructor.name}`);
+      console.error(`[FileHandler] Error message: ${error.message}`);
+      console.error(`[FileHandler] Error stack:`, error.stack);
+      
+      // DON'T mask the real error - let it bubble up with original details
+      throw error;
+      
     } finally {
       if (tempDir) {
         console.log(`[FileHandler] Cleaning up temp dir ${tempDir}`);
-        await fs.rm(tempDir, { recursive: true, force: true }).catch(e => console.error(`[FileHandler] Error cleaning up temp dir ${tempDir}:`, e));
+        await fs.rm(tempDir, { recursive: true, force: true }).catch(e => 
+          console.error(`[FileHandler] Error cleaning up temp dir ${tempDir}:`, e)
+        );
       }
     }
   }

@@ -131,3 +131,9 @@ export interface KnowledgeBase {
   series: ComicKnowledge[];
   creators: CreatorKnowledge[];
 }
+
+export interface ApiUsageStats {
+  currentUsage: number;
+  hourlyLimit: number;
+  timeUntilResetMs: number;
+}

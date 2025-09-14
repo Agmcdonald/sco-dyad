@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useCallback, useMemo, useRef } from 'react';
-import { QueuedFile, Comic, NewComic, UndoPayload, ComicKnowledge } from '@/types';
+import { QueuedFile, Comic, NewComic, UndoPayload, ComicKnowledge, ApiUsageStats } from '@/types';
 import { useElectronDatabaseService } from '@/services/electronDatabaseService';
 import { useElectron } from '@/hooks/useElectron';
 import { useSettings } from '@/context/SettingsContext';
@@ -70,6 +70,8 @@ interface AppContextType {
   setReadingComic: (comic: Comic | null) => void;
   openComicForReading: (comic: Comic) => void;
   syncKnowledgeBaseToLibrary: () => Promise<void>;
+  apiUsageStats: ApiUsageStats | null; // New: API Usage Stats
+  fetchApiUsageStats: () => Promise<void>; // New: Function to fetch API usage
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -97,7 +99,7 @@ const hasMissingMetadata = (comic: Comic): boolean => {
          comic.publisher === "Unknown Publisher"; // Consider unknown publisher as missing
 };
 
-export const AppProvider = ({ children }: { children: ReactNode }) => {
+export const AppProvider = ({ children }: { ReactNode }) => {
   const { actions, logAction, setActions } = useActionLog();
   const { files, setFiles, addFile, addFiles, removeFile, updateFile } = useFileQueue();
   const { comics, setComics, refreshComics } = useComicLibrary(logAction);
@@ -128,6 +130,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     isCancellable: false, // Initialize as not cancellable
   });
   const [readingComic, setReadingComic] = useState<Comic | null>(null);
+  const [apiUsageStats, setApiUsageStats] = useState<ApiUsageStats | null>(null); // New state for API usage
   const databaseService = useElectronDatabaseService();
   const { isElectron, electronAPI } = useElectron();
   const { settings } = useSettings();
@@ -141,6 +144,33 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     // Find the most recent action that has an undo payload
     return actions.find(action => action.undo) || null;
   }, [actions]);
+
+  // New: Function to fetch API usage stats
+  const fetchApiUsageStats = useCallback(async () => {
+    if (isElectron && electronAPI) {
+      try {
+        const stats = await electronAPI.getApiUsage();
+        setApiUsageStats(stats);
+      } catch (error) {
+        console.error('Failed to fetch API usage stats:', error);
+        setApiUsageStats(null);
+      }
+    } else {
+      // Mock data for web mode
+      setApiUsageStats({
+        currentUsage: Math.floor(Math.random() * 200),
+        hourlyLimit: 200,
+        timeUntilResetMs: (60 - new Date().getMinutes()) * 60 * 1000,
+      });
+    }
+  }, [isElectron, electronAPI]);
+
+  // Fetch API usage on mount and periodically
+  useEffect(() => {
+    fetchApiUsageStats();
+    const interval = setInterval(fetchApiUsageStats, 60 * 1000); // Refresh every minute
+    return () => clearInterval(interval);
+  }, [fetchApiUsageStats]);
 
   const addFilesFromPaths = useCallback(async (paths: string[]) => {
     if (paths.length === 0) return;
@@ -326,7 +356,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           coverUrl = await electronAPI.extractCover(originalFile.path);
           console.log(`[ADD-COMIC] Cover extracted successfully: ${coverUrl}`);
         } catch (coverError) {
-          console.warn(`[ADD-COMIC] Could not extract cover from ${originalFile.name}:`, coverError);
+          console.warn(`[ADD-COMIC] Could not extract cover from ${originalFile.name} - using placeholder`, coverError);
           logAction('warning', `Could not extract cover from ${originalFile.name} - using placeholder`);
         }
 
@@ -429,6 +459,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           knowledgeBase
         );
 
+        // After processing, fetch updated API usage stats
+        fetchApiUsageStats();
+
         if (!processedResult.success || !processedResult.data) {
           showError(`Could not quick add "${name}": ${processedResult.error || "Failed to process metadata."}`);
           failedCount++;
@@ -472,7 +505,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       showError("An error occurred during Quick Add.");
       console.error("Quick Add error:", error);
     }
-  }, [isElectron, electronAPI, addComic, settings, knowledgeBase, removeFile]);
+  }, [isElectron, electronAPI, addComic, settings, knowledgeBase, removeFile, fetchApiUsageStats]);
 
   const addFilesFromDrop = useCallback(async (droppedFiles: File[]) => {
     const comicExtensions = ['.cbr', '.cbz'];
@@ -554,6 +587,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       knowledgeBase
     );
 
+    // After processing, fetch updated API usage stats
+    fetchApiUsageStats();
+
     const updatedComic = { ...comic, metadataLastChecked: new Date().toISOString() };
     let hasNewData = false;
 
@@ -606,7 +642,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       await updateComicFunc(updatedComic);
       return false; // Indicate no new data, but still processed
     }
-  }, [settings, knowledgeBase, logAction]);
+  }, [settings, knowledgeBase, logAction, fetchApiUsageStats]);
 
   const skipFile = useCallback((file: QueuedFile) => {
     removeFile(file.id);
@@ -931,7 +967,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       comics, addComic, updateComic, removeComic, updateComicRating,
       actions, logAction, lastUndoableAction, undoLastAction,
       addMockFiles, triggerSelectFiles, triggerScanFolder, triggerQuickAddFiles, addFilesFromDrop,
-      addFilesFromPaths, quickAddFiles, fileLoadStatus, cancelFileLoading, // Added cancelFileLoading
+      addFilesFromPaths, quickAddFiles, fileLoadStatus, cancelFileLoading,
       readingList, addToReadingList, removeFromReadingList, toggleReadingItemCompleted,
       toggleComicReadStatus,
       setReadingItemPriority, setReadingItemRating,
@@ -941,13 +977,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       isScanningMetadata,
       metadataScanProgress,
       startMetadataScan,
-      scanComicForMetadata, // New
-      scanSelectedComicsForMetadata, // New
+      scanComicForMetadata,
+      scanSelectedComicsForMetadata,
       updateComicProgress,
       updateReadingHistory,
       readingComic, setReadingComic,
       openComicForReading,
-      syncKnowledgeBaseToLibrary
+      syncKnowledgeBaseToLibrary,
+      apiUsageStats, // Provide API usage stats
+      fetchApiUsageStats, // Provide function to fetch API usage
     }}>
       {children}
     </AppContext.Provider>

@@ -2,13 +2,23 @@ const { ipcMain, dialog, app, BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const { pathToFileURL } = require('url');
-const https = require('https'); // Added Node.js https module
+const https = require('https');
+let Store = require('electron-store');
+
+// Handle cases where the module is wrapped in a default export
+if (Store && Store.default) {
+  Store = Store.default;
+}
 
 // Map to store AbortController instances for cancellable operations
 const cancellableOperations = new Map();
 
+// Initialize API usage store
+const apiUsageStore = new Store({ name: 'api-usage' });
+const API_HOURLY_LIMIT = 200; // Comic Vine API limit
+
 function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBasePath, publicCoversDir }) {
-  console.log('[IPCManager] Registering IPC handlers...'); // Added log
+  console.log('[IPCManager] Registering IPC handlers...');
 
   // App info
   ipcMain.handle('get-app-version', () => app.getVersion());
@@ -40,7 +50,6 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
 
   // One-time migration: canonicalize cover paths for all comics
   ipcMain.handle('app:migrate-covers', async () => {
-    // This migrates legacy/stale coverUrl values to canonical file:// URLs inside publicCoversDir
     const report = {
       total: 0,
       updated: 0,
@@ -67,34 +76,26 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
           if (original && typeof original === 'string' && original.startsWith('file://')) {
             resolved = original;
           } else {
-            // Try to extract a basename in case of legacy /covers or absolute Windows paths embedded
             const basename = (() => {
               try {
-                // If it's a data URL or http(s), keep as-is
                 if (/^data:|^https?:\/\//i.test(original)) return original;
-
-                // If contains 'file:' multiple times, prefer last segment after last 'file:'
                 const lastFileIdx = String(original).lastIndexOf('file:');
                 let candidate = String(original);
                 if (lastFileIdx > -1) {
                   candidate = candidate.slice(lastFileIdx).replace(/^file:\/+/, '');
                 }
-
-                // If candidate is an absolute path, use basename
                 return path.basename(candidate);
               } catch {
                 return path.basename(String(original || ''));
               }
             })();
 
-            // Candidate path under publicCoversDir
             if (basename) {
               const candidatePath = path.join(publicCoversDir || '', basename);
               try {
                 await fs.access(candidatePath);
                 resolved = pathToFileURL(candidatePath).href;
               } catch {
-                // not found under publicCoversDir; try direct absolute path if original looked absolute
                 try {
                   if (path.isAbsolute(original)) {
                     const abs = original;
@@ -108,23 +109,17 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
             }
           }
 
-          // If resolved, update database; otherwise set placeholder
           if (resolved) {
-            // If the stored value already equals resolved, skip
             if (comic.coverUrl !== resolved) {
               comic.coverUrl = resolved;
-              await database.updateComic({
-                ...comic,
-                // database.updateComic expects stored date strings for some fields; keep them as-is
-              });
+              await database.updateComic({ ...comic });
               report.updated++;
               report.updatedIds.push(comic.id);
             } else {
               report.skipped++;
             }
           } else {
-            // No resolved path found; use placeholder path (renderer will map it)
-            const placeholder = '/placeholder.svg';
+            const placeholder = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwJSI yeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMzMzMiPgogICAgTm8gQ292ZXIKICA8L3RleHQ+CiAgPHJlY3Q yeD0iMTAiIHk9IjEwIiB3aWR0aD0iMzgwIiBoZWlnaHQ9IjU4MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KPC9zZ3Y+Cg==';
             if (comic.coverUrl !== placeholder) {
               comic.coverUrl = placeholder;
               await database.updateComic({ ...comic });
@@ -210,12 +205,9 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
-  // New IPC handler for cancelling ongoing file loading operations
   ipcMain.handle('cancel-file-loading', async () => {
-    // For simplicity, we'll abort all active cancellable operations.
-    // In a more complex app, you might pass an operationId to cancel a specific one.
     cancellableOperations.forEach(controller => controller.abort());
-    cancellableOperations.clear(); // Clear all controllers after aborting
+    cancellableOperations.clear();
     console.log('All ongoing file loading operations cancelled.');
   });
 
@@ -268,7 +260,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
         autoHideMenuBar: true,
         title: path.basename(filePath),
         webPreferences: {
-          plugins: true, // Important for PDF viewer
+          plugins: true,
         }
       });
       
@@ -282,7 +274,6 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   });
 
   // Database operations
-  // FIXED: Normalize cover URLs and provide fallback for missing placeholder
   ipcMain.handle('get-comics', async () => {
     try {
       const comics = await database.getComics();
@@ -293,29 +284,22 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
           if (copy.coverUrl && typeof copy.coverUrl === 'string') {
             const url = copy.coverUrl;
 
-            // Handle different URL formats
             if (url.startsWith('file:')) {
-              // Already a file URL - ensure it's properly formatted
               copy.coverUrl = url;
             } else if (url.startsWith('/covers/') || url.startsWith('covers/')) {
-              // Relative path - convert to absolute file URL
               const filename = path.basename(url);
               const absolutePath = path.join(publicCoversDir, filename);
               copy.coverUrl = pathToFileURL(absolutePath).href;
             } else if (path.isAbsolute(url)) {
-              // Absolute path - convert to file URL
               copy.coverUrl = pathToFileURL(url).href;
             } else if (url === '/placeholder.svg' || url.includes('placeholder')) {
-              // FIXED: Use a data URL for placeholder instead of file path
-              copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQ yeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzMzMyI+CiAgICBObyBDb3ZlcgogIDwvdGV4dD4KICA8cmVjdCB4PSIxMCI yeT0iMTAiIHdpZHRoPSIzODAiIGhlaWdodD0iNTgwIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Z34K';
+              copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+CiAgPHRleHQ yeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD09IiMzMzMiPgogICAgTm8gQ292ZXIKICA8L3RleHQ+CiAgPHJlY3Q yeD0iMTAiIHk9IjEwIiB3aWR0aD0iMzgwIiBoZWlnaHQ9IjU4MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KPC9zZ3Y+Cg==';
             }
           } else {
-            // No cover URL - use placeholder
             copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwJSI yeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMzMzMiPgogICAgTm8gQ292ZXIKICA8L3RleHQ+CiAgPHJlY3Q yeD0iMTAiIHk9IjEwIiB3aWR0aD0iMzgwIiBoZWlnaHQ9IjU4MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KPC9zZ3Y+Cg==';
           }
         } catch (e) {
           console.error('Error normalizing coverUrl for comic:', copy.id, e);
-          // Fallback to placeholder on error
           copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwJSI yeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMzMzMiPgogICAgTm8gQ292ZXIKICA8L3RleHQ+CiAgPHJlY3Q yeD0iMTAiIHk9IjEwIiB3aWR0aD0iMzgwIiBoZWlnaHQ9IjU4MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KPC9zZ3Y+Cg==';
         }
         return copy;
@@ -343,39 +327,27 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     return database.deleteComic(comicId);
   });
 
-  // FIXED: Save comic with proper cover extraction and path verification
   ipcMain.handle('save-comic', async (event, comic) => {
     try {
       if (!comic.id) {
         throw new Error("Comic must have an ID to be saved.");
       }
       
-      // Default to placeholder
       comic.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2YwZjBmMCIvPgogIDx0ZXh0IHg9IjUwJSI yeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMzMzMiPgogICAgTm8gQ292ZXIKICA8L3RleHQ+CiAgPHJlY3Q yeD0iMTAiIHk9IjEwIiB3aWR0aD0iMzgwIiBoZWlnaHQ9IjU4MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KPC9zZ3Y+Cg==';
       
       if (comic.filePath) {
         try {
-          console.log('[IPC] save-comic: Extracting cover for:', comic.filePath);
-          
-          // Ensure covers directory exists
           await fs.mkdir(publicCoversDir, { recursive: true });
-          
-          // Extract cover and get absolute path
           const absoluteCoverPath = await fileHandler.extractCoverToPublic(comic.filePath, publicCoversDir);
-          console.log('[IPC] save-comic: Cover extracted to:', absoluteCoverPath);
           
-          // Verify file exists before setting URL
           try {
             await fs.access(absoluteCoverPath);
             comic.coverUrl = pathToFileURL(absoluteCoverPath).href;
-            console.log('[IPC] save-comic: Cover URL set to:', comic.coverUrl);
           } catch (accessError) {
             console.warn('[IPC] save-comic: Cover file not accessible, using placeholder:', accessError.message);
-            // Keep placeholder URL
           }
         } catch (error) {
           console.error(`[IPC] save-comic: Could not extract cover for ${comic.filePath}:`, error.message);
-          // Keep placeholder URL
         }
       }
       
@@ -430,7 +402,25 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
 
   // Comic Vine API Proxy
   ipcMain.handle('comicvine:fetch', async (event, url, options) => {
-    console.log('[IPC] comicvine:fetch handler called for URL:', url); // Added logging
+    console.log('[IPC] comicvine:fetch handler called for URL:', url);
+
+    // --- API Usage Tracking Logic ---
+    let currentUsage = apiUsageStore.get('currentUsage', 0);
+    let lastReset = apiUsageStore.get('lastReset', Date.now());
+    const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
+
+    if (Date.now() - lastReset > oneHour) {
+      currentUsage = 0;
+      lastReset = Date.now();
+      apiUsageStore.set('lastReset', lastReset);
+    }
+
+    if (currentUsage >= API_HOURLY_LIMIT) {
+      console.warn('[IPC][comicvine:fetch] API limit reached. Request blocked.');
+      return { success: false, error: 'Comic Vine API hourly limit reached. Please wait.', status: 429 };
+    }
+    // --- End API Usage Tracking Logic ---
+
     return new Promise((resolve, reject) => {
       const requestOptions = {
         headers: {
@@ -448,6 +438,10 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
               console.error(`[IPC][comicvine:fetch] API request to ${url} failed with status ${res.statusCode}: ${data}`);
               resolve({ success: false, error: `API request failed with status ${res.statusCode}`, status: res.statusCode });
             } else {
+              // Increment usage only on successful API response
+              currentUsage++;
+              apiUsageStore.set('currentUsage', currentUsage);
+              apiUsageStore.set('lastReset', lastReset); // Update lastReset to keep the 1-hour window accurate
               resolve({ success: true, data: JSON.parse(data) });
             }
           } catch (error) {
@@ -460,6 +454,28 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
         reject({ success: false, error: `Network error: ${error.message}` });
       });
     });
+  });
+
+  // New IPC handler to get API usage stats
+  ipcMain.handle('get-api-usage', async () => {
+    let currentUsage = apiUsageStore.get('currentUsage', 0);
+    let lastReset = apiUsageStore.get('lastReset', Date.now());
+    const oneHour = 60 * 60 * 1000;
+
+    if (Date.now() - lastReset > oneHour) {
+      currentUsage = 0;
+      lastReset = Date.now();
+      apiUsageStore.set('currentUsage', currentUsage);
+      apiUsageStore.set('lastReset', lastReset);
+    }
+
+    const timeUntilResetMs = Math.max(0, oneHour - (Date.now() - lastReset));
+
+    return {
+      currentUsage,
+      hourlyLimit: API_HOURLY_LIMIT,
+      timeUntilResetMs,
+    };
   });
 
   // GCD Importer - Temporarily Disabled
@@ -517,11 +533,8 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
-  // IPC handler for extracting cover to public directory
   ipcMain.handle('extract-cover', async (event, filePath) => {
-    console.log('[IPC] extract-cover handler invoked for:', filePath); // Added log
     try {
-      // Ensure covers directory exists
       await fs.mkdir(publicCoversDir, { recursive: true });
       const absoluteCoverPath = await fileHandler.extractCoverToPublic(filePath, publicCoversDir);
       return absoluteCoverPath;
@@ -531,7 +544,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
-  console.log('[IPCManager] All IPC handlers registered.'); // Added log
+  console.log('[IPCManager] All IPC handlers registered.');
 }
 
 module.exports = { registerIpcHandlers };

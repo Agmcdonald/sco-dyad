@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Comic, ComicKnowledge, CreatorKnowledge } from '@/types';
+import { Comic, ComicKnowledge, CreatorKnowledge, ApiUsageStats } from '@/types';
 
 // Type definitions for our Electron API
 interface ElectronAPI {
@@ -39,6 +39,9 @@ interface ElectronAPI {
 
   // Comic Vine API Proxy
   fetchComicVine(url: string, options?: RequestInit): Promise<{ success: boolean; data?: any; error?: string; status?: number }>;
+
+  // New: API Usage Tracking
+  getApiUsage(): Promise<ApiUsageStats>;
 
   // Backup and Restore
   saveBackup(data: string): Promise<{ success: boolean; path?: string; error?: string; }>;
