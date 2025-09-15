@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useCallback, useMemo, useRef } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback, useMemo, useRef, useEffect } from 'react';
 import { QueuedFile, Comic, NewComic, UndoPayload, ComicKnowledge, ApiUsageStats } from '@/types';
 import { useElectronDatabaseService } from '@/services/electronDatabaseService';
 import { useElectron } from '@/hooks/useElectron';
