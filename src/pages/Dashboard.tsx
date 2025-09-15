@@ -9,6 +9,7 @@ import LibraryStats from "@/components/LibraryStats";
 import CollectionInsights from "@/components/CollectionInsights";
 import ReadingList from "@/components/ReadingList";
 import LibraryHealth from "@/components/LibraryHealth";
+import ApiUsageCard from "@/components/ApiUsageCard"; // Import the new component
 import { useAppContext } from "@/context/AppContext";
 
 const Dashboard = () => {
@@ -77,6 +78,11 @@ const Dashboard = () => {
         </Card>
       </div>
 
+      {/* TEMPORARY: API Usage Card moved here for debugging visibility */}
+      <div className="bg-purple-500 p-4 rounded-lg"> 
+        <ApiUsageCard />
+      </div>
+
       {/* Main Content Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="grid w-full grid-cols-5">
@@ -119,6 +125,8 @@ const Dashboard = () => {
                   </Button>
                 </CardContent>
               </Card>
+              
+              {/* Original location of API Usage Card (now moved) */}
             </div>
 
             {/* Library Statistics */}
