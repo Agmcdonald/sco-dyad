@@ -102,7 +102,7 @@ class ComicFileHandler {
     } catch (error) {
       console.warn('RAR support not available:', error.message);
       this.unrarAvailable = false;
-      this.unrar = null;
+      this.unrar = null; // Explicitly set to null if import fails
     }
   }
 
@@ -265,7 +265,7 @@ class ComicFileHandler {
         if (zip) await zip.close().catch(() => {});
       }
     } else if (fileType === 'cbr') {
-      if (!this.unrarAvailable) {
+      if (!this.unrarAvailable || !this.unrar) { // Added check for this.unrar
         console.warn(`[FileHandler] RAR support not available for ${filePath}. Cannot get page count.`);
         return 0;
       }
@@ -273,7 +273,7 @@ class ComicFileHandler {
       try {
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-pages-'));
         await Promise.race([
-          this.unrar(filePath, tempDir, { overwrite: true }), // Added overwrite: true
+          this.unrar(filePath, tempDir, { overwrite: true }),
           new Promise((_, reject) => setTimeout(() => reject(new Error('CBR page count timeout')), 300000)) // Increased timeout to 5 minutes
         ]);
         const allFiles = await this._walk(tempDir, signal); // Pass signal to _walk
@@ -309,7 +309,7 @@ class ComicFileHandler {
    * @param {string} outputPath - Path where the cover image should be saved
    */
   async extractCoverFromRarArchive(archivePath, outputPath) {
-    if (!this.unrarAvailable) {
+    if (!this.unrarAvailable || !this.unrar) { // Added check for this.unrar
       throw new Error('RAR support is not available for CBR cover extraction.');
     }
 
@@ -317,7 +317,7 @@ class ComicFileHandler {
     try {
       console.log(`[FileHandler][CBR-COVER] Starting extraction for: ${archivePath}`);
       tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cbr-cover-'));
-      await this.unrar(archivePath, tempDir, { overwrite: true }); // Added overwrite: true
+      await this.unrar(archivePath, tempDir, { overwrite: true });
 
       const allFiles = await this._walk(tempDir);
       const imageFiles = allFiles
@@ -731,7 +731,7 @@ class ComicFileHandler {
    * @returns Object with temp directory path and list of page filenames
    */
   async prepareCbrForReading(filePath) {
-    if (!this.unrarAvailable) {
+    if (!this.unrarAvailable || !this.unrar) { // Added check for this.unrar
       console.error(`[FileHandler] CBR: RAR support is not available for ${filePath}`);
       throw new Error('RAR support is not available');
     }
@@ -743,7 +743,7 @@ class ComicFileHandler {
       
       console.log(`[FileHandler] CBR: Starting unrar extraction for ${filePath} to ${tempDir}`);
       await Promise.race([
-        this.unrar(filePath, tempDir, { overwrite: true }), // Added overwrite: true
+        this.unrar(filePath, tempDir, { overwrite: true }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('CBR extraction timeout')), 300000)) // Increased timeout to 5 minutes
       ]);
       console.log(`[FileHandler] CBR: Unrar extraction complete for ${filePath}`);
