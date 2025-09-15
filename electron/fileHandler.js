@@ -1,19 +1,3 @@
-/**
- * Comic File Handler
- * 
- * This module is responsible for all file system operations related to comic files.
- * It runs in the Electron main process and provides functionalities like:
- * - Scanning folders for comic files (CBR, CBZ, PDF)
- * - Reading file metadata (size, type, etc.)
- * - Extracting cover images from comic archives
- * - Getting a list of pages from an archive
- * - Extracting individual pages as data URLs for the reader
- * - Organizing (moving/copying) files to the library
- * 
- * It uses libraries like `node-stream-zip` for ZIP archives, `unrar-promise`
- * for RAR archives, and `pdfjs-dist` for PDF documents.
- */
-
 const fs = require('fs').promises;
 const path = require('path');
 const StreamZip = require('node-stream-zip');
@@ -320,201 +304,101 @@ class ComicFileHandler {
   }
 
   /**
-   * Extract cover image from a comic file to a specified directory
-   * @param filePath - Path to the comic file
-   * @param outputDir - Directory to save the cover image
-   * @returns Path to the extracted cover image
+   * Extracts the first image from a RAR archive and saves it as a cover.
+   * @param {string} archivePath - Full path to the .cbr file
+   * @param {string} outputPath - Path where the cover image should be saved
    */
-  async extractCover(filePath, outputDir) {
-    const ext = path.extname(filePath).toLowerCase();
-    
-    console.log(`[FileHandler] extractCover called for ${ext} file`);
-
-    try {
-      if (ext === '.cbz') return await this.extractCoverFromZipArchive(filePath, outputDir);
-      if (ext === '.cbr') return await this.extractCoverFromRarArchive(filePath, outputDir);
-      if (ext === '.pdf') {
-        if (!this.pdfjsAvailable) throw new Error('PDF processing is disabled. Cannot extract cover.');
-        return await this.extractCoverFromPdf(filePath, outputDir);
-      }
-      throw new Error(`Unsupported file type for cover extraction: ${ext}`);
-    } catch (error) {
-      console.error(`[FileHandler] Error extracting cover for ${filePath}:`, error);
-      throw error;
+  async extractCoverFromRarArchive(archivePath, outputPath) {
+    if (!this.unrarAvailable) {
+      throw new Error('RAR support is not available for CBR cover extraction.');
     }
-  }
-
-  /**
-   * Extract cover to the public covers directory and return a verified path
-   * @param filePath - Path to the comic file
-   * @param publicCoversDir - The application's public covers directory
-   * @returns Absolute path to the verified cover image
-   */
-  async extractCoverToPublic(filePath, publicCoversDir) {
-    console.log(`[FileHandler] extractCoverToPublic called for: ${filePath}`);
 
     let tempDir = null;
     try {
-      await fs.mkdir(publicCoversDir, { recursive: true });
-      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-cover-'));
-      
-      // Extract to temp directory first - use same approach as working prepareCbrForReading
-      const tempCoverPath = await this.extractCover(filePath, tempDir);
-      
-      // Issue 3: Use .slice instead of .substr
-      const publicCoverFilename = `comic-${Date.now()}-${Math.random().toString(36).slice(2, 11)}-cover.jpg`;
-      const publicCoverPath = path.join(publicCoversDir, publicCoverFilename);
-      
-      await fs.copyFile(tempCoverPath, publicCoverPath);
-      
-      const stats = await fs.stat(publicCoverPath);
-      if (stats.size === 0) throw new Error('Cover file is empty');
-      
-      console.log(`[FileHandler] extractCoverToPublic completed successfully: ${publicCoverPath}`);
-      return publicCoverPath;
-    } catch (error) {
-      console.error(`[FileHandler] Error extracting cover to public directory for ${filePath}:`, error);
-      throw error;
+      console.log(`[FileHandler][CBR-COVER] Starting extraction for: ${archivePath}`);
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cbr-cover-'));
+      await this.unrar(archivePath, tempDir, {}); // Use this.unrar
+
+      const allFiles = await this._walk(tempDir);
+      const imageFiles = allFiles
+        .filter(file => this.isImageFile(file))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+      if (imageFiles.length === 0) {
+        throw new Error("No image files found in CBR archive.");
+      }
+
+      const imagePath = imageFiles[0];
+      const buffer = await fs.readFile(imagePath);
+
+      await fsExtra.ensureDir(path.dirname(outputPath)); // Ensure output directory exists
+      await sharp(buffer, { failOnError: true })
+        .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85, progressive: true })
+        .toFile(outputPath);
+
+      console.log(`[FileHandler][CBR-COVER] Saved cover: ${outputPath}`);
+      return outputPath;
+    } catch (err) {
+      console.error("[FileHandler][CBR-COVER] Error extracting cover:", err);
+      throw new Error(`CBR cover extraction failed: ${err.message}`);
     } finally {
-      if (tempDir) await fsExtra.remove(tempDir).catch(() => {}); // Use fsExtra.remove
+      if (tempDir) {
+        await fsExtra.remove(tempDir).catch(e => console.error(`[FileHandler][CBR-COVER] Error cleaning up temp dir ${tempDir}:`, e));
+      }
     }
   }
 
   /**
-   * Extract cover from a CBZ (ZIP) archive
-   * @param filePath - Path to the CBZ file
-   * @param outputDir - Directory to save the cover
-   * @returns Path to the extracted cover
+   * Extracts the first image from a CBZ (ZIP) archive and saves it as a cover.
+   * @param {string} archivePath - Full path to the .cbz file
+   * @param {string} outputPath - Path where the cover image should be saved
    */
-  async extractCoverFromZipArchive(filePath, outputDir) {
+  async extractCoverFromZipArchive(archivePath, outputPath) {
     let zip;
     try {
-      zip = new StreamZip.async({ file: filePath });
+      console.log(`[FileHandler][CBZ-COVER] Starting extraction for: ${archivePath}`);
+      zip = new StreamZip.async({ file: archivePath });
       const entries = await zip.entries();
       const imageFiles = Object.values(entries)
         .filter(e => !e.isDirectory && this.isImageFile(e.name))
         .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
-      if (imageFiles.length === 0) throw new Error('No images found in CBZ archive');
+      if (imageFiles.length === 0) {
+        throw new Error('No images found in CBZ archive');
+      }
 
       const coverData = await zip.entryData(imageFiles[0]);
-      const outputPath = path.join(outputDir, `${path.basename(filePath, '.cbz')}_cover.jpg`);
       
-      await fs.mkdir(outputDir, { recursive: true });
-      await sharp(coverData)
-        .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 85 })
+      await fsExtra.ensureDir(path.dirname(outputPath)); // Ensure output directory exists
+      await sharp(coverData, { failOnError: true })
+        .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85, progressive: true })
         .toFile(outputPath);
       
+      console.log(`[FileHandler][CBZ-COVER] Saved cover: ${outputPath}`);
       return outputPath;
     } catch (error) {
-      console.error(`[FileHandler] Error extracting cover from CBZ ${filePath}:`, error);
-      throw new Error(`Failed to extract cover from CBZ: ${error.message}`);
+      console.error(`[FileHandler][CBZ-COVER] Error extracting cover:`, error);
+      throw new Error(`CBZ cover extraction failed: ${error.message}`);
     } finally {
       if (zip) await zip.close().catch(() => {});
     }
   }
 
   /**
-   * Extract cover from a CBR (RAR) archive
-   * @param filePath - Path to the CBR file
-   * @param outputDir - Directory to save the cover
-   * @returns Path to the extracted cover
+   * Extracts the first page from a PDF document and saves it as a cover.
+   * @param {string} pdfPath - Full path to the .pdf file
+   * @param {string} outputPath - Path where the cover image should be saved
    */
-  async extractCoverFromRarArchive(filePath, outputDir) {
-    if (!this.unrarAvailable) throw new Error('RAR support is not available');
-
-    let tempDir = null;
-    try {
-      console.log(`[FileHandler] === CBR COVER EXTRACTION DEBUG START ===`);
-      console.log(`[FileHandler] Input: filePath=${filePath}, outputDir=${outputDir}`);
-      
-      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-cover-'));
-      console.log(`[FileHandler] ✓ Created temp dir: ${tempDir}`);
-      
-      console.log(`[FileHandler] Calling unrar (same as working prepareCbrForReading)...`);
-      await Promise.race([
-        this.unrar(filePath, tempDir, {}),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR cover extraction timeout')), 300000))
-      ]);
-      console.log(`[FileHandler] ✓ Unrar completed successfully`);
-      
-      console.log(`[FileHandler] Walking temp directory for image files...`);
-      const allFiles = await this._walk(tempDir);
-      console.log(`[FileHandler] ✓ Found ${allFiles.length} total files:`, allFiles.slice(0, 5));
-      
-      const imageFiles = allFiles
-        .filter(file => this.isImageFile(file))
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
-      console.log(`[FileHandler] ✓ Found ${imageFiles.length} image files:`, imageFiles.slice(0, 5));
-
-      if (imageFiles.length === 0) {
-        throw new Error('No images found in CBR archive after unrar extraction succeeded');
-      }
-
-      console.log(`[FileHandler] Preparing output path...`);
-      const outputPath = path.join(outputDir, `${path.basename(filePath, '.cbr')}_cover.jpg`);
-      console.log(`[FileHandler] ✓ Output path: ${outputPath}`);
-      
-      console.log(`[FileHandler] Creating output directory...`);
-      await fs.mkdir(outputDir, { recursive: true });
-      console.log(`[FileHandler] ✓ Output directory created`);
-      
-      console.log(`[FileHandler] Processing first image with Sharp: ${imageFiles[0]}`);
-      console.log(`[FileHandler] Image file stats:`);
-      const firstImageStats = await fs.stat(imageFiles[0]);
-      console.log(`[FileHandler] - Size: ${firstImageStats.size} bytes`);
-      console.log(`[FileHandler] - Exists: ${firstImageStats.isFile()}`);
-      
-      await sharp(imageFiles[0])
-        .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 85 })
-        .toFile(outputPath);
-      console.log(`[FileHandler] ✓ Sharp processing completed successfully`);
-      
-      console.log(`[FileHandler] Verifying output file...`);
-      const outputStats = await fs.stat(outputPath);
-      console.log(`[FileHandler] ✓ Output file size: ${outputStats.size} bytes`);
-      
-      console.log(`[FileHandler] === CBR COVER EXTRACTION DEBUG SUCCESS ===`);
-      return outputPath;
-      
-    } catch (error) {
-      console.error(`[FileHandler] === CBR COVER EXTRACTION DEBUG FAILED ===`);
-      console.error(`[FileHandler] Error type: ${error.constructor.name}`);
-      console.error(`[FileHandler] Error message: ${error.message}`);
-      console.error(`[FileHandler] Error stack:`, error.stack);
-      
-      // DON'T mask the real error - let it bubble up with original details
-      throw error;
-      
-    } finally {
-      if (tempDir) {
-        console.log(`[FileHandler] Cleaning up temp dir ${tempDir}`);
-        await fsExtra.remove(tempDir).catch(e => // Use fsExtra.remove
-          console.error(`[FileHandler] Error cleaning up temp dir ${tempDir}:`, e)
-        );
-      }
-    }
-  }
-
-  /**
-   * Extract cover from a PDF document
-   * Alternative implementation that doesn't require canvas module
-   * @param filePath - Path to the PDF file
-   * @param outputDir - Directory to save the cover
-   * @returns Path to the extracted cover
-   */
-  async extractCoverFromPdf(filePath, outputDir) {
+  async extractCoverFromPdf(pdfPath, outputPath) {
     if (!this.pdfjsAvailable) throw new Error('PDF processing is disabled.');
     
-    const outputPath = path.join(outputDir, `${path.basename(filePath, '.pdf')}_cover.jpg`);
-    await fs.mkdir(outputDir, { recursive: true });
+    await fsExtra.ensureDir(path.dirname(outputPath)); // Ensure output directory exists
 
     if (this.canvasAvailable) {
-      // Use canvas if available
       try {
-        const data = new Uint8Array(await fs.readFile(filePath));
+        const data = new Uint8Array(await fs.readFile(pdfPath));
         const pdf = await getDocument(data).promise;
         if (pdf.numPages === 0) {
           throw new Error('PDF has no pages');
@@ -527,52 +411,125 @@ class ComicFileHandler {
         await page.render({ canvasContext: context, viewport }).promise;
 
         const buffer = canvas.toBuffer('image/jpeg');
-        await sharp(buffer)
-          .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
-          .jpeg({ quality: 85 })
+        await sharp(buffer, { failOnError: true })
+          .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 85, progressive: true })
           .toFile(outputPath);
+        console.log(`[FileHandler][PDF-COVER] Saved cover (canvas): ${outputPath}`);
       } catch (error) {
-        console.error(`[FileHandler] Error rendering PDF cover with canvas for ${filePath}:`, error);
+        console.error(`[FileHandler][PDF-COVER] Error rendering PDF cover with canvas:`, error);
         throw new Error(`Failed to render PDF cover: ${error.message}`);
       }
     } else {
-      // Alternative: Create a placeholder cover or extract embedded images
-      // For now, we'll create a simple placeholder with PDF metadata
-      console.warn(`[FileHandler] Canvas not available. Creating placeholder cover for PDF ${filePath}.`);
-      
+      console.warn(`[FileHandler][PDF-COVER] Canvas not available. Creating placeholder cover for PDF ${pdfPath}.`);
       try {
-        const data = new Uint8Array(await fs.readFile(filePath));
+        const data = new Uint8Array(await fs.readFile(pdfPath));
         const pdf = await getDocument(data).promise;
         
         if (pdf.numPages === 0) {
           throw new Error('PDF has no pages');
         }
 
-        // Try to get the first page's text content as metadata
-        const page = await pdf.getPage(1);
-        const textContent = await page.getTextContent();
-        const text = textContent.items.map(item => item.str).join(' ').slice(0, 100);
-
-        // Create a simple SVG placeholder with sharp
         const svg = `
           <svg width="400" height="600" xmlns="http://www.w3.org/2000/svg">
             <rect width="400" height="600" fill="#f0f0f0"/>
             <text x="200" y="280" text-anchor="middle" font-size="24" fill="#333">PDF Document</text>
             <text x="200" y="320" text-anchor="middle" font-size="16" fill="#666">${pdf.numPages} pages</text>
-            <text x="200" y="360" text-anchor="middle" font-size="12" fill="#999">${path.basename(filePath, '.pdf')}</text>
+            <text x="200" y="360" text-anchor="middle" font-size="12" fill="#999">${path.basename(pdfPath, '.pdf')}</text>
           </svg>
         `;
 
-        await sharp(Buffer.from(svg))
-          .jpeg({ quality: 85 })
+        await sharp(Buffer.from(svg), { failOnError: true })
+          .jpeg({ quality: 85, progressive: true })
           .toFile(outputPath);
+        console.log(`[FileHandler][PDF-COVER] Saved cover (placeholder): ${outputPath}`);
       } catch (error) {
-        console.error(`[FileHandler] Error creating placeholder PDF cover for ${filePath}:`, error);
+        console.error(`[FileHandler][PDF-COVER] Error creating placeholder PDF cover:`, error);
         throw new Error(`Failed to create placeholder PDF cover: ${error.message}`);
       }
     }
-
     return outputPath;
+  }
+
+  /**
+   * Extracts a cover image from a comic archive (.cbr, .cbz, .pdf) or a direct image file.
+   * This acts as a dispatcher to the specific extraction methods.
+   * @param {string} sourcePath - Full path to the comic file or image file
+   * @param {string} outputPath - Path where the cover image should be saved
+   */
+  async extractCover(sourcePath, outputPath) {
+    const ext = path.extname(sourcePath).toLowerCase();
+    console.log(`[FileHandler] extractCover called for ${sourcePath} (ext: ${ext})`);
+
+    try {
+      if (ext === ".cbr") {
+        return await this.extractCoverFromRarArchive(sourcePath, outputPath);
+      } else if (ext === ".cbz") {
+        return await this.extractCoverFromZipArchive(sourcePath, outputPath);
+      } else if (ext === ".pdf") {
+        return await this.extractCoverFromPdf(sourcePath, outputPath);
+      } else if (this.isImageFile(sourcePath)) {
+        // Handle direct image files
+        const buffer = await fs.readFile(sourcePath);
+        await fsExtra.ensureDir(path.dirname(outputPath)); // Ensure output directory exists
+        await sharp(buffer, { failOnError: true })
+          .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 85, progressive: true })
+          .toFile(outputPath);
+        console.log(`[FileHandler] Saved direct image cover: ${outputPath}`);
+        return outputPath;
+      } else {
+        throw new Error(`Unsupported file type for cover extraction: ${ext}`);
+      }
+    } catch (err) {
+      console.error("[FileHandler] extractCover error:", err);
+      throw new Error(`Cover extraction failed: ${err.message}`);
+    }
+  }
+
+  /**
+   * Extracts a cover image and moves it to the public covers directory.
+   * This function generates a unique filename for the cover.
+   * @param {string} filePath - Path to the original comic file
+   * @param {string} publicCoversDir - The application's public covers directory
+   * @returns {Promise<string>} - Absolute path to the saved cover image in the public directory.
+   */
+  async extractCoverToPublic(filePath, publicCoversDir) {
+    console.log(`[FileHandler] extractCoverToPublic called for: ${filePath}`);
+
+    let tempCoverPath = null;
+    try {
+      if (!publicCoversDir) {
+        throw new Error("publicCoversDir is not defined.");
+      }
+      await fsExtra.ensureDir(publicCoversDir);
+
+      // Extract to a temporary location first
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-cover-temp-'));
+      tempCoverPath = path.join(tempDir, `temp_cover.jpg`);
+      
+      await this.extractCover(filePath, tempCoverPath); // Use the main extractCover dispatcher
+
+      // Generate a unique filename for the public cover
+      const publicCoverFilename = `comic-${Date.now()}-${Math.random().toString(36).slice(2, 11)}-cover.jpg`;
+      const publicCoverPath = path.join(publicCoversDir, publicCoverFilename);
+      
+      // Move the processed cover from temp to public directory
+      await fs.copyFile(tempCoverPath, publicCoverPath);
+      
+      const stats = await fs.stat(publicCoverPath);
+      if (stats.size === 0) throw new Error('Cover file is empty after copy');
+      
+      console.log(`[FileHandler] Cover successfully moved to public: ${publicCoverPath}`);
+      return publicCoverPath;
+    } catch (error) {
+      console.error(`[FileHandler] Error extracting cover to public directory for ${filePath}:`, error);
+      throw error;
+    } finally {
+      if (tempCoverPath) {
+        await fsExtra.remove(path.dirname(tempCoverPath)).catch(e => console.error(`[FileHandler] Error cleaning up temp dir for cover:`, e));
+      }
+    }
   }
 
   /**
