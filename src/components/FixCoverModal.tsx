@@ -123,15 +123,25 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
 
     setIsExtracting(true);
     try {
-      // The IPC handler 'extract-cover' now correctly calls fileHandler.extractCoverToPublic
-      const newCoverUrl = await electronAPI.extractCover(comic.filePath);
-      const updatedComic = { ...comic, coverUrl: newCoverUrl };
-      await updateComic(updatedComic);
-      showSuccess("Cover re-extracted successfully!");
-      onClose();
-    } catch (error) {
-      console.error('Error re-extracting cover:', error);
-      showError("Failed to re-extract cover from comic file.");
+      // The IPC handler 'extract-cover' now returns { success: boolean, path?: string, error?: { message: string, stack: string } }
+      const result = await electronAPI.extractCover(comic.filePath);
+      
+      if (result.success && result.path) {
+        const newCoverUrl = result.path;
+        const updatedComic = { ...comic, coverUrl: newCoverUrl };
+        await updateComic(updatedComic);
+        showSuccess("Cover re-extracted successfully!");
+        onClose();
+      } else {
+        // Issue 4: Surface detailed error message
+        const errorMessage = result.error?.message || "Failed to re-extract cover due to an unknown error.";
+        showError(`Failed to re-extract cover: ${errorMessage}`);
+        console.error('[FIX-COVER] Detailed re-extraction error:', result.error?.stack || errorMessage);
+      }
+    } catch (error: any) {
+      // This catch block handles errors from the IPC call itself (e.g., network issues)
+      showError(`Failed to re-extract cover: ${error.message}`);
+      console.error('[FIX-COVER] IPC call error during re-extraction:', error);
     } finally {
       setIsExtracting(false);
     }

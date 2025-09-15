@@ -109,10 +109,17 @@ async function initializeServices() {
       publicCoversDir = path.join(userDataPath, 'covers');
     }
     
+    // Issue 2: Ensure publicCoversDir is always defined
+    if (!publicCoversDir) {
+      publicCoversDir = path.join(userDataPath, 'covers'); // Fallback to a safe path
+      console.warn(`[Main] publicCoversDir was undefined, defaulted to: ${publicCoversDir}`);
+    }
+    
     await fs.mkdir(publicCoversDir, { recursive: true });
     await initializeKnowledgeBaseFile();
     
     console.log('Services initialized successfully');
+    console.log(`[Main] Resolved publicCoversDir: ${publicCoversDir}`); // Log the resolved path
   } catch (error) {
     console.error('Failed to initialize services:', error);
     throw error; // Re-throw the error to be caught by the whenReady handler

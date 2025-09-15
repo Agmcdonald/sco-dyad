@@ -19,6 +19,7 @@ const path = require('path');
 const StreamZip = require('node-stream-zip');
 const sharp = require('sharp');
 const os = require('os');
+const fsExtra = require('fs-extra'); // Import fs-extra
 
 // --- Canvas Module Conditional Loading ---
 let createCanvas;
@@ -298,7 +299,7 @@ class ComicFileHandler {
         console.error(`[FileHandler] Error getting page count from CBR file ${filePath}:`, error);
         throw new Error(`Failed to get page count from CBR: ${error.message}`);
       } finally {
-        if (tempDir) await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+        if (tempDir) await fsExtra.remove(tempDir).catch(() => {}); // Use fsExtra.remove
       }
     } else if (fileType === 'pdf') {
       if (!this.pdfjsAvailable) {
@@ -360,7 +361,8 @@ class ComicFileHandler {
       // Extract to temp directory first - use same approach as working prepareCbrForReading
       const tempCoverPath = await this.extractCover(filePath, tempDir);
       
-      const publicCoverFilename = `comic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-cover.jpg`;
+      // Issue 3: Use .slice instead of .substr
+      const publicCoverFilename = `comic-${Date.now()}-${Math.random().toString(36).slice(2, 11)}-cover.jpg`;
       const publicCoverPath = path.join(publicCoversDir, publicCoverFilename);
       
       await fs.copyFile(tempCoverPath, publicCoverPath);
@@ -374,7 +376,7 @@ class ComicFileHandler {
       console.error(`[FileHandler] Error extracting cover to public directory for ${filePath}:`, error);
       throw error;
     } finally {
-      if (tempDir) await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      if (tempDir) await fsExtra.remove(tempDir).catch(() => {}); // Use fsExtra.remove
     }
   }
 
@@ -489,7 +491,7 @@ class ComicFileHandler {
     } finally {
       if (tempDir) {
         console.log(`[FileHandler] Cleaning up temp dir ${tempDir}`);
-        await fs.rm(tempDir, { recursive: true, force: true }).catch(e => 
+        await fsExtra.remove(tempDir).catch(e => // Use fsExtra.remove
           console.error(`[FileHandler] Error cleaning up temp dir ${tempDir}:`, e)
         );
       }
@@ -806,7 +808,7 @@ class ComicFileHandler {
       console.error(`[FileHandler] CBR: Error preparing CBR ${filePath} for reading:`, error);
       if (tempDir) {
         console.log(`[FileHandler] CBR: Cleaning up temp dir ${tempDir} after error.`);
-        await fs.rm(tempDir, { recursive: true, force: true }).catch(e => console.error(`[FileHandler] CBR: Error cleaning up temp dir ${tempDir} after failed CBR prep:`, e));
+        await fsExtra.remove(tempDir).catch(e => console.error(`[FileHandler] CBR: Error cleaning up temp dir ${tempDir} after failed CBR prep:`, e)); // Use fsExtra.remove
       }
       throw new Error(`Failed to prepare CBR for reading: ${error.message}`);
     }
@@ -842,7 +844,7 @@ class ComicFileHandler {
   async cleanupTempDir(tempDir) {
     if (tempDir && tempDir.startsWith(os.tmpdir())) {
       console.log(`[FileHandler] Cleaning up temp dir ${tempDir}`);
-      await fs.rm(tempDir, { recursive: true, force: true }).catch(e => 
+      await fsExtra.remove(tempDir).catch(e => // Use fsExtra.remove
         console.error(`[FileHandler] Failed to clean up temp dir ${tempDir}`, e)
       );
     } else {
