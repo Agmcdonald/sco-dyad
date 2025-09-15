@@ -78,10 +78,8 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* TEMPORARY: API Usage Card moved here for debugging visibility */}
-      <div className="bg-purple-500 p-4 rounded-lg"> 
-        <ApiUsageCard />
-      </div>
+      {/* ApiUsageCard - Now in its correct, non-purple place */}
+      <ApiUsageCard />
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
@@ -125,8 +123,6 @@ const Dashboard = () => {
                   </Button>
                 </CardContent>
               </Card>
-              
-              {/* Original location of API Usage Card (now moved) */}
             </div>
 
             {/* Library Statistics */}

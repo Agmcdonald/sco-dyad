@@ -74,6 +74,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Comic Vine API Proxy
   fetchComicVine: (url, options) => ipcRenderer.invoke('comicvine:fetch', url, options),
 
+  // New: API Usage Tracking
+  getApiUsage: () => ipcRenderer.invoke('get-api-usage'), // <--- ADDED THIS LINE
+
   // Backup and Restore
   saveBackup: (data) => ipcRenderer.invoke('dialog:save-backup', data),
   loadBackup: () => ipcRenderer.invoke('dialog:load-backup'),
