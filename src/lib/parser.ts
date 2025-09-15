@@ -97,8 +97,8 @@ export const parseFilename = (path: string): ParsedComicInfo => {
 
   // 4. The remainder is the series
   let series = cleaned.replace(/\[[^\]]*\]/g, '').replace(/\([^)]*\)/g, '').trim();
-  // Clean up trailing characters like '#'
-  series = series.replace(/[^a-zA-Z0-9\s-]+$/, '').trim(); // Preserve hyphens here
+  // More aggressive cleanup: remove any characters that are not alphanumeric, whitespace, or hyphen globally
+  series = series.replace(/[^a-zA-Z0-9\s-]/g, '').trim();
   
   // 5. Detect Publisher
   const publisher = detectPublisherFromCharacters(series);
