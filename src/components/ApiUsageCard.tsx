@@ -2,40 +2,49 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Zap, Hourglass, Loader2 } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react"; // Import useRef
 
 const ApiUsageCard = () => {
-  console.log("ApiUsageCard is rendering."); // Added for debugging
+  console.log("ApiUsageCard is rendering.");
   const { apiUsageStats, fetchApiUsageStats } = useAppContext();
   const [timeUntilReset, setTimeUntilReset] = useState<string>('');
 
+  // Store the timestamp when apiUsageStats was last fetched
+  const fetchTimestampRef = useRef<number>(Date.now());
+  // Store the initial timeUntilResetMs from the last fetch
+  const initialTimeUntilResetMsRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (apiUsageStats) {
+      // Update refs when new apiUsageStats are received
+      fetchTimestampRef.current = Date.now();
+      initialTimeUntilResetMsRef.current = apiUsageStats.timeUntilResetMs;
+
       const updateTimer = () => {
-        // Ensure apiUsageStats and timeUntilResetMs are valid before calculation
-        if (apiUsageStats.timeUntilResetMs !== undefined && apiUsageStats.timeUntilResetMs !== null) {
-          const remainingMs = apiUsageStats.timeUntilResetMs - (Date.now() - (Date.now() - apiUsageStats.timeUntilResetMs));
-          if (remainingMs <= 0) {
-            setTimeUntilReset('Resetting soon...');
-            fetchApiUsageStats(); // Re-fetch to get new reset time
-            return;
-          }
-          const minutes = Math.floor(remainingMs / (1000 * 60));
-          const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
-          setTimeUntilReset(`${minutes}m ${seconds}s`);
-        } else {
-          setTimeUntilReset('N/A'); // Fallback if timeUntilResetMs is missing
+        const now = Date.now();
+        const elapsedSinceFetch = now - fetchTimestampRef.current;
+        
+        // Calculate remaining time based on the initial value and elapsed time
+        let remainingMs = (initialTimeUntilResetMsRef.current || 0) - elapsedSinceFetch;
+
+        if (remainingMs <= 0) {
+          setTimeUntilReset('Resetting soon...');
+          fetchApiUsageStats(); // Re-fetch to get new reset time and usage
+          return;
         }
+        const minutes = Math.floor(remainingMs / (1000 * 60));
+        const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
+        setTimeUntilReset(`${minutes}m ${seconds}s`);
       };
 
+      // Call immediately and then set interval
       updateTimer();
       const interval = setInterval(updateTimer, 1000);
       return () => clearInterval(interval);
     } else {
-      // If apiUsageStats is null, ensure timer is not running and set a default message
       setTimeUntilReset('Loading...');
     }
-  }, [apiUsageStats, fetchApiUsageStats]);
+  }, [apiUsageStats, fetchApiUsageStats]); // Depend on apiUsageStats to re-run when it changes
 
   if (!apiUsageStats) {
     return (
