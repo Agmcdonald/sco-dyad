@@ -215,28 +215,16 @@ export const AppProvider = ({ children }: { ReactNode }) => {
           ofTotal: parsed.ofTotal, // Populate ofTotal from parser
           confidence: null,
           status: 'Pending',
+          // pageCount is intentionally NOT fetched here for performance
         };
 
-        if (isElectron && electronAPI && filePath) {
-          try {
-            // Pass the signal to the Electron main process for cancellable operations
-            const fileInfo = await electronAPI.readComicFile(filePath, signal);
-            newFile.pageCount = fileInfo?.pageCount || undefined;
-          } catch (error: any) {
-            if (error.name === 'AbortError') {
-              console.log(`Reading info for ${newFile.name} aborted.`);
-              break; // Stop processing further files
-            }
-            console.warn(`Could not read info for ${newFile.name}:`, error);
-          }
-        }
         filesToAdd.push(newFile);
         await new Promise(res => setTimeout(res, 5));
       }
 
       if (!signal.aborted) {
         addFiles(filesToAdd);
-        showSuccess(`Added ${filesToAdd.length} comic file${filesToAdd.length !== 1 ? 's' : ''} to queue`);
+        showSuccess(`Added ${filesToAdd.length} comic file${filesToAdd.length !== 1 ? 's' : ''} to queue.`);
       }
     } catch (error: any) {
       if (error.name === 'AbortError') {
@@ -336,6 +324,7 @@ export const AppProvider = ({ children }: { ReactNode }) => {
         coverUrl: '/placeholder.svg',
         dateAdded: new Date(),
         summary: finalSummary, // Use the final summary
+        pageCount: originalFile.pageCount, // Preserve pageCount if it was somehow set
       };
       setComics(prev => [newComic, ...prev]);
       logAction('success', `(Demo Mode) Added '${newComic.series} #${newComic.issue}' to library`, {
@@ -391,7 +380,8 @@ export const AppProvider = ({ children }: { ReactNode }) => {
           filePath: organizeResult.newPath || originalFile.path, 
           fileSize,
           coverUrl,
-          summary: finalSummary // Use the final summary
+          summary: finalSummary, // Use the final summary
+          pageCount: originalFile.pageCount, // Preserve pageCount if it was somehow set
         };
         
         console.log(`[ADD-COMIC] Saving comic to database:`, comicToSave);
@@ -411,7 +401,14 @@ export const AppProvider = ({ children }: { ReactNode }) => {
         logAction('error', `Error organizing ${originalFile.name}: ${errorMessage}`);
       }
     } else {
-      const newComic: Comic = { ...comicData, id: `comic-${comicIdCounter++}`, coverUrl: '/placeholder.svg', dateAdded: new Date(), summary: finalSummary }; // Use the final summary
+      const newComic: Comic = { 
+        ...comicData, 
+        id: `comic-${comicIdCounter++}`, 
+        coverUrl: '/placeholder.svg', 
+        dateAdded: new Date(), 
+        summary: finalSummary, // Use the final summary
+        pageCount: originalFile.pageCount, // Preserve pageCount if it was somehow set
+      }; 
       setComics(prev => [...prev, newComic]); // Fixed: use newComic directly
       logAction('success', `(Web Mode) Added '${newComic.series} #${newComic.issue}' to library`, {
         type: 'ADD_COMIC',
@@ -456,7 +453,8 @@ export const AppProvider = ({ children }: { ReactNode }) => {
         const processedResult = await processComicFile(
           tempFile,
           settings.comicVineApiKey,
-          knowledgeBase
+          knowledgeBase,
+          electronAPI // Pass electronAPI here
         );
 
         // After processing, fetch updated API usage stats
@@ -485,6 +483,7 @@ export const AppProvider = ({ children }: { ReactNode }) => {
           languageCode: processedResult.data.languageCode,
           countryCode: processedResult.data.countryCode,
           creators: processedResult.data.creators,
+          pageCount: processedResult.data.pageCount, // Include pageCount from processing
         };
 
         await addComic(comicData, tempFile);
@@ -579,12 +578,14 @@ export const AppProvider = ({ children }: { ReactNode }) => {
       publisher: comic.publisher,
       status: 'Pending',
       confidence: null,
+      pageCount: comic.pageCount, // Preserve existing pageCount
     };
 
     const result = await processComicFile(
       tempFile,
       settings.comicVineApiKey,
-      knowledgeBase
+      knowledgeBase,
+      electronAPI // Pass electronAPI here
     );
 
     // After processing, fetch updated API usage stats
@@ -630,6 +631,10 @@ export const AppProvider = ({ children }: { ReactNode }) => {
             updatedComic.countryCode = result.data.countryCode;
             hasNewData = true;
       }
+      if (result.data.pageCount && !comic.pageCount) { // Update pageCount if missing
+            updatedComic.pageCount = result.data.pageCount;
+            hasNewData = true;
+      }
     }
     
     if (hasNewData) {
@@ -642,7 +647,7 @@ export const AppProvider = ({ children }: { ReactNode }) => {
       await updateComicFunc(updatedComic);
       return false; // Indicate no new data, but still processed
     }
-  }, [settings, knowledgeBase, logAction, fetchApiUsageStats]);
+  }, [settings, knowledgeBase, logAction, fetchApiUsageStats, electronAPI]);
 
   const skipFile = useCallback((file: QueuedFile) => {
     removeFile(file.id);

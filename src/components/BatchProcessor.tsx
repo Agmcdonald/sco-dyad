@@ -16,6 +16,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { batchProcessFiles, getProcessingStats } from "@/lib/smartProcessor";
 import { showSuccess, showError } from "@/utils/toast";
 import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
+import { useElectron } from "@/hooks/useElectron"; // Import useElectron
 
 interface BatchProcessorProps {
   files: QueuedFile[];
@@ -26,6 +27,7 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
   const { updateFile, addComic, removeFile, logAction } = useAppContext();
   const { settings } = useSettings();
   const { knowledgeBase } = useKnowledgeBase();
+  const { electronAPI } = useElectron(); // Get electronAPI
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState("");
@@ -63,6 +65,7 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
         filesToProcess,
         settings.comicVineApiKey,
         knowledgeBase,
+        electronAPI, // Pass electronAPI here
         (processed, total, current) => {
           setProgress((processed / total) * 100);
           setCurrentFile(current);

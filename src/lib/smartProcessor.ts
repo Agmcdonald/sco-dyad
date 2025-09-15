@@ -19,6 +19,7 @@ import { parseFilename, ParsedComicInfo } from "./parser";
 import { Creator, QueuedFile, Confidence, KnowledgeBase } from "@/types";
 import { fetchComicMetadata } from "./scraper";
 import { GcdDatabaseService } from "@/services/gcdDatabaseService"; // Keep import for type, but won't be used
+import { ElectronAPI } from "@/hooks/useElectron"; // Import ElectronAPI
 
 /**
  * Processing Result Interface
@@ -47,6 +48,7 @@ export interface ProcessingResult {
     barcode?: string;         // UPC barcode
     languageCode?: string;    // Language code
     countryCode?: string;     // Country code
+    pageCount?: number;       // Page count, now fetched here
   };
   error?: string;            // Error message (if failed)
 }
@@ -60,12 +62,14 @@ const normalize = (s: string | undefined | null) => (s || "").trim().toLowerCase
  * @param file - QueuedFile to process
  * @param comicVineApiKey - Comic Vine API key
  * @param knowledgeBase - Local knowledge base for series/publishers
+ * @param electronAPI - Electron API for file system operations (optional, for web compatibility)
  * @returns ProcessingResult with detected metadata and confidence
  */
 export const processComicFile = async (
   file: QueuedFile, 
   comicVineApiKey: string,
-  knowledgeBase: KnowledgeBase
+  knowledgeBase: KnowledgeBase,
+  electronAPI?: ElectronAPI // Make electronAPI optional
 ): Promise<ProcessingResult> => {
   try {
     console.log(`[SMART-PROCESSOR] Processing file: ${file.name}`);
@@ -98,8 +102,21 @@ export const processComicFile = async (
       summary: `Parsed from filename: ${file.name}`,
       creators: [],
       confidence: parsed.publisher ? "Medium" : "Low",
-      source: 'filename'
+      source: 'filename',
+      pageCount: file.pageCount, // Preserve existing pageCount
     };
+
+    // If pageCount is missing, try to fetch it now (deferred operation)
+    if ((currentComicData.pageCount === null || currentComicData.pageCount === undefined) && electronAPI && file.path && !file.path.startsWith('mock://')) {
+      try {
+        console.log(`[SMART-PROCESSOR] Fetching page count for ${file.name}...`);
+        const fileInfo = await electronAPI.readComicFile(file.path);
+        currentComicData.pageCount = fileInfo?.pageCount || undefined;
+        console.log(`[SMART-PROCESSOR] Page count for ${file.name}: ${currentComicData.pageCount}`);
+      } catch (error) {
+        console.warn(`[SMART-PROCESSOR] Could not fetch page count for ${file.name}:`, error);
+      }
+    }
 
     // 1. Attempt Knowledge Base Lookup
     const kbMatch = knowledgeBase.series.find(kb => normalize(kb.series) === normalize(parsed.series));
@@ -206,6 +223,7 @@ export const processComicFile = async (
  * @param files - Array of QueuedFile objects to process
  * @param comicVineApiKey - Comic Vine API key
  * @param knowledgeBase - Local knowledge base for series/publishers
+ * @param electronAPI - Electron API for file system operations (optional, for web compatibility)
  * @param onProgress - Callback for progress updates (processed count, total count, current file name)
  * @returns A Map of fileId to ProcessingResult
  */
@@ -213,6 +231,7 @@ export const batchProcessFiles = async (
   files: QueuedFile[],
   comicVineApiKey: string,
   knowledgeBase: KnowledgeBase,
+  electronAPI: ElectronAPI | undefined, // Add electronAPI here
   onProgress: (processed: number, total: number, currentFile: string) => void
 ): Promise<Map<string, ProcessingResult>> => {
   const results = new Map<string, ProcessingResult>();
@@ -221,7 +240,7 @@ export const batchProcessFiles = async (
   for (let i = 0; i < totalFiles; i++) {
     const file = files[i];
     onProgress(i + 1, totalFiles, file.name);
-    const result = await processComicFile(file, comicVineApiKey, knowledgeBase);
+    const result = await processComicFile(file, comicVineApiKey, knowledgeBase, electronAPI); // Pass electronAPI
     results.set(file.id, result);
     await new Promise(resolve => setTimeout(resolve, 50)); // Small delay to prevent API rate limits and UI freezing
   }
