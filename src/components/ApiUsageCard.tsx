@@ -1,30 +1,39 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Zap, Hourglass } from "lucide-react";
+import { Zap, Hourglass, Loader2 } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import { useEffect, useState } from "react";
 
 const ApiUsageCard = () => {
+  console.log("ApiUsageCard is rendering."); // Added for debugging
   const { apiUsageStats, fetchApiUsageStats } = useAppContext();
   const [timeUntilReset, setTimeUntilReset] = useState<string>('');
 
   useEffect(() => {
     if (apiUsageStats) {
       const updateTimer = () => {
-        const remainingMs = apiUsageStats.timeUntilResetMs - (Date.now() - (Date.now() - apiUsageStats.timeUntilResetMs));
-        if (remainingMs <= 0) {
-          setTimeUntilReset('Resetting soon...');
-          fetchApiUsageStats(); // Re-fetch to get new reset time
-          return;
+        // Ensure apiUsageStats and timeUntilResetMs are valid before calculation
+        if (apiUsageStats.timeUntilResetMs !== undefined && apiUsageStats.timeUntilResetMs !== null) {
+          const remainingMs = apiUsageStats.timeUntilResetMs - (Date.now() - (Date.now() - apiUsageStats.timeUntilResetMs));
+          if (remainingMs <= 0) {
+            setTimeUntilReset('Resetting soon...');
+            fetchApiUsageStats(); // Re-fetch to get new reset time
+            return;
+          }
+          const minutes = Math.floor(remainingMs / (1000 * 60));
+          const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
+          setTimeUntilReset(`${minutes}m ${seconds}s`);
+        } else {
+          setTimeUntilReset('N/A'); // Fallback if timeUntilResetMs is missing
         }
-        const minutes = Math.floor(remainingMs / (1000 * 60));
-        const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
-        setTimeUntilReset(`${minutes}m ${seconds}s`);
       };
 
-      updateTimer(); // Initial call
-      const interval = setInterval(updateTimer, 1000); // Update every second
+      updateTimer();
+      const interval = setInterval(updateTimer, 1000);
       return () => clearInterval(interval);
+    } else {
+      // If apiUsageStats is null, ensure timer is not running and set a default message
+      setTimeUntilReset('Loading...');
     }
   }, [apiUsageStats, fetchApiUsageStats]);
 
