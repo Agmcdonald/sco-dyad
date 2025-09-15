@@ -205,19 +205,10 @@ const Maintenance = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isScanningMetadata ? (
-                <div className="space-y-3">
-                  <Progress value={(metadataScanProgress.processed / metadataScanProgress.total) * 100} />
-                  <div className="text-sm text-muted-foreground">
-                    Scanning {metadataScanProgress.processed} of {metadataScanProgress.total} comics... 
-                    ({metadataScanProgress.updated} updated)
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  This tool will scan comics with incomplete information and attempt to fetch richer data from online sources.
-                </p>
-              )}
+              {/* Removed inline progress display */}
+              <p className="text-sm text-muted-foreground">
+                This tool will scan comics with incomplete information and attempt to fetch richer data from online sources.
+              </p>
             </CardContent>
             <CardFooter>
               <Button onClick={startMetadataScan} disabled={isScanningMetadata}>

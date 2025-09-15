@@ -16,6 +16,7 @@ import NotFound from "./pages/NotFound";
 import ElectronIntegration from "./components/ElectronIntegration";
 import HelpManualModal from "./components/HelpManualModal";
 import FirstLaunchModal from "@/components/FirstLaunchModal";
+import GlobalProgressBar from "@/components/GlobalProgressBar"; // Import GlobalProgressBar
 import { SelectionProvider } from "./context/SelectionContext";
 import { AppProvider } from "./context/AppContext";
 import { ThemeProvider } from "./components/ThemeProvider";
@@ -52,7 +53,7 @@ const Root = () => {
     <>
       <ElectronIntegration />
       <HelpManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
-      <FirstLaunchModal /> {/* Uncommented FirstLaunchModal */}
+      <FirstLaunchModal />
       <Outlet />
     </>
   );
@@ -103,6 +104,7 @@ const App = () => {
                   <Toaster />
                   <Sonner />
                   <RouterProvider router={router} />
+                  <GlobalProgressBar /> {/* Add the global progress bar here */}
                 </SelectionProvider>
               </AppProvider>
             </KnowledgeBaseProvider>
