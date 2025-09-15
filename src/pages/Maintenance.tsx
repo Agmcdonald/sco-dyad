@@ -159,7 +159,7 @@ const Maintenance = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex flex-col md:flex-row gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button className="w-full md:w-auto justify-start" onClick={handleExportLibrary}>
                 <Download className="h-4 w-4 mr-2" />
                 Export Library
