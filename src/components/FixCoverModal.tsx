@@ -56,7 +56,6 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
       return { tempDir: cbrTempDir, pages: availablePages };
     }
     if (preparePromiseRef.current) {
-      // Reuse in-flight promise
       return await preparePromiseRef.current;
     }
 
@@ -83,9 +82,8 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
       }
 
       setCbrTempDir(tempDir);
-      setAvailablePages(pages.slice(0, 32)); // cap initial UI load
+      setAvailablePages(pages.slice(0, 32));
 
-      // Preload first few thumbnails
       const thumbs: Record<string, string> = {};
       const preloadCount = Math.min(pages.length, 10);
       for (let i = 0; i < preloadCount; i++) {
@@ -93,9 +91,7 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
         try {
           const dataUrl = await electronAPI.getPageDataUrlFromTemp(tempDir, name);
           thumbs[name] = dataUrl;
-        } catch {
-          // Ignore individual failures
-        }
+        } catch {}
       }
       setPageImages(thumbs);
       setIsLoadingPages(false);
@@ -105,22 +101,17 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
       const msg = err?.message || "Unknown error";
       setPageLoadError(`Error loading pages: ${msg}`);
       return null;
-    } finally {
-      // Keep the promise for reuse; will be cleared on modal close/unmount
     }
   };
 
-  // Prepare when opening (only for CBR; CBZ/PDF handled lazily in other flows)
   useEffect(() => {
     if (isOpen) {
       if (isElectron && electronAPI && comic.filePath?.toLowerCase().endsWith(".cbr")) {
-        // Fire and forget; UI reacts via state
         void ensurePrepared();
       }
     }
   }, [isOpen, isElectron, electronAPI, comic.filePath]);
 
-  // Cleanup temp directory and reset promise when modal closes or unmounts
   useEffect(() => {
     return () => {
       if (cbrTempDir && electronAPI) {
@@ -145,40 +136,34 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
 
     setIsExtracting(true);
     try {
-      // Ensure we reuse the same preparation pipeline as Select Page
       const prepared = await ensurePrepared();
       if (prepared && prepared.pages && prepared.pages.length > 0) {
         const first = prepared.pages[0];
-
-        // Show first-page preview while re-extract runs
         if (!pageImages[first]) {
           try {
             const dataUrl = await electronAPI.getPageDataUrlFromTemp(prepared.tempDir, first);
             setPageImages(prev => ({ ...prev, [first]: dataUrl }));
             setFirstPagePreview(dataUrl);
-          } catch {
-            // Ignore preview load failure
-          }
+          } catch {}
         } else {
           setFirstPagePreview(pageImages[first]);
         }
       }
 
-      // Persist the cover via IPC (writes to covers dir and returns path)
-      const result = await electronAPI.extractCover(comic.filePath);
-      if (result.success && result.path) {
-        const updatedComic = { ...comic, coverUrl: result.path };
-        await updateComic(updatedComic);
-        showSuccess("Cover re-extracted successfully!");
-        onClose();
-      } else {
-        const errorMessage = result.error?.message || "Failed to re-extract cover due to an unknown error.";
-        showError(`Failed to re-extract cover: ${errorMessage}`);
-        console.error('[FIX-COVER] Detailed re-extraction error:', result.error?.stack || errorMessage);
+      const out = await electronAPI.extractCover(comic.filePath);
+      const newPath = typeof out === 'string' ? out : (out && (out as any).path) ? (out as any).path : null;
+
+      if (!newPath) {
+        showError("Failed to re-extract cover due to an unknown error.");
+        return;
       }
+
+      await updateComic({ ...comic, coverUrl: newPath });
+      showSuccess("Cover re-extracted successfully!");
+      onClose();
     } catch (error: any) {
-      showError(`Failed to re-extract cover: ${error.message}`);
-      console.error('[FIX-COVER] Re-extract error:', error);
+      showError(`Failed to re-extract cover: ${error?.message || String(error)}`);
+      console.error('[FIX-COVER] Detailed re-extraction error:', error);
     } finally {
       setIsExtracting(false);
     }
@@ -187,19 +172,17 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
   const handleUsePageAsCover = async (pageName: string) => {
     if (!isElectron || !electronAPI || !comic.filePath) return;
     try {
-      // We keep using the page data URL for preview, but DB update expects a real cover file path.
-      // Reuse extractCover IPC (which now uses the first page internally). To honor a specific page
-      // selection, you’d need a dedicated IPC that writes a chosen page; for now keep existing flow.
-      const result = await electronAPI.extractCover(comic.filePath);
-      if (result.success && result.path) {
-        const updatedComic = { ...comic, coverUrl: result.path };
-        await updateComic(updatedComic);
-        showSuccess(`Cover updated from page "${pageName}".`);
-        onClose();
-      } else {
-        const errorMessage = result.error?.message || "Failed to set cover.";
-        showError(errorMessage);
+      const out = await electronAPI.extractCover(comic.filePath);
+      const newPath = typeof out === 'string' ? out : (out && (out as any).path) ? (out as any).path : null;
+
+      if (!newPath) {
+        showError("Failed to set cover.");
+        return;
       }
+
+      await updateComic({ ...comic, coverUrl: newPath });
+      showSuccess(`Cover updated from page "${pageName}".`);
+      onClose();
     } catch (error) {
       console.error('[FIX-COVER] Error using page as cover:', error);
       showError("Failed to use page as cover.");
@@ -207,7 +190,7 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
   };
 
   const coverSrc = firstPagePreview || getCoverUrl(comic.coverUrl, comic.filePath);
-  const disableUi = isExtracting; // lock UI while extracting to avoid races
+  const disableUi = isExtracting;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
