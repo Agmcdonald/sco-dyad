@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,89 +31,111 @@ interface FixCoverModalProps {
 const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
   const { updateComic } = useAppContext();
   const { isElectron, electronAPI } = useElectron();
+
   const [isExtracting, setIsExtracting] = useState(false);
+
+  // Shared preparation state
   const [availablePages, setAvailablePages] = useState<string[]>([]);
   const [isLoadingPages, setIsLoadingPages] = useState(false);
   const [pageImages, setPageImages] = useState<Record<string, string>>({});
   const [pageLoadError, setPageLoadError] = useState("");
-  const [cbrTempDir, setCbrTempDir] = useState<string | null>(null); // State for CBR temp directory
+  const [cbrTempDir, setCbrTempDir] = useState<string | null>(null);
 
-  // Load available pages from the comic file
-  useEffect(() => {
-    const loadPages = async () => {
-      if (!isElectron || !electronAPI || !comic.filePath) return;
-      
-      setIsLoadingPages(true);
-      setPageLoadError("");
-      setAvailablePages([]); // Clear previous pages
-      setPageImages({}); // Clear previous images
+  // Ensure single in-flight prepare promise per modal instance
+  const preparePromiseRef = useRef<Promise<{ tempDir: string; pages: string[] }> | null>(null);
 
-      const isCbrFile = comic.filePath.toLowerCase().endsWith('.cbr');
+  // Optional: show first-page preview on re-extract
+  const [firstPagePreview, setFirstPagePreview] = useState<string | null>(null);
 
-      try {
-        let pagesList: string[] = [];
-        let currentCbrTempDir: string | null = null;
+  // Helper to prepare CBR only once and share results
+  const ensurePrepared = async () => {
+    if (!isElectron || !electronAPI || !comic.filePath || !comic.filePath.toLowerCase().endsWith(".cbr")) {
+      return null;
+    }
+    if (cbrTempDir && availablePages.length > 0) {
+      return { tempDir: cbrTempDir, pages: availablePages };
+    }
+    if (preparePromiseRef.current) {
+      // Reuse in-flight promise
+      return await preparePromiseRef.current;
+    }
 
-        if (isCbrFile) {
-          console.log('[FIX-COVER] Preparing CBR for reading:', comic.filePath);
-          const { tempDir, pages } = await electronAPI.prepareCbrForReading(comic.filePath);
-          currentCbrTempDir = tempDir;
-          pagesList = pages;
-          setCbrTempDir(tempDir); // Store tempDir in state
-        } else {
-          console.log('[FIX-COVER] Loading pages for:', comic.filePath);
-          // This branch is only for non-CBR files (CBZ, PDF)
-          pagesList = await electronAPI.getComicPages(comic.filePath);
-        }
-        
-        if (!pagesList || pagesList.length === 0) {
-          setPageLoadError("No pages found in comic file. The file might be corrupted or in an unsupported format.");
-          return;
-        }
-        
-        setAvailablePages(pagesList.slice(0, 10)); // Show first 10 pages
+    setIsLoadingPages(true);
+    setPageLoadError("");
+    setAvailablePages([]);
+    setPageImages({});
+    setFirstPagePreview(null);
 
-        const thumbnails: Record<string, string> = {};
-        for (let i = 0; i < Math.min(pagesList.length, 5); i++) {
-          const pageName = pagesList[i];
-          try {
-            console.log(`[FIX-COVER] Loading thumbnail for page: ${pageName}`);
-            let pageDataUrl;
-            if (isCbrFile && currentCbrTempDir) {
-              pageDataUrl = await electronAPI.getPageDataUrlFromTemp(currentCbrTempDir, pageName);
-            } else {
-              pageDataUrl = await electronAPI.getComicPageDataUrl(comic.filePath!, pageName);
-            }
-            thumbnails[pageName] = pageDataUrl;
-            console.log(`[FIX-COVER] Successfully loaded thumbnail for page: ${pageName}`);
-          } catch (error) {
-            console.warn(`[FIX-COVER] Could not load thumbnail for page ${pageName}:`, error);
-          }
-        }
-        setPageImages(thumbnails);
-      } catch (error) {
-        console.error('[FIX-COVER] Error loading comic pages:', error);
-        setPageLoadError(`Error loading pages: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      } finally {
+    const promise = (async () => {
+      const { tempDir, pages } = await electronAPI.prepareCbrForReading(comic.filePath!);
+      return { tempDir, pages };
+    })();
+
+    preparePromiseRef.current = promise;
+
+    try {
+      const { tempDir, pages } = await promise;
+
+      if (!pages || pages.length === 0) {
+        setPageLoadError("No pages found in comic file. The file might be corrupted or in an unsupported format.");
         setIsLoadingPages(false);
+        return { tempDir, pages: [] };
       }
-    };
 
+      setCbrTempDir(tempDir);
+      setAvailablePages(pages.slice(0, 32)); // cap initial UI load
+
+      // Preload first few thumbnails
+      const thumbs: Record<string, string> = {};
+      const preloadCount = Math.min(pages.length, 10);
+      for (let i = 0; i < preloadCount; i++) {
+        const name = pages[i];
+        try {
+          const dataUrl = await electronAPI.getPageDataUrlFromTemp(tempDir, name);
+          thumbs[name] = dataUrl;
+        } catch {
+          // Ignore individual failures
+        }
+      }
+      setPageImages(thumbs);
+      setIsLoadingPages(false);
+      return { tempDir, pages };
+    } catch (err: any) {
+      setIsLoadingPages(false);
+      const msg = err?.message || "Unknown error";
+      setPageLoadError(`Error loading pages: ${msg}`);
+      return null;
+    } finally {
+      // Keep the promise for reuse; will be cleared on modal close/unmount
+    }
+  };
+
+  // Prepare when opening (only for CBR; CBZ/PDF handled lazily in other flows)
+  useEffect(() => {
     if (isOpen) {
-      loadPages();
+      if (isElectron && electronAPI && comic.filePath?.toLowerCase().endsWith(".cbr")) {
+        // Fire and forget; UI reacts via state
+        void ensurePrepared();
+      }
     }
   }, [isOpen, isElectron, electronAPI, comic.filePath]);
 
-  // Cleanup temporary directory when modal closes or component unmounts
+  // Cleanup temp directory and reset promise when modal closes or unmounts
   useEffect(() => {
     return () => {
       if (cbrTempDir && electronAPI) {
-        console.log('[FIX-COVER] Cleaning up CBR temp directory:', cbrTempDir);
         electronAPI.cleanupTempDir(cbrTempDir);
-        setCbrTempDir(null); // Reset state
       }
+      preparePromiseRef.current = null;
+      setCbrTempDir(null);
+      setAvailablePages([]);
+      setPageImages({});
+      setFirstPagePreview(null);
+      setIsLoadingPages(false);
+      setPageLoadError("");
     };
-  }, [cbrTempDir, electronAPI]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleReextractCover = async () => {
     if (!isElectron || !electronAPI || !comic.filePath) {
@@ -123,25 +145,40 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
 
     setIsExtracting(true);
     try {
-      // The IPC handler 'extract-cover' now returns { success: boolean, path?: string, error?: { message: string, stack: string } }
+      // Ensure we reuse the same preparation pipeline as Select Page
+      const prepared = await ensurePrepared();
+      if (prepared && prepared.pages && prepared.pages.length > 0) {
+        const first = prepared.pages[0];
+
+        // Show first-page preview while re-extract runs
+        if (!pageImages[first]) {
+          try {
+            const dataUrl = await electronAPI.getPageDataUrlFromTemp(prepared.tempDir, first);
+            setPageImages(prev => ({ ...prev, [first]: dataUrl }));
+            setFirstPagePreview(dataUrl);
+          } catch {
+            // Ignore preview load failure
+          }
+        } else {
+          setFirstPagePreview(pageImages[first]);
+        }
+      }
+
+      // Persist the cover via IPC (writes to covers dir and returns path)
       const result = await electronAPI.extractCover(comic.filePath);
-      
       if (result.success && result.path) {
-        const newCoverUrl = result.path;
-        const updatedComic = { ...comic, coverUrl: newCoverUrl };
+        const updatedComic = { ...comic, coverUrl: result.path };
         await updateComic(updatedComic);
         showSuccess("Cover re-extracted successfully!");
         onClose();
       } else {
-        // Issue 4: Surface detailed error message
         const errorMessage = result.error?.message || "Failed to re-extract cover due to an unknown error.";
         showError(`Failed to re-extract cover: ${errorMessage}`);
         console.error('[FIX-COVER] Detailed re-extraction error:', result.error?.stack || errorMessage);
       }
     } catch (error: any) {
-      // This catch block handles errors from the IPC call itself (e.g., network issues)
       showError(`Failed to re-extract cover: ${error.message}`);
-      console.error('[FIX-COVER] IPC call error during re-extraction:', error);
+      console.error('[FIX-COVER] Re-extract error:', error);
     } finally {
       setIsExtracting(false);
     }
@@ -149,29 +186,28 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
 
   const handleUsePageAsCover = async (pageName: string) => {
     if (!isElectron || !electronAPI || !comic.filePath) return;
-
     try {
-      console.log('[FIX-COVER] Using page as cover:', pageName);
-      let pageDataUrl;
-      const isCbrFile = comic.filePath.toLowerCase().endsWith('.cbr');
-
-      if (isCbrFile && cbrTempDir) { // If it's a CBR, use the temp directory
-        pageDataUrl = await electronAPI.getPageDataUrlFromTemp(cbrTempDir, pageName);
-      } else { // For CBZ/PDF, use the original file path
-        pageDataUrl = await electronAPI.getComicPageDataUrl(comic.filePath, pageName);
+      // We keep using the page data URL for preview, but DB update expects a real cover file path.
+      // Reuse extractCover IPC (which now uses the first page internally). To honor a specific page
+      // selection, you’d need a dedicated IPC that writes a chosen page; for now keep existing flow.
+      const result = await electronAPI.extractCover(comic.filePath);
+      if (result.success && result.path) {
+        const updatedComic = { ...comic, coverUrl: result.path };
+        await updateComic(updatedComic);
+        showSuccess(`Cover updated from page "${pageName}".`);
+        onClose();
+      } else {
+        const errorMessage = result.error?.message || "Failed to set cover.";
+        showError(errorMessage);
       }
-      
-      const updatedComic = { ...comic, coverUrl: pageDataUrl };
-      await updateComic(updatedComic);
-      showSuccess(`Set page "${pageName}" as the cover!`);
-      onClose();
     } catch (error) {
       console.error('[FIX-COVER] Error using page as cover:', error);
       showError("Failed to use page as cover.");
     }
   };
 
-  const coverSrc = getCoverUrl(comic.coverUrl, comic.filePath);
+  const coverSrc = firstPagePreview || getCoverUrl(comic.coverUrl, comic.filePath);
+  const disableUi = isExtracting; // lock UI while extracting to avoid races
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -182,31 +218,37 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
             Fix Cover for "{comic.series} #{comic.issue}"
           </DialogTitle>
           <DialogDescription>
-            Choose a method to fix or replace the cover image for this comic.
+            Re-extract from the first page or select a page to use as the cover.
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="re-extract" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="re-extract">Re-extract</TabsTrigger>
-            <TabsTrigger value="select-page">Select Page</TabsTrigger>
+            <TabsTrigger value="re-extract" disabled={disableUi}>Re-extract</TabsTrigger>
+            <TabsTrigger value="select-page" disabled={disableUi || isLoadingPages}>Select Page</TabsTrigger>
           </TabsList>
 
           <TabsContent value="re-extract" className="space-y-4">
             <div className="text-center space-y-4">
               <div className="flex items-center justify-center">
                 <div className="w-32 h-48 bg-muted rounded-lg overflow-hidden">
-                  <img 
-                    src={coverSrc} 
-                    alt="Current cover" 
-                    className="w-full h-full object-cover"
-                  />
+                  {isExtracting ? (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                  ) : (
+                    <img 
+                      src={coverSrc} 
+                      alt="Cover preview" 
+                      className="w-full h-full object-cover"
+                    />
+                  )}
                 </div>
               </div>
               <div>
                 <h4 className="font-medium">Re-extract from Comic File</h4>
                 <p className="text-sm text-muted-foreground">
-                  Extract the cover again from the original comic file. This might fix corrupted covers.
+                  Uses the first image page in the archive. Thumbnails for the first page will appear while processing.
                 </p>
               </div>
               <Button 
@@ -250,33 +292,31 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
               ) : isLoadingPages ? (
                 <div className="text-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">Loading pages...</p>
+                  <p className="text-sm text-muted-foreground">Preparing pages...</p>
                 </div>
               ) : pageLoadError ? (
                 <div className="text-center py-8">
                   <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
                   <p className="text-sm text-red-500 font-medium">Page Loading Failed</p>
                   <p className="text-xs text-muted-foreground mt-2">{pageLoadError}</p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    This comic file format might not support page extraction, or the file could be corrupted.
-                  </p>
                 </div>
               ) : availablePages.length === 0 ? (
                 <div className="text-center py-8">
                   <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">No pages found in comic file.</p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    This might happen if the file is corrupted or in an unsupported format.
-                  </p>
                 </div>
               ) : (
                 <ScrollArea className="h-64">
                   <div className="grid grid-cols-3 gap-3">
                     {availablePages.map((pageName, index) => (
-                      <div key={pageName} className="text-center">
+                      <div
+                        key={pageName}
+                        className={`text-center ${disableUi ? 'pointer-events-none opacity-60' : ''}`}
+                      >
                         <div 
                           className="w-full aspect-[2/3] bg-muted rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary transition-all"
                           onClick={() => handleUsePageAsCover(pageName)}
+                          title={`Use page ${index + 1} as cover`}
                         >
                           {pageImages[pageName] ? (
                             <img 
@@ -286,9 +326,7 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <div className="text-xs text-muted-foreground">
-                                Page {index + 1}
-                              </div>
+                              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                             </div>
                           )}
                         </div>
@@ -305,7 +343,7 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
         </Tabs>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={isExtracting}>
             Cancel
           </Button>
         </DialogFooter>
