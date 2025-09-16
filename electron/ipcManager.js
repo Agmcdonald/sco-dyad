@@ -212,7 +212,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       const libraryRoot = settings.libraryPath || path.join(app.getPath('documents'), 'Comic Organizer Library');
       const fullTargetPath = path.join(libraryRoot, relativeTargetPath);
 
-      if (sourcePath === fullTargetPath) {
+    if (sourcePath === fullTargetPath) {
         return { success: true, newPath: fullTargetPath };
       }
 
@@ -383,7 +383,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
-  // Unified: extract cover for any supported format; returns a string path
+  // Extract cover — for .cbr use the same flow as Select Page; others use the standard flow
   ipcMain.handle('extract-cover', async (event, filePath) => {
     try {
       if (!publicCoversDir || typeof publicCoversDir !== 'string') {
@@ -391,12 +391,39 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       }
       await fs.mkdir(publicCoversDir, { recursive: true });
 
-      // Delegate to fileHandler (which already uses the stable prepare flow for CBR)
+      const ext = path.extname(filePath || '').toLowerCase();
+
+      if (ext === '.cbr') {
+        const { tempDir, pages } = await fileHandler.prepareCbrForReading(filePath);
+        try {
+          if (!pages || pages.length === 0) {
+            throw new Error('No image pages found in CBR archive.');
+          }
+          const firstPageRel = pages[0];
+          const firstPageAbs = path.join(tempDir, firstPageRel);
+          const publicCoverFilename = `comic-${Date.now()}-${Math.random().toString(36).slice(2, 11)}-cover.jpg`;
+          const publicCoverPath = path.join(publicCoversDir, publicCoverFilename);
+
+          const buffer = await fs.readFile(firstPageAbs);
+          await sharp(buffer, { failOnError: true })
+            .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
+            .jpeg({ quality: 85, progressive: true })
+            .toFile(publicCoverPath);
+
+          return publicCoverPath; // string path
+        } finally {
+          if (tempDir) {
+            await fileHandler.cleanupTempDir(tempDir).catch(() => {});
+          }
+        }
+      }
+
+      // Non-CBR: use the consolidated helper (ZIP/PDF/image)
       const absoluteCoverPath = await fileHandler.extractCoverToPublic(filePath, publicCoversDir);
-      return absoluteCoverPath; // return string for compatibility
+      return absoluteCoverPath; // string path
     } catch (error) {
       console.error(`[IPC] extract-cover handler error for ${filePath}:`, error);
-      throw error; // let renderer catch and show a toast
+      throw error;
     }
   });
 
