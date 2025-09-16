@@ -265,7 +265,7 @@ class ComicFileHandler {
         if (zip) await zip.close().catch(() => {});
       }
     } else if (fileType === 'cbr') {
-      if (!this.unrarAvailable || !this.unrar) { // Added check for this.unrar
+      if (!this.unrarAvailable || !this.unrar) {
         console.warn(`[FileHandler] RAR support not available for ${filePath}. Cannot get page count.`);
         return 0;
       }
@@ -309,15 +309,20 @@ class ComicFileHandler {
    * @param {string} outputPath - Path where the cover image should be saved
    */
   async extractCoverFromRarArchive(archivePath, outputPath) {
-    if (!this.unrarAvailable || !this.unrar) { // Added check for this.unrar
+    if (!this.unrarAvailable || !this.unrar) {
       throw new Error('RAR support is not available for CBR cover extraction.');
     }
+    console.log(`[FileHandler][CBR-COVER] Type of this.unrar: ${typeof this.unrar}`); // DIAGNOSTIC LOG
 
     let tempDir = null;
     try {
       console.log(`[FileHandler][CBR-COVER] Starting extraction for: ${archivePath}`);
       tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cbr-cover-'));
-      await this.unrar(archivePath, tempDir, { overwrite: true });
+      
+      await Promise.race([ // ADDED PROMISE.RACE FOR CONSISTENCY
+        this.unrar(archivePath, tempDir, { overwrite: true }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR cover extraction timeout')), 300000)) // 5 minutes
+      ]);
 
       const allFiles = await this._walk(tempDir);
       const imageFiles = allFiles
@@ -731,10 +736,11 @@ class ComicFileHandler {
    * @returns Object with temp directory path and list of page filenames
    */
   async prepareCbrForReading(filePath) {
-    if (!this.unrarAvailable || !this.unrar) { // Added check for this.unrar
+    if (!this.unrarAvailable || !this.unrar) {
       console.error(`[FileHandler] CBR: RAR support is not available for ${filePath}`);
       throw new Error('RAR support is not available');
     }
+    console.log(`[FileHandler] CBR: Type of this.unrar: ${typeof this.unrar}`); // DIAGNOSTIC LOG
     console.log(`[FileHandler] CBR: Starting prepareCbrForReading for ${filePath}`);
     let tempDir = null;
     try {
