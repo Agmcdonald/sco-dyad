@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const { pathToFileURL } = require('url');
 const https = require('https');
+const sharp = require('sharp'); // NEW: for writing resized cover images
 let Store = require('electron-store');
 
 // Handle cases where the module is wrapped in a default export
@@ -321,7 +322,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
   ipcMain.handle('db:import-comics', (event, comics) => database.importComics(comics));
   ipcMain.handle('db:batch-update-comics', (event, updates) => database.batchUpdateComics(updates));
   
-  ipcMain.handle('delete-comic', async (event, comicId, filePath) => {
+  ipcMain.handle('delete-comic', async (event, id, filePath) => {
     if (filePath) {
       try {
         await fs.unlink(filePath);
@@ -329,7 +330,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
         console.error(`Failed to delete file: ${filePath}`, error);
       }
     }
-    return database.deleteComic(comicId);
+    return database.deleteComic(id);
   });
 
   ipcMain.handle('save-comic', async (event, comic) => {
@@ -342,12 +343,10 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
       
       if (comic.filePath) {
         try {
-          // Issue 2: Validate publicCoversDir before use
           if (!publicCoversDir || typeof publicCoversDir !== 'string') {
             throw new Error(`Covers directory is invalid or not set: ${publicCoversDir}. Cannot save comic cover.`);
           }
           await fs.mkdir(publicCoversDir, { recursive: true });
-          // Call the refactored extractCoverToPublic
           const absoluteCoverPath = await fileHandler.extractCoverToPublic(comic.filePath, publicCoversDir);
           
           try {
@@ -543,20 +542,48 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
-  // Issue 4: Wrap extract-cover in try/catch and return detailed error
+  // Extract cover — special handling for .cbr to mirror Select Page flow
   ipcMain.handle('extract-cover', async (event, filePath) => {
     try {
-      // Issue 2: Validate publicCoversDir before use
       if (!publicCoversDir || typeof publicCoversDir !== 'string') {
         throw new Error(`Covers directory is invalid or not set: ${publicCoversDir}. Please reinstall the application or report this issue.`);
       }
       await fs.mkdir(publicCoversDir, { recursive: true });
-      // Call the refactored extractCoverToPublic
+
+      const ext = path.extname(filePath || '').toLowerCase();
+
+      if (ext === '.cbr') {
+        // Use the same stable flow as Select Page
+        const { tempDir, pages } = await fileHandler.prepareCbrForReading(filePath);
+        try {
+          if (!pages || pages.length === 0) {
+            throw new Error('No image pages found in CBR archive.');
+          }
+          const firstPageRel = pages[0];
+          const firstPageAbs = path.join(tempDir, firstPageRel);
+          const publicCoverFilename = `comic-${Date.now()}-${Math.random().toString(36).slice(2, 11)}-cover.jpg`;
+          const publicCoverPath = path.join(publicCoversDir, publicCoverFilename);
+
+          const buffer = await fs.readFile(firstPageAbs);
+          await sharp(buffer, { failOnError: true })
+            .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
+            .jpeg({ quality: 85, progressive: true })
+            .toFile(publicCoverPath);
+
+          return { success: true, path: publicCoverPath };
+        } finally {
+          // Always clean up temp dir
+          if (tempDir) {
+            await fileHandler.cleanupTempDir(tempDir).catch(() => {});
+          }
+        }
+      }
+
+      // Non-CBR: keep using the existing, direct path
       const absoluteCoverPath = await fileHandler.extractCoverToPublic(filePath, publicCoversDir);
       return { success: true, path: absoluteCoverPath };
     } catch (error) {
       console.error(`[IPC] extract-cover handler error for ${filePath}:`, error);
-      // Return a structured error object
       return { success: false, error: { message: error.message, stack: error.stack } };
     }
   });
