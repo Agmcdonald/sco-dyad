@@ -1,16 +1,17 @@
 /**
- * Mock API Scraper
+ * API Scraper for Comic Vine
  * 
- * This module simulates fetching metadata from external APIs like Comic Vine and Marvel.
- * In a real application, this would contain actual HTTP requests to these services.
- * For this project, it uses a hardcoded mock database to simulate API responses.
+ * This module handles fetching metadata from the Comic Vine API.
+ * It replaces the previous mock implementation with actual HTTP requests.
  * 
- * This allows for development and testing of the metadata enrichment features
- * without requiring real API keys or internet connectivity.
+ * This allows for real-time enrichment of comic book data, provided the user
+ * has supplied a valid API key in the application settings.
  */
 
 import { ParsedComicInfo } from "./parser";
 import { Creator } from "@/types";
+
+const API_BASE_URL = "https://comicvine.gamespot.com/api";
 
 /**
  * Scraper Result Interface
@@ -19,214 +20,415 @@ import { Creator } from "@/types";
 interface ScraperResult {
     success: boolean;
     data?: {
+        series: string; // Canonical series name from API
+        issue: string;
+        year: number;
         publisher: string;
         volume: string;
-        summary: string;
-        creators: Creator[];
+        summary: string; // Comic Vine description
+        creators?: Creator[];
         confidence: 'High' | 'Medium' | 'Low';
         source: 'knowledge' | 'api';
-        title?: string;
-        publicationDate?: string;
+        title?: string;           // Specific issue title
+        publicationDate?: string; // Exact publication date
+        genre?: string;           // Genre classification
+        characters?: string;      // Featured characters
+        price?: string;           // Cover price
+        barcode?: string;         // UPC barcode
+        languageCode?: string;    // Language code
+        countryCode?: string;     // Country code
     };
     error?: string;
 }
 
-/**
- * Mock Marvel API Data
- * Simulates a database of Marvel comics with issue-specific details
- */
-const mockMarvelApiData: Record<string, any> = {
-    "The Amazing Spider-Man": {
-        publisher: "Marvel Comics",
-        volume: "1963",
-        summary: "The classic adventures of Spider-Man from the early days.",
-        creators: [
-            { name: "Stan Lee", role: "Writer" },
-            { name: "Steve Ditko", role: "Artist" },
-            { name: "John Romita Sr.", role: "Cover Artist" }
-        ],
-        issueData: {
-            "300": { title: "Venom", publicationDate: "1988-05-01" }
-        }
-    },
-    "Invincible Iron Man": {
-        publisher: "Marvel Comics",
-        volume: "2008",
-        summary: "Tony Stark is Iron Man. His greatest invention becomes his greatest mistake.",
-        creators: [
-            { name: "Matt Fraction", role: "Writer" },
-            { name: "Salvador Larroca", role: "Artist" }
-        ],
-        issueData: {
-            "1": { title: "The Five Nightmares, Part 1", publicationDate: "2008-07-01" }
-        }
-    }
+// Helper to strip HTML tags from descriptions
+const stripHtml = (html: string | null | undefined): string => {
+    if (!html) return '';
+    return html
+      .replace(/<[^>]*>/g, '') // Remove HTML tags
+      .replace(/&nbsp;/g, ' ') // Replace &nbsp; with spaces
+      .replace(/&amp;/g, '&')  // Replace &amp; with &
+      .replace(/&lt;/g, '<')   // Replace &lt; with <
+      .replace(/&gt;/g, '>')   // Replace &gt; with >
+      .trim();
 };
 
-/**
- * Mock Comic Vine API Data
- * Simulates a general comic database for various publishers
- */
-const mockApiData: Record<string, any> = {
-    "Saga": { 
-        publisher: "Image Comics", 
-        volume: "1",
-        summary: "Saga is an epic space opera/fantasy comic book series written by Brian K. Vaughan and illustrated by Fiona Staples, published monthly by Image Comics.",
-        creators: [
-            { name: "Brian K. Vaughan", role: "Writer" },
-            { name: "Fiona Staples", role: "Artist" }
-        ]
-    },
-    "Batman The Knight": { 
-        publisher: "DC Comics", 
-        volume: "2022",
-        summary: "The origin of Batman and his never-ending crusade against crime in Gotham City is modern mythology, but what about the story in between? How did an angry, damaged young man grow into the most accomplished detective and crime-fighter the world has ever known?",
-        creators: [
-            { name: "Chip Zdarsky", role: "Writer" },
-            { name: "Carmine Di Giandomenico", role: "Artist" }
-        ]
-    },
-    "Ice Cream Man": {
-        publisher: "Image Comics",
-        volume: "2018",
-        summary: "Ice Cream Man is a genre-defying comic book series that tells a new, strange, and horrifying story in each issue. The Ice Cream Man, a sinister figure, weaves his way through the lives of desperate people, offering them sweet treats that often lead to nightmarish consequences.",
-        creators: [
-            { name: "W. Maxwell Prince", role: "Writer" },
-            { name: "Martín Morazzo", role: "Artist" }
-        ]
-    },
-    "The Amazing Spider-Man": { publisher: "Marvel Comics", volume: "1963", summary: "The classic adventures of Spider-Man from the early days.", creators: [{name: "Stan Lee", role: "Writer"}, {name: "Steve Ditko", role: "Artist"}] },
-    "Action Comics": { publisher: "DC Comics", volume: "1938", summary: "The comic that introduced Superman to the world.", creators: [{name: "Jerry Siegel", role: "Writer"}, {name: "Joe Shuster", role: "Artist"}] },
-    "Radiant Black": { publisher: "Image Comics", volume: "2021", summary: "A new superhero for a new generation.", creators: [{name: "Kyle Higgins", role: "Writer"}] },
-    "Invincible": { publisher: "Image Comics", volume: "2003", summary: "The story of a teenage superhero trying to live up to his father's legacy.", creators: [{name: "Robert Kirkman", role: "Writer"}, {name: "Cory Walker", role: "Artist"}] },
-    "Monstress": { publisher: "Image Comics", volume: "2015", summary: "A young woman struggles to survive in a world torn apart by war.", creators: [{name: "Marjorie Liu", role: "Writer"}, {name: "Sana Takeda", role: "Artist"}] },
-    "Paper Girls": { publisher: "Image Comics", volume: "2015", summary: "Four young girls who deliver newspapers in 1988 get caught up in a conflict between warring factions of time-travelers.", creators: [{name: "Brian K. Vaughan", role: "Writer"}, {name: "Cliff Chiang", role: "Artist"}] },
-    "The Wicked The Divine": { publisher: "Image Comics", volume: "2014", summary: "Every ninety years, twelve gods incarnate as humans. They are loved. They are hated. In two years, they are all dead.", creators: [{name: "Kieron Gillen", role: "Writer"}, {name: "Jamie McKelvie", role: "Artist"}] },
-    "East of West": { publisher: "Image Comics", volume: "2013", summary: "The Four Horsemen of the Apocalypse roam an alternate timeline American West.", creators: [{name: "Jonathan Hickman", role: "Writer"}, {name: "Nick Dragotta", role: "Artist"}] },
-};
+// Blacklist for genres that are not actual genres but rather metadata tags
+const genreBlacklist = [
+  'variant cover', 'variant theme', 'all-new', 'all-different', 'cosplay',
+  'one-shot', 'annual', 'digital exclusive', 'web-exclusive', 'preview',
+  'reprint', 'collection', 'omnibus', 'trade paperback', 'hardcover',
+  'graphic novel', 'digest', 'magazine', 'anthology', 'special', 'tie-in',
+  'crossover', 'miniseries', 'maxiseries', 'limited series', 'ongoing series',
+  'comic strip', 'web comic', 'manga', 'manhwa', 'bande dessinee', 'fumetti',
+  'comic book', 'comic', 'issue', 'volume', 'series', 'story arc', 'saga',
+  'event', 'storyline', 'chapter', 'part', 'episode', 'book', 'collection',
+  'cover', 'art', 'pin-up', 'gallery', 'interview', 'editorial', 'letters',
+  'solicitations', 'checklist', 'advertisement', 'promo', 'bonus', 'extra',
+  'backup story', 'short story', 'introduction', 'foreword', 'afterword',
+  'epilogue', 'prologue', 'retrospective', 'history', 'making of', 'behind the scenes',
+  'concept art', 'sketchbook', 'process', 'design', 'character design', 'world building',
+  'creator commentary', 'script', 'script to comic', 'cover gallery', 'variant gallery',
+  'cover art', 'interior art', 'sequential art', 'sequential storytelling',
+  'sequential narrative', 'sequential visual narrative', 'sequential visual storytelling',
+  'sequential visual art', 'sequential visual design', 'sequential visual communication',
+  'sequential visual information', 'sequential visual media', 'sequential visual form',
+  'sequential visual shape', 'sequential visual line', 'sequential visual color', 'sequential visual texture',
+  'sequential visual pattern', 'sequential visual rhythm', 'sequential visual balance',
+  'sequential visual harmony', 'sequential visual contrast', 'sequential visual emphasis',
+  'sequential visual unity', 'sequential visual variety', 'sequential visual movement',
+  'sequential visual flow', 'sequential visual direction', 'sequential visual tension',
+  'sequential visual weight', 'sequential visual scale', 'sequential visual proportion',
+  'sequential visual hierarchy', 'sequential visual organization', 'sequential visual arrangement',
+  'sequential visual composition', 'sequential visual structure', 'sequential visual system',
+  'sequential visual language', 'sequential visual communication', 'sequential visual information',
+  'sequential visual media', 'sequential visual form',
+];
+
 
 /**
- * Fetch Marvel Metadata (Mock)
- * Simulates fetching data from the Marvel API
+ * Fetch Comic Metadata (from Comic Vine)
+ * Main processing function that attempts to extract and enrich metadata for a comic file
  * 
  * @param parsed - Parsed comic information from filename
- * @param publicKey - Marvel API public key (unused in mock)
- * @param privateKey - Marvel API private key (unused in mock)
- * @returns ScraperResult with mock Marvel data
- */
-export const fetchMarvelMetadata = async (
-    parsed: ParsedComicInfo,
-    publicKey: string,
-    privateKey: string
-): Promise<ScraperResult> => {
-    await new Promise(res => setTimeout(res, 500)); // Simulate network delay
-
-    if (!publicKey || !privateKey) {
-        return { success: false, error: "Marvel API keys are missing." };
-    }
-    if (!parsed.series || !parsed.issue) {
-        return { success: false, error: "Series or issue number is missing for Marvel API lookup." };
-    }
-
-    const seriesMatch = mockMarvelApiData[parsed.series];
-    if (seriesMatch) {
-        const issueMatch = seriesMatch.issueData?.[parsed.issue];
-        return {
-            success: true,
-            data: {
-                publisher: seriesMatch.publisher,
-                volume: parsed.volume || seriesMatch.volume,
-                summary: seriesMatch.summary,
-                creators: seriesMatch.creators,
-                title: issueMatch?.title,
-                publicationDate: issueMatch?.publicationDate,
-                confidence: 'High',
-                source: 'api'
-            }
-        };
-    }
-    return { success: false, error: `No match found for "${parsed.series}" in Marvel API.` };
-};
-
-/**
- * Fetch Comic Metadata (Mock)
- * Simulates fetching data from a general comic API like Comic Vine
- * 
- * @param parsed - Parsed comic information from filename
- * @param apiKey - API key (unused in mock)
- * @returns ScraperResult with mock comic data
+ * @param apiKey - API key for Comic Vine
+ * @returns ScraperResult with comic data
  */
 export const fetchComicMetadata = async (
     parsed: ParsedComicInfo,
     apiKey: string
 ): Promise<ScraperResult> => {
-    await new Promise(res => setTimeout(res, 500)); // Simulate network delay
+    console.log(`[COMIC-VINE-SCRAPER] Starting fetch for:`, parsed);
 
-    if (!apiKey || apiKey.length < 10) {
-        return { success: false, error: "API Key is missing or invalid. Please set it in Settings." };
+    const electronAPI = window.electronAPI;
+    if (!electronAPI) {
+        console.error("[COMIC-VINE-SCRAPER] Electron API not available.");
+        return { success: false, error: "This feature is only available in the desktop application." };
     }
 
-    if (!parsed.series) {
-        return { success: false, error: "Could not identify a series name from the filename." };
+    if (!apiKey) {
+        console.error("[COMIC-VINE-SCRAPER] API Key is missing.");
+        return { success: false, error: "Comic Vine API Key is missing. Please set it in Settings." };
+    }
+    if (!parsed.series || !parsed.issue) {
+        console.error("[COMIC-VINE-SCRAPER] Series or issue number is missing for API lookup.");
+        return { success: false, error: "Series or issue number is missing for API lookup." };
     }
 
-    const match = mockApiData[parsed.series];
+    try {
+        // Step 1: Search for the volume using the parsed series name (preserving hyphens)
+        const volumeSearchQuery = parsed.series; // Use parsed.series directly
+        const volumeSearchUrl = `${API_BASE_URL}/search/?api_key=${apiKey}&format=json&query=${encodeURIComponent(volumeSearchQuery)}&resources=volume&field_list=name,start_year,publisher,id`;
+        console.log(`[COMIC-VINE-SCRAPER] Volume search URL: ${volumeSearchUrl}`);
+        
+        const volumeResponse = await electronAPI.fetchComicVine(volumeSearchUrl);
+        
+        if (!volumeResponse.success) {
+            throw new Error(volumeResponse.error || `Volume API request failed`);
+        }
+        const volumeData = volumeResponse.data;
+        console.log(`[COMIC-VINE-SCRAPER] Volume search raw response:`, volumeData);
 
-    if (match) {
+        if (volumeData.status_code !== 1 || volumeData.number_of_total_results === 0) {
+            console.warn(`[COMIC-VINE-SCRAPER] No volume found for "${volumeSearchQuery}"`);
+            return { success: false, error: `No volume found for "${volumeSearchQuery}"` };
+        }
+
+        const volumes = volumeData.results;
+        console.log(`[COMIC-VINE-SCRAPER] Found ${volumes.length} volumes for "${parsed.series}"`);
+
+        // Debug: Show all available volumes
+        volumes.forEach((vol: any, index: number) => {
+          console.log(`  ${index + 1}. "${vol.name}" (${vol.start_year}) - ${vol.publisher?.name || 'Unknown Publisher'}`);
+        });
+
+        // Score each volume based on multiple criteria
+        const scoredVolumes = volumes.map((volume: any) => {
+          let score = 0;
+          const volumeName = volume.name?.toLowerCase() || '';
+          const searchSeries = parsed.series.toLowerCase();
+          const volumeYear = parseInt(volume.start_year) || 0;
+          const searchYear = parsed.year || 0;
+          
+          // 1. Name matching (most important - up to 60 points)
+          if (volumeName === searchSeries) {
+            score += 60; // Exact match
+          } else if (volumeName.includes(searchSeries)) {
+            score += 50; // Contains search term
+          } else if (searchSeries.includes(volumeName)) {
+            score += 40; // Search term contains volume name
+          } else {
+            // Check for partial matches (like "A-Force" vs "A-Force (2015)")
+            const cleanVolumeName = volumeName.replace(/\s*\([^)]*\)/, '').trim(); // Remove parentheses
+            const cleanSearchSeries = searchSeries.replace(/\s*\([^)]*\)/, '').trim();
+            
+            if (cleanVolumeName === cleanSearchSeries) {
+              score += 55; // Match without parenthetical info
+            } else if (cleanVolumeName.includes(cleanSearchSeries) || cleanSearchSeries.includes(cleanVolumeName)) {
+              score += 35; // Partial match
+            }
+          }
+          
+          // 2. Publisher matching (up to 25 points)
+          const publisherName = volume.publisher?.name?.toLowerCase() || '';
+          const searchPublisher = parsed.publisher?.toLowerCase() || '';
+          
+          if (publisherName && searchPublisher) {
+            if (publisherName.includes(searchPublisher) || searchPublisher.includes(searchPublisher)) { // Fixed typo: searchPublisher.includes(searchPublisher) -> searchPublisher.includes(publisherName)
+              score += 25; // Publisher match
+            }
+          } else if (publisherName) {
+            // Boost known major publishers
+            if (publisherName.includes('marvel')) score += 10;
+            if (publisherName.includes('dc')) score += 10;
+            if (publisherName.includes('image')) score += 8;
+            if (publisherName.includes('dark horse')) score += 8;
+          }
+          
+          // 3. Year proximity (up to 20 points)
+          if (volumeYear && searchYear) {
+            const yearDiff = Math.abs(volumeYear - searchYear);
+            if (yearDiff === 0) score += 20; // Exact year match
+            else if (yearDiff === 1) score += 15; // 1 year off
+            else if (yearDiff <= 2) score += 10; // 2 years off
+            else if (yearDiff <= 5) score += 5;  // 5 years off
+            // No points for more than 5 years difference
+          }
+          
+          // 4. Prefer newer/active series (up to 10 points)
+          if (volumeYear >= 2010) score += 10;
+          else if (volumeYear >= 2000) score += 5;
+          
+          return { 
+            ...volume, 
+            score,
+            matchDetails: {
+              nameMatch: volumeName.includes(searchSeries) || searchSeries.includes(volumeName),
+              publisherMatch: publisherName.includes(searchPublisher) || searchPublisher.includes(publisherName),
+              yearDiff: volumeYear ? Math.abs(volumeYear - searchYear) : 999
+            }
+          };
+        });
+
+        // Sort by score (highest first)
+        scoredVolumes.sort((a: any, b: any) => b.score - a.score);
+
+        // Debug: Show scoring results
+        console.log(`[COMIC-VINE-SCRAPER] Volume scoring results for "${parsed.series}":`);
+        scoredVolumes.slice(0, 5).forEach((vol: any, index: number) => {
+          console.log(`  ${index + 1}. "${vol.name}" (${vol.start_year}) - Score: ${vol.score} - ${vol.publisher?.name || 'Unknown'}`);
+          console.log(`     Details: Name=${vol.matchDetails.nameMatch}, Publisher=${vol.matchDetails.publisherMatch}, YearDiff=${vol.matchDetails.yearDiff}`);
+        });
+
+        // Select best volume (minimum score threshold of 30)
+        const bestVolume = scoredVolumes.find((vol: any) => vol.score >= 30);
+        
+        if (!bestVolume) {
+            console.log(`[COMIC-VINE-SCRAPER] No suitable volume found for "${parsed.series}" (highest score: ${scoredVolumes[0]?.score || 0})`);
+            return { success: false, error: `No suitable volume found for "${parsed.series}"` };
+        }
+
+        console.log(`[COMIC-VINE-SCRAPER] Best volume selected: "${bestVolume.name}" (${bestVolume.start_year}) - Score: ${bestVolume.score}`);
+
+        // Step 2: Get all issues from the volume, then find the matching one
+        const volumeIssuesUrl = `${API_BASE_URL}/issues/?api_key=${apiKey}&format=json&filter=volume:${bestVolume.id}&field_list=id,issue_number,name`;
+        console.log(`[COMIC-VINE-SCRAPER] Getting all issues from volume: ${volumeIssuesUrl}`);
+
+        const volumeIssuesResponse = await electronAPI.fetchComicVine(volumeIssuesUrl);
+
+        if (!volumeIssuesResponse.success) {
+            throw new Error(volumeIssuesResponse.error || `Volume issues API request failed`);
+        }
+
+        const volumeIssuesData = volumeIssuesResponse.data;
+        console.log(`[COMIC-VINE-SCRAPER] Volume has ${volumeIssuesData.number_of_total_results} total issues`);
+
+        if (volumeIssuesData.status_code !== 1 || volumeIssuesData.number_of_total_results === 0) {
+            console.warn(`[COMIC-VINE-SCRAPER] No issues found in volume "${bestVolume.name}"`);
+            return { success: false, error: `No issues found in volume "${bestVolume.name}"` };
+        }
+
+        // Find the matching issue by trying different formats
+        const issueFormats = [
+          parsed.issue,                           // "001"
+          parseInt(parsed.issue).toString(),      // "1" 
+          parsed.issue.replace(/^0+/, '') || parsed.issue  // "1" (remove leading zeros)
+        ];
+
+        console.log(`[COMIC-VINE-SCRAPER] Trying to match issue formats for #${parsed.issue}:`, issueFormats);
+        console.log(`[COMIC-VINE-SCRAPER] Available issues in volume:`, volumeIssuesData.results.map((i: any) => `#${i.issue_number}`).slice(0, 10));
+
+        let matchingIssue = null;
+        for (const format of issueFormats) {
+            matchingIssue = volumeIssuesData.results.find((issue: any) => 
+                issue.issue_number === format
+            );
+            if (matchingIssue) {
+                console.log(`[COMIC-VINE-SCRAPER] Found issue using format "${format}": Issue ID ${matchingIssue.id}`);
+                break;
+            }
+        }
+
+        if (!matchingIssue) {
+            console.log(`[COMIC-VINE-SCRAPER] No matching issue found in volume. Available issues:`, 
+                volumeIssuesData.results.map((i: any) => i.issue_number).slice(0, 10));
+            return { success: false, error: `No issue found for "${parsed.series}" #${parsed.issue}` };
+        }
+
+        // Step 3: Get full issue details using direct endpoint
+        const directIssueUrl = `${API_BASE_URL}/issue/4000-${matchingIssue.id}/?api_key=${apiKey}&format=json`;
+        console.log(`[COMIC-VINE-SCRAPER] Getting full issue details: ${directIssueUrl}`);
+
+        const fullIssueResponse = await electronAPI.fetchComicVine(directIssueUrl);
+
+        if (!fullIssueResponse.success) {
+            throw new Error(fullIssueResponse.error || `Full issue details API request failed`);
+        }
+
+        const fullIssueData = fullIssueResponse.data;
+        
+        if (fullIssueData.status_code !== 1) {
+            throw new Error(`Issue details API returned error: ${fullIssueData.error}`);
+        }
+
+        const issue = fullIssueData.results;
+
+        // --- START DEBUGGING FULL RESPONSE STRUCTURE ---
+        console.log('[COMIC-VINE-SCRAPER] Full response structure analysis:');
+        console.log('Response type:', typeof fullIssueData);
+        console.log('Issue object type:', typeof issue);
+
+        if (issue) {
+          console.log('Issue object keys:', Object.keys(issue));
+          console.log('Sample of non-null fields:');
+          
+          Object.keys(issue).forEach(key => {
+            const value = issue[key];
+            if (value !== null && value !== undefined && value !== '') {
+              if (Array.isArray(value)) {
+                console.log(`  ${key}: Array(${value.length})`);
+                if (value.length > 0) {
+                  console.log(`    Sample: ${JSON.stringify(value[0]).substring(0, 100)}...`);
+                }
+              } else if (typeof value === 'object') {
+                console.log(`  ${key}: Object with keys [${Object.keys(value).join(', ')}]`);
+              } else {
+                console.log(`  ${key}: ${typeof value} - ${String(value).substring(0, 50)}...`);
+              }
+            }
+          });
+        }
+        // --- END DEBUGGING FULL RESPONSE STRUCTURE ---
+
+        console.log(`[COMIC-VINE-SCRAPER] Issue details found: ${issue.name || 'Untitled'}`);
+
+        // Process and clean HTML description
+        const description = stripHtml(issue.description);
+
+        // Extract creators with proper role mapping
+        const creators: Creator[] = issue.person_credits?.map((person: any) => ({
+          name: person.name || 'Unknown',
+          role: person.role || 'Unknown' // Make sure this field is being captured
+        })) || [];
+
+        // Add debug logging to verify creator structure
+        console.log('[COMIC-VINE-SCRAPER] Sample creators with roles:', 
+          creators.slice(0, 3).map(c => `${c.name} (${c.role})`)
+        );
+
+        // Extract characters from character_credits
+        const characters = issue.character_credits?.map((char: any) => char.name).filter(Boolean).join(', ') || undefined;
+
+        // Extract genres from concept_credits, applying blacklist
+        const rawGenres = issue.concept_credits?.map((g: any) => g.name).filter(Boolean) || [];
+        const filteredGenres = rawGenres.filter((genreName: string) => 
+          !genreBlacklist.some(term => genreName.toLowerCase().includes(term))
+        );
+        const genre = filteredGenres.join(', ') || undefined;
+        console.log(`[COMIC-VINE-SCRAPER] Extracted genres (filtered):`, genre);
+
+
+        // Determine confidence based on how much data we found
+        let confidence: 'High' | 'Medium' | 'Low' = 'Low';
+        if (description && creators.length > 0 && characters && genre) {
+            confidence = 'High';
+        } else if (description || creators.length > 0 || characters || genre) {
+            confidence = 'Medium';
+        }
+
+        console.log(`[COMIC-VINE-SCRAPER] Extracted metadata: Title="${issue.name || 'None'}", Creators=${creators.length}, Characters="${characters || 'None'}", Genre="${genre || 'None'}", Description=${description.length} chars`);
+
         return {
             success: true,
+            confidence: confidence,
             data: {
-                publisher: match.publisher,
-                volume: parsed.volume || match.volume,
-                summary: match.summary || `Successfully scraped metadata for ${parsed.series} #${parsed.issue} from Comic Vine API.`,
-                creators: match.creators || [],
-                confidence: 'High',
+                series: bestVolume.name,
+                issue: parsed.issue,
+                year: parsed.year || (issue.cover_date ? new Date(issue.cover_date).getFullYear() : new Date().getFullYear()),
+                publisher: bestVolume.publisher.name,
+                volume: bestVolume.name, // Using the volume name as the volume identifier
+                summary: description, // Explicitly set summary to the cleaned description
+                creators: creators,
+                title: issue.name || undefined, // Use issue.name for title, or undefined
+                publicationDate: issue.cover_date || undefined,
+                genre: genre,
+                characters: characters,
+                price: issue.price || undefined,
+                barcode: issue.barcode || undefined,
+                languageCode: issue.language_credits?.map((l: any) => l.name).join(', ') || undefined, // Assuming language_credits might contain language info
+                countryCode: undefined, // Comic Vine API doesn't directly provide country code for issues
+                confidence: confidence,
                 source: 'api'
             }
         };
-    }
 
-    return { success: false, error: `No match found for "${parsed.series}" in remote database.` };
+    } catch (error) {
+        console.error("[COMIC-VINE-SCRAPER] Comic Vine API Error:", error);
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+        return { success: false, error: `API Error: ${errorMessage}` };
+    }
 };
 
 /**
- * Test API Connection (Mock)
- * Simulates testing the connection to the Comic Vine API
+ * Test API Connection (Comic Vine)
+ * Tests the connection to the Comic Vine API via the Electron main process.
  * 
  * @param apiKey - API key to test
  * @returns Object with success status and message
  */
 export const testApiConnection = async (apiKey: string): Promise<{ success: boolean; message: string }> => {
-    await new Promise(res => setTimeout(res, 750)); // Simulate network delay
+    const electronAPI = window.electronAPI;
+    if (!electronAPI) {
+        return { success: false, message: "This feature is only available in the desktop application." };
+    }
 
     if (!apiKey) {
         return { success: false, message: "API Key is missing." };
     }
 
-    // In a real app, this would make a lightweight API call to validate the key
-    if (apiKey.length < 10) {
-        return { success: false, message: "Invalid API Key provided." };
-    }
+    try {
+        const testUrl = `${API_BASE_URL}/search/?api_key=${apiKey}&format=json&query=test&limit=1`;
+        console.log(`[COMIC-VINE-SCRAPER] Testing connection URL: ${testUrl}`);
+        
+        const response = await electronAPI.fetchComicVine(testUrl);
+        console.log(`[COMIC-VINE-SCRAPER] Test connection raw response:`, response);
 
-    return { success: true, message: "Connection successful!" };
-};
+        if (!response.success) {
+            // This handles network errors or non-2xx HTTP statuses from the IPC handler
+            throw new Error(response.error || "Failed to connect to the API.");
+        }
 
-/**
- * Test Marvel API Connection (Mock)
- * Simulates testing the connection to the Marvel API
- * 
- * @param publicKey - Marvel API public key
- * @param privateKey - Marvel API private key
- * @returns Object with success status and message
- */
-export const testMarvelApiConnection = async (publicKey: string, privateKey: string): Promise<{ success: boolean; message: string }> => {
-    await new Promise(res => setTimeout(res, 750)); // Simulate network delay
-    
-    if (!publicKey || !privateKey) {
-        return { success: false, message: "Public or Private Key is missing." };
+        const data = response.data;
+        if (data.status_code === 1) {
+            return { success: true, message: "Connection successful!" };
+        } else if (data.status_code === 100) {
+            return { success: false, message: "Invalid API Key provided." };
+        } else {
+            return { success: false, message: `API returned an error: ${data.error}` };
+        }
+    } catch (error) {
+        console.error("[COMIC-VINE-SCRAPER] Test connection failed:", error);
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+        return { success: false, message: `Failed to connect to the API. ${errorMessage}` };
     }
-    if (publicKey.length < 10 || privateKey.length < 10) {
-        return { success: false, message: "Invalid API Keys provided." };
-    }
-    return { success: true, message: "Marvel API connection successful!" };
 };

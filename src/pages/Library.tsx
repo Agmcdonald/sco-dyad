@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -23,22 +23,26 @@ import PublisherView from "@/components/PublisherView";
 import { useAppContext } from "@/context/AppContext";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { Comic, LibraryViewMode } from "@/types";
-import { RATING_EMOJIS } from "@/lib/ratings";
+import { RATING_EMOJIS, CONTENT_RATINGS } from "@/lib/ratings";
 
 interface LibraryProps {
   onToggleInspector?: () => void;
 }
 
 const Library = ({ onToggleInspector }: LibraryProps) => {
-  const { comics } = useAppContext();
+  const { comics, readingList } = useAppContext();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortOption, setSortOption] = useState("issue-asc");
-  const [secondarySort, setSecondarySort] = useState("series-asc");
-  const [viewMode, setViewMode] = useState<LibraryViewMode>("grid");
+  const [sortOption, setSortOption] = useLocalStorage("library-sort-option", "issue-asc");
+  const [secondarySort, setSecondarySort] = useLocalStorage("library-secondary-sort", "series-asc");
+  const [viewMode, setViewMode] = useLocalStorage<LibraryViewMode>("library-view-mode", "grid");
   const [coverSize, setCoverSize] = useLocalStorage("library-cover-size", 3);
   const [isDrilledDown, setIsDrilledDown] = useState(false);
   const [ratingFilter, setRatingFilter] = useState<string>("all");
+  const [readStatusFilter, setReadStatusFilter] = useState<string>("all");
+  const [contentRatingFilter, setContentRatingFilter] = useState<string>("all");
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle search from sidebar
   useEffect(() => {
@@ -48,6 +52,30 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
+
+  // Restore scroll position on mount
+  useEffect(() => {
+    const savedScrollPosition = sessionStorage.getItem("library-scroll-position");
+    if (savedScrollPosition && scrollContainerRef.current) {
+      // Use a small timeout to ensure content is rendered before scrolling
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = parseInt(savedScrollPosition, 10);
+        }
+      }, 100);
+    }
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      if (scrollContainerRef.current) {
+        sessionStorage.setItem("library-scroll-position", String(scrollContainerRef.current.scrollTop));
+      }
+    }, 200); // Debounce scroll saving
+  }, []);
 
   const filteredComics = useMemo(() => {
     let filtered = comics.filter((comic) => {
@@ -74,6 +102,18 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
       return inSeries || inPublisher || inCreators || inIssue;
     });
 
+    // Apply read status filter
+    if (readStatusFilter !== "all") {
+      const readComicIds = new Set(
+        readingList.filter(item => item.completed).map(item => item.comicId)
+      );
+      if (readStatusFilter === "read") {
+        filtered = filtered.filter(comic => readComicIds.has(comic.id));
+      } else { // "unread"
+        filtered = filtered.filter(comic => !readComicIds.has(comic.id));
+      }
+    }
+
     // Apply rating filter
     if (ratingFilter !== "all") {
       if (ratingFilter === "unrated") {
@@ -84,8 +124,17 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
       }
     }
 
+    // Apply content rating filter
+    if (contentRatingFilter !== "all") {
+      if (contentRatingFilter === "none") {
+        filtered = filtered.filter(comic => !comic.contentRating);
+      } else {
+        filtered = filtered.filter(comic => comic.contentRating === contentRatingFilter);
+      }
+    }
+
     return filtered;
-  }, [comics, searchTerm, ratingFilter]);
+  }, [comics, searchTerm, ratingFilter, readStatusFilter, contentRatingFilter, readingList]);
 
   const sortedAndGroupedComics = useMemo(() => {
     const comicsToSort = [...filteredComics];
@@ -142,6 +191,12 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
         case "year-asc":
           primaryCompare = a.year - b.year;
           break;
+        case "date-added-desc":
+          primaryCompare = new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime();
+          break;
+        case "date-added-asc":
+          primaryCompare = new Date(a.dateAdded).getTime() - new Date(b.dateAdded).getTime();
+          break;
         default:
           return 0;
       }
@@ -157,6 +212,10 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
             return a.year - b.year;
           case "year-desc":
             return b.year - a.year;
+          case "date-added-desc":
+            return new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime();
+          case "date-added-asc":
+            return new Date(a.dateAdded).getTime() - new Date(b.dateAdded).getTime();
           case "issue-count-desc":
             // Count issues per series for each comic
             const aIssueCount = comicsToSort.filter(c => c.series === a.series && c.publisher === a.publisher).length;
@@ -194,14 +253,17 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
   return (
     <TooltipProvider>
       <div className="h-full flex flex-col space-y-4">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Library</h1>
+          <p className="text-muted-foreground mt-1">
+            Browse your collection of {comics.length} comics
+            {searchTerm && ` (${sortedAndGroupedComics.length} matching "${searchTerm}")`}.
+          </p>
+        </div>
+        
+        {/* Controls Row */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Library</h1>
-            <p className="text-muted-foreground mt-1">
-              Browse your collection of {comics.length} comics
-              {searchTerm && ` (${sortedAndGroupedComics.length} matching "${searchTerm}")`}.
-            </p>
-          </div>
           <div className="flex items-center gap-2 flex-wrap">
             {isDrilledDown && (
               <Button variant="outline" onClick={handleBackToSeriesView}>
@@ -221,6 +283,16 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                 }}
               />
             </div>
+            <Select value={readStatusFilter} onValueChange={setReadStatusFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Read Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="unread">Unread</SelectItem>
+                <SelectItem value="read">Read</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={ratingFilter} onValueChange={setRatingFilter}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Rating" />
@@ -231,6 +303,20 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                 {Object.entries(RATING_EMOJIS).map(([rating, { emoji }]) => (
                   <SelectItem key={rating} value={rating}>
                     {emoji} {rating}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={contentRatingFilter} onValueChange={setContentRatingFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Content Rating" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Content</SelectItem>
+                <SelectItem value="none">Not Rated</SelectItem>
+                {Object.entries(CONTENT_RATINGS).map(([key, { label }]) => (
+                  <SelectItem key={key} value={key}>
+                    {key} - {label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -251,6 +337,8 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                 <SelectItem value="publisher-desc">Publisher (Z-A)</SelectItem>
                 <SelectItem value="year-desc">Year (Newest)</SelectItem>
                 <SelectItem value="year-asc">Year (Oldest)</SelectItem>
+                <SelectItem value="date-added-desc">Recently Added</SelectItem>
+                <SelectItem value="date-added-asc">Oldest Added</SelectItem>
               </SelectContent>
             </Select>
             
@@ -265,6 +353,8 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                   <SelectItem value="series-desc">Series (Z-A)</SelectItem>
                   <SelectItem value="year-asc">Year (Oldest)</SelectItem>
                   <SelectItem value="year-desc">Year (Newest)</SelectItem>
+                  <SelectItem value="date-added-desc">Recently Added</SelectItem>
+                  <SelectItem value="date-added-asc">Oldest Added</SelectItem>
                   <SelectItem value="issue-count-desc">Most Issues</SelectItem>
                   <SelectItem value="issue-count-asc">Fewest Issues</SelectItem>
                 </SelectContent>
@@ -331,7 +421,9 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
             </div>
           </div>
         </div>
-        <div className="flex-1 overflow-auto pb-4 pr-4">
+        
+        {/* Main Content Area */}
+        <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-auto pb-4 pr-4">
           {viewMode === "grid" ? (
             <LibraryGrid 
               comics={sortedAndGroupedComics} 

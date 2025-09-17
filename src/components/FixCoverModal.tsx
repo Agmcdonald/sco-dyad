@@ -124,7 +124,7 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
     }
   };
 
-  const coverSrc = getCoverUrl(comic.coverUrl);
+  const coverSrc = getCoverUrl(comic.coverUrl, comic.filePath);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

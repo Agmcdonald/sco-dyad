@@ -12,8 +12,6 @@ import {
   Loader2
 } from "lucide-react";
 import DuplicateDetector from "@/components/DuplicateDetector";
-import GcdImporter from "@/components/GcdImporter";
-import GcdDatabaseManager from "@/components/GcdDatabaseManager";
 import { useAppContext } from "@/context/AppContext";
 import { useElectron } from "@/hooks/useElectron";
 import { showSuccess, showError } from "@/utils/toast";
@@ -194,12 +192,7 @@ const Maintenance = () => {
       {/* Work in Progress Section */}
       <div>
         <h2 className="text-2xl font-semibold tracking-tight mb-4">Work in Progress</h2>
-        <div className="relative space-y-6 opacity-50 pointer-events-none">
-          <div className="absolute inset-0 z-10 flex items-center justify-center">
-            <div className="bg-background/80 backdrop-blur-sm px-4 py-2 rounded-lg border shadow-lg">
-              <p className="font-semibold text-foreground">Coming Soon</p>
-            </div>
-          </div>
+        <div className="relative space-y-6"> 
           {/* Metadata Enrichment */}
           <Card>
             <CardHeader>
@@ -208,7 +201,7 @@ const Maintenance = () => {
                 Metadata Enrichment
               </CardTitle>
               <CardDescription>
-                Scan your library to find and fill in missing details like summaries, creators, and cover dates using online databases.
+                Scan your library to find and fill in missing details like summaries, creators, and cover dates using online databases. Comics marked to be ignored will be skipped.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -239,8 +232,6 @@ const Maintenance = () => {
               </Button>
             </CardFooter>
           </Card>
-          <GcdDatabaseManager />
-          <GcdImporter />
         </div>
       </div>
     </div>

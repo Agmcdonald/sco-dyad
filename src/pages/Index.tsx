@@ -1,20 +1,112 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { BookOpen, FolderPlus, GraduationCap, Library } from "lucide-react";
+import { useElectron } from "@/hooks/useElectron";
+import { useSettings } from "@/context/SettingsContext";
+import FirstLaunchModal from "@/components/FirstLaunchModal"; // Import FirstLaunchModal
+
+// Key for storing the welcome screen preference in localStorage
+const SCO_WELCOME_SCREEN_PREFERENCE = "sco_welcome_screen_preference";
+const SCO_FIRST_LAUNCH_PREFERENCE = "sco_first_launch_preference"; // Re-declare for use here
 
 const Index = () => {
   const navigate = useNavigate();
+  const { isElectron, electronAPI } = useElectron();
+  const { settings } = useSettings();
+  const [doNotShowWelcome, setDoNotShowWelcome] = useState(false);
+  const [showFirstLaunchModal, setShowFirstLaunchModal] = useState(false);
 
   useEffect(() => {
-    // Auto-redirect to dashboard after a brief moment
-    const timer = setTimeout(() => {
-      navigate('/app/dashboard');
-    }, 100);
+    const checkWelcomePreference = async () => {
+      try {
+        const storedPreference = localStorage.getItem(SCO_WELCOME_SCREEN_PREFERENCE);
+        let currentAppVersion = "unknown";
 
-    return () => clearTimeout(timer);
-  }, [navigate]);
+        if (isElectron && electronAPI) {
+          currentAppVersion = await electronAPI.getAppVersion();
+        }
+
+        if (storedPreference) {
+          const { shown, version: storedVersion, doNotShowWelcome: storedDoNotShowWelcome } = JSON.parse(storedPreference);
+
+          // If it was shown and "don't show again" was checked, and the version hasn't changed, redirect immediately
+          if (shown && storedDoNotShowWelcome && currentAppVersion !== "unknown" && currentAppVersion === storedVersion) {
+            navigate('/app/dashboard');
+            return; // Prevent rendering the welcome screen
+          } else if (storedDoNotShowWelcome) {
+            // If "don't show again" was checked but version changed, show the screen but pre-check the box
+            setDoNotShowWelcome(true);
+          }
+        }
+      } catch (e) {
+        console.error("Error checking welcome screen preference:", e);
+        // If there's an error, default to showing the screen
+      }
+    };
+
+    checkWelcomePreference();
+  }, [navigate, isElectron, electronAPI]);
+
+  const handleGetStarted = async () => {
+    try {
+      let currentAppVersion = "unknown";
+      if (isElectron && electronAPI) {
+        currentAppVersion = await electronAPI.getAppVersion();
+      }
+
+      // Save preference for the main welcome screen
+      const welcomePreference = {
+        shown: true,
+        version: currentAppVersion,
+        doNotShowWelcome: doNotShowWelcome,
+      };
+      localStorage.setItem(SCO_WELCOME_SCREEN_PREFERENCE, JSON.stringify(welcomePreference));
+      
+      // If the app has already been launched before, skip the FirstLaunchModal entirely
+      if (settings.hasLaunchedBefore) {
+        navigate('/app/dashboard');
+        return;
+      }
+      
+      // Now check if the FirstLaunchModal needs to be shown (only for first-time users)
+      const storedFirstLaunchPreference = localStorage.getItem(SCO_FIRST_LAUNCH_PREFERENCE);
+      let shouldShowFirstLaunchModal = true;
+
+      if (storedFirstLaunchPreference) {
+        const { shown, version: storedVersion, doNotShowAgain: storedDoNotShowAgain } = JSON.parse(storedFirstLaunchPreference);
+        if (shown && storedDoNotShowAgain) {
+          if (currentAppVersion !== "unknown" && currentAppVersion === storedVersion) {
+            shouldShowFirstLaunchModal = false;
+          }
+        } else if (shown) {
+          shouldShowFirstLaunchModal = false;
+        }
+      }
+
+      if (shouldShowFirstLaunchModal) {
+        setShowFirstLaunchModal(true);
+      } else {
+        navigate('/app/dashboard');
+      }
+
+    } catch (e) {
+      console.error("Error saving preferences or checking first launch:", e);
+      navigate('/app/dashboard'); // Fallback to dashboard
+    }
+  };
+
+  const handleFirstLaunchModalClose = (shouldNavigateToSettings: boolean) => {
+    setShowFirstLaunchModal(false);
+    if (shouldNavigateToSettings) {
+      navigate("/app/settings", { state: { targetTab: "library" } });
+    } else {
+      navigate('/app/dashboard');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
@@ -77,12 +169,26 @@ const Index = () => {
           </Card>
         </div>
 
-        <div className="text-center">
-          <Button size="lg" onClick={() => navigate('/app/dashboard')}>
+        <div className="text-center space-y-4 mt-8">
+          <Button size="lg" onClick={handleGetStarted}>
             Get Started
           </Button>
+          <div className="flex items-center justify-center space-x-2">
+            <Checkbox
+              id="doNotShowWelcome"
+              checked={doNotShowWelcome}
+              onCheckedChange={(checked) => setDoNotShowWelcome(!!checked)}
+            />
+            <Label htmlFor="doNotShowWelcome">Don't show this welcome screen again until the next update</Label>
+          </div>
         </div>
       </div>
+      {showFirstLaunchModal && (
+        <FirstLaunchModal
+          isOpen={showFirstLaunchModal}
+          onClose={handleFirstLaunchModalClose}
+        />
+      )}
     </div>
   );
 };

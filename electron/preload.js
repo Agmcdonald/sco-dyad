@@ -43,6 +43,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   extractCover: (filePath) => ipcRenderer.invoke('extract-cover', filePath),
   scanFolder: (folderPath) => ipcRenderer.invoke('scan-folder', folderPath),
   organizeFile: (filePath, targetPath) => ipcRenderer.invoke('organize-file', filePath, targetPath),
+  moveFile: (sourcePath, relativeTargetPath) => ipcRenderer.invoke('move-file', sourcePath, relativeTargetPath),
   
   // Comic Reader Operations
   getComicPages: (filePath) => ipcRenderer.invoke('get-comic-pages', filePath),
@@ -50,6 +51,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   prepareCbrForReading: (filePath) => ipcRenderer.invoke('reader:prepare-cbr', filePath),
   getPageDataUrlFromTemp: (tempDir, pageName) => ipcRenderer.invoke('reader:get-page-from-temp', tempDir, pageName),
   cleanupTempDir: (tempDir) => ipcRenderer.invoke('reader:cleanup-temp-dir', tempDir),
+  openPdf: (filePath) => ipcRenderer.invoke('reader:open-pdf', filePath),
 
   // Database Operations
   initDatabase: () => ipcRenderer.invoke('init-database'),
@@ -58,28 +60,27 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateComic: (comic) => ipcRenderer.invoke('update-comic', comic),
   deleteComic: (comicId, filePath) => ipcRenderer.invoke('delete-comic', comicId, filePath),
   importComics: (comics) => ipcRenderer.invoke('db:import-comics', comics),
+  batchUpdateComics: (updates) => ipcRenderer.invoke('db:batch-update-comics', updates),
   
   // Settings
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
 
-  // GCD Importer (temporarily disabled)
-  importerStart: (paths) => ipcRenderer.invoke('importer:start', paths),
-  onImporterProgress: (callback) => {
-    ipcRenderer.on('importer:progress', (event, data) => callback(data));
-  },
-
-  // GCD Database (temporarily disabled)
-  gcdDbConnect: (dbPath) => ipcRenderer.invoke('gcd-db:connect', dbPath),
-  gcdDbDisconnect: () => ipcRenderer.invoke('gcd-db:disconnect'),
-  gcdDbSearchSeries: (seriesName) => ipcRenderer.invoke('gcd-db:search-series', seriesName),
-  gcdDbGetIssueDetails: (seriesId, issueNumber) => ipcRenderer.invoke('gcd-db:get-issue-details', seriesId, issueNumber),
-  gcdDbGetIssueCreators: (issueId) => ipcRenderer.invoke('gcd-db:get-issue-creators', issueId),
-  gcdDbSearchPublishers: (query) => ipcRenderer.invoke('gcd-db:search-publishers', query),
-
   // Knowledge Base
   getKnowledgeBase: () => ipcRenderer.invoke('get-knowledge-base'),
   saveKnowledgeBase: (data) => ipcRenderer.invoke('save-knowledge-base', data),
+
+  // Comic Vine API Proxy
+  fetchComicVine: (url, options) => ipcRenderer.invoke('comicvine:fetch', url, options),
+  
+  // Comic Vine Rate Limiting and Processing
+  checkRateLimit: () => ipcRenderer.invoke('comicvine:check-rate-limit'),
+  incrementRateLimit: () => ipcRenderer.invoke('comicvine:increment-rate-limit'),
+  getComicsForComicVineProcessing: (limit) => ipcRenderer.invoke('comicvine:get-comics-for-processing', limit),
+  updateComicVineStatus: (comicId, status, fetchedAt, retryAfter) => ipcRenderer.invoke('comicvine:update-status', comicId, status, fetchedAt, retryAfter),
+  getComicVineStats: () => ipcRenderer.invoke('comicvine:get-stats'),
+  getComicsByComicVineStatus: (status, limit) => ipcRenderer.invoke('comicvine:get-comics-by-status', status, limit),
+  resetComicVineStatus: (comicIds, newStatus) => ipcRenderer.invoke('comicvine:reset-status', comicIds, newStatus),
 
   // Backup and Restore
   saveBackup: (data) => ipcRenderer.invoke('dialog:save-backup', data),

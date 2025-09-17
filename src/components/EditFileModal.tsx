@@ -18,6 +18,7 @@ import { useAppContext } from "@/context/AppContext";
 import { useSelection } from "@/context/SelectionContext";
 import { showSuccess } from "@/utils/toast";
 import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
+import { Combobox } from "@/components/ui/combobox"; // Import the Combobox component
 
 const formSchema = z.object({
   series: z.string().min(1, "Series is required"),
@@ -61,7 +62,7 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
   const publisherOptions = useMemo(() => {
     const publishersFromComics = [...new Set(comics.map(c => c.publisher))].filter(Boolean) as string[];
     const publishersFromKnowledge = [...new Set(knowledgeBase.series.map(entry => entry.publisher))].filter(Boolean) as string[];
-    return [...new Set([...publishersFromComics, ...publishersFromKnowledge])].sort();
+    return [...new Set([...publishersFromComics, ...publishersFromKnowledge])].sort().map(p => ({ value: p, label: p }));
   }, [comics, knowledgeBase.series]);
 
   const seriesOptions = useMemo(() => {
@@ -157,14 +158,13 @@ const EditFileModal = ({ file, isOpen, onClose }: EditFileModalProps) => {
                 <FormItem>
                   <FormLabel>Publisher</FormLabel>
                   <FormControl>
-                    <>
-                      <Input {...field} list="publisher-options-file" placeholder="Type or select publisher..." />
-                      <datalist id="publisher-options-file">
-                        {publisherOptions.map((option) => (
-                          <option key={option} value={option} />
-                        ))}
-                      </datalist>
-                    </>
+                    <Combobox
+                      options={publisherOptions}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Select or type a publisher..."
+                      emptyText="No publisher found."
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

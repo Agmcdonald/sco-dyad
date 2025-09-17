@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createHashRouter, RouterProvider, Outlet, useOutletContext } from "react-router-dom";
 import Layout from "./components/Layout";
 import Index from "./pages/Index";
@@ -24,6 +23,7 @@ import { SettingsProvider } from "./context/SettingsContext";
 import { KnowledgeBaseProvider } from "./context/KnowledgeBaseContext";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import { useElectron } from "./hooks/useElectron";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"; // Added import for QueryClient
 
 const queryClient = new QueryClient();
 
@@ -52,7 +52,7 @@ const Root = () => {
     <>
       <ElectronIntegration />
       <HelpManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
-      <FirstLaunchModal />
+      {/* <FirstLaunchModal /> */}
       <Outlet />
     </>
   );
@@ -101,7 +101,7 @@ const App = () => {
               <AppProvider>
                 <SelectionProvider>
                   <Toaster />
-                  <Sonner />
+                  <Sonner position="top-right" />
                   <RouterProvider router={router} />
                 </SelectionProvider>
               </AppProvider>

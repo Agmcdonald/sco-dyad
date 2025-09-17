@@ -22,6 +22,7 @@ import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 import { showSuccess } from "@/utils/toast";
 
 const formSchema = z.object({
+  series: z.string().optional(), // Added series to schema
   publisher: z.string().optional(),
   year: z.coerce.number().min(1900).optional(),
   volume: z.string().optional(),
@@ -38,6 +39,7 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
   const { updateFile, comics } = useAppContext();
   const { knowledgeBase } = useKnowledgeBase();
   const [enabledFields, setEnabledFields] = useState({
+    series: false, // Added series to enabled fields
     publisher: false,
     year: false,
     volume: false,
@@ -46,6 +48,7 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      series: "", // Default value for series
       publisher: "",
       year: new Date().getFullYear(),
       volume: "",
@@ -72,9 +75,34 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
       .sort((a, b) => a.label.localeCompare(b.label));
   })();
 
+  // Generate series options from existing comics and knowledge base
+  const seriesOptions: ComboboxOption[] = (() => {
+    const seriesFromComics = [...new Set(comics.map(c => c.series))];
+    const seriesFromKnowledge = [...new Set(knowledgeBase.series.map(entry => entry.series))];
+    
+    const allSeries = [...new Set([...seriesFromComics, ...seriesFromKnowledge])];
+    
+    return allSeries
+      .filter(series => series && series.trim() !== '')
+      .map(series => ({
+        label: series,
+        value: series
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  })();
+
   // Initialize form values when modal opens
   useEffect(() => {
     if (isOpen && selectedFileObjects.length > 0) {
+      // Find most common series
+      const seriesNames = selectedFileObjects.map(f => f.series).filter(Boolean);
+      const seriesCounts = seriesNames.reduce((acc, s) => {
+        acc[s!] = (acc[s!] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      const mostCommonSeries = Object.entries(seriesCounts)
+        .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
+
       // Find most common publisher
       const publishers = selectedFileObjects.map(f => f.publisher).filter(Boolean);
       const publisherCounts = publishers.reduce((acc, pub) => {
@@ -94,6 +122,7 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
         .sort(([,a], [,b]) => b - a)[0]?.[0] || new Date().getFullYear();
 
       form.reset({
+        series: mostCommonSeries, // Set default for series
         publisher: mostCommonPublisher,
         year: Number(mostCommonYear),
         volume: "",
@@ -114,6 +143,11 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
     selectedFileObjects.forEach(file => {
       const updates: Partial<QueuedFile> = {};
       let hasUpdates = false;
+
+      if (enabledFields.series && values.series) { // Apply series update
+        updates.series = values.series;
+        hasUpdates = true;
+      }
 
       if (enabledFields.publisher && values.publisher) {
         updates.publisher = values.publisher;
@@ -142,6 +176,7 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
 
   const handleClose = () => {
     setEnabledFields({
+      series: false, // Reset series enabled state
       publisher: false,
       year: false,
       volume: false,
@@ -166,6 +201,38 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+            {/* Series Field */}
+            <div className="flex items-start space-x-3">
+              <Checkbox
+                id="update-series"
+                checked={enabledFields.series}
+                onCheckedChange={() => toggleField('series')}
+                className="mt-2"
+              />
+              <div className="flex-1">
+                <FormField
+                  control={form.control}
+                  name="series"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Series Name</FormLabel>
+                      <FormControl>
+                        <Combobox
+                          options={seriesOptions}
+                          value={field.value || ''}
+                          onValueChange={field.onChange}
+                          placeholder="Select or type series name..."
+                          emptyText="No series found."
+                          disabled={!enabledFields.series}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
             {/* Publisher Field */}
             <div className="flex items-start space-x-3">
               <Checkbox
@@ -261,6 +328,9 @@ const BulkEditModal = ({ isOpen, onClose, selectedFiles, files }: BulkEditModalP
             <div className="mt-4 p-3 bg-muted/50 rounded-lg">
               <Label className="text-sm font-medium">Preview of changes:</Label>
               <div className="text-sm text-muted-foreground mt-1">
+                {enabledFields.series && watchedValues.series && (
+                  <div>• Series: {watchedValues.series}</div>
+                )}
                 {enabledFields.publisher && watchedValues.publisher && (
                   <div>• Publisher: {watchedValues.publisher}</div>
                 )}

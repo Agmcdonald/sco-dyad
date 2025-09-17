@@ -1,63 +1,68 @@
-"use client";
+import React from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { useNavigate } from 'react-router-dom';
+import { useSettings } from '@/context/SettingsContext';
+import { useElectron } from '@/hooks/useElectron';
 
-import React, { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+interface FirstLaunchModalProps {
+  isOpen?: boolean; // Made optional
+  onClose: (shouldNavigateToSettings: boolean) => void;
+}
 
-const FIRST_LAUNCH_KEY = "sco_first_launch_shown";
-
-const FirstLaunchModal: React.FC = () => {
-  const [open, setOpen] = useState(false);
+const FirstLaunchModal: React.FC<FirstLaunchModalProps> = ({ isOpen = false, onClose }) => {
   const navigate = useNavigate();
+  const { settings, setSettings } = useSettings();
+  const { isElectron, electronAPI } = useElectron();
 
-  useEffect(() => {
-    try {
-      const shown = localStorage.getItem(FIRST_LAUNCH_KEY);
-      if (!shown) {
-        // show after a short delay so UI is ready
-        setTimeout(() => setOpen(true), 200);
-      }
-    } catch {
-      // ignore localStorage errors
+  const handleDismiss = async () => {
+    const updatedSettings = { ...settings, hasLaunchedBefore: true };
+    setSettings(updatedSettings);
+    if (isElectron && electronAPI) {
+      await electronAPI.saveSettings(updatedSettings);
     }
-  }, []);
-
-  const handleGoToSettings = () => {
-    try {
-      localStorage.setItem(FIRST_LAUNCH_KEY, "1");
-    } catch {}
-    setOpen(false);
-    // Navigate to Settings and open the Library tab
-    navigate("/app/settings", { state: { targetTab: "library" } });
+    onClose(false); // Don't navigate to settings
   };
 
-  const handleSkip = () => {
-    try {
-      localStorage.setItem(FIRST_LAUNCH_KEY, "1");
-    } catch {}
-    setOpen(false);
+  const handleOpenSettings = async () => {
+    const updatedSettings = { ...settings, hasLaunchedBefore: true };
+    setSettings(updatedSettings);
+    if (isElectron && electronAPI) {
+      await electronAPI.saveSettings(updatedSettings);
+    }
+    onClose(true); // Navigate to settings
   };
+
+  const handleSkip = async () => {
+    await handleDismiss();
+  };
+
+  // Only show if it's the first launch
+  if (settings.hasLaunchedBefore) {
+    return null;
+  }
 
   return (
-    <Dialog open={open} onOpenChange={() => setOpen(false)}>
-      <DialogContent className="sm:max-w-[580px]">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose(false)}>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Welcome to Super Comic Organizer</DialogTitle>
           <DialogDescription>
-            We'll help you get started. The Help menu has a full manual, but first let's configure where you'd like your organized comics stored and how you want files handled.
+            We'll help you get started. The Help menu has a full manual, but first let's configure
+            where you'd like your organized comics stored and how you want files handled.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="py-4 space-y-4">
+        <div className="grid gap-4 py-4">
           <p className="text-sm text-muted-foreground">
-            You can change these later in Settings. If you'd like to skip the setup now, you can always open Settings from the File menu.
+            You can change these later in Settings. If you'd like to skip the setup now, you can
+            always open Settings from the File menu.
           </p>
         </div>
-
         <DialogFooter>
           <Button variant="outline" onClick={handleSkip}>Skip</Button>
-          <Button onClick={handleGoToSettings}>Open Settings</Button>
+          <Button onClick={handleOpenSettings}>Open Settings</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

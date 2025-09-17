@@ -1,9 +1,12 @@
+export type ContentRating = 'E' | 'T' | 'T+' | 'M';
+
 export interface Creator {
   name: string;
   role: string;
 }
 
 export interface NewComic {
+  id: string; // Add id to NewComic
   series: string;
   issue: string;
   year: number;
@@ -14,6 +17,7 @@ export interface NewComic {
   summary?: string;
   creators?: Creator[];
   rating?: number;
+  contentRating?: ContentRating;
   genre?: string;
   characters?: string;
   price?: string; // Issue price
@@ -23,13 +27,19 @@ export interface NewComic {
 }
 
 export interface Comic extends NewComic {
-  id: string;
+  // id: string; // Already inherited from NewComic
   coverUrl: string;
   dateAdded: Date;
   filePath?: string;
   metadataLastChecked?: string;
-  ignoreInScans?: boolean;
+  ignoreInScans?: boolean; // New field to exclude from metadata scans
   isSeriesCover?: boolean; // Whether this comic's cover should be used for the series
+  lastReadPage?: number;
+  totalPages?: number;
+  // Comic Vine tracking fields
+  comicVineStatus?: 'pending' | 'fetched' | 'failed' | 'skipped';
+  comicVineFetchedAt?: string;
+  comicVineRetryAfter?: string;
 }
 
 export interface ReadingListItem {
@@ -72,6 +82,7 @@ export interface QueuedFile {
   year: number | null;
   publisher: string | null;
   volume?: string | null;
+  ofTotal?: string | null; // New field to store the 'of #' part
   confidence: Confidence | null;
   status: FileStatus;
   pageCount?: number;
@@ -95,16 +106,13 @@ export interface RecentAction {
 
 export interface AppSettings {
   comicVineApiKey: string;
-  marvelPublicKey: string;
-  marvelPrivateKey: string;
+  comicVineEnabled: boolean; // New: Enable/disable Comic Vine integration
   keepOriginalFiles: boolean;
   autoScanOnStartup: boolean;
   folderNameFormat: string;
   fileNameFormat: string;
   libraryPath: string;
-  gcdDbPath?: string;
-  gcdIssuesPath?: string;
-  gcdSequencesPath?: string;
+  hasLaunchedBefore?: boolean; // New property
 }
 
 export interface ComicKnowledge {

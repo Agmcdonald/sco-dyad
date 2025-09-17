@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ComicKnowledge } from '@/types';
+import { Comic, ComicKnowledge, CreatorKnowledge } from '@/types';
 
 // Type definitions for our Electron API
 interface ElectronAPI {
@@ -13,11 +13,13 @@ interface ElectronAPI {
   organizeFile(filePath: string, targetPath: string): Promise<{ success: boolean; newPath?: string; error?: string; }>;
   getComicPages(filePath: string): Promise<string[]>;
   getComicPageDataUrl(filePath: string, pageName: string): Promise<string>;
+  openPdf(filePath: string): Promise<{ success: boolean; error?: string }>;
   initDatabase(): Promise<void>;
   saveComic(comic: any): Promise<any>;
   getComics(): Promise<any[]>;
   updateComic(comic: any): Promise<any>;
-  deleteComic(comicId: string): Promise<boolean>;
+  batchUpdateComics(updates: (Partial<Comic> & { id: string })[]): Promise<number>;
+  deleteComic(comicId: string, filePath?: string): Promise<boolean>;
   getSettings(): Promise<any>;
   saveSettings(settings: any): Promise<void>;
   showMessageBox(options: any): Promise<any>;
@@ -25,8 +27,9 @@ interface ElectronAPI {
   removeAllListeners(channel: string): void;
   selectFilesDialog(): Promise<string[]>;
   selectFolderDialog(): Promise<string[]>;
-  getKnowledgeBase(): Promise<ComicKnowledge[]>;
-  saveKnowledgeBase(data: ComicKnowledge[]): Promise<void>;
+  getKnowledgeBase(): Promise<{ series: ComicKnowledge[], creators: CreatorKnowledge[] }>;
+  saveKnowledgeBase(data: { series: ComicKnowledge[], creators: CreatorKnowledge[] }): Promise<void>;
+  fetchComicVine(url: string, options?: RequestInit): Promise<{ success: boolean; data?: any; error?: string; status?: number }>;
 }
 
 declare global {

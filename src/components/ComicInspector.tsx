@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Comic } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -15,6 +15,18 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { 
   Tag, 
   BookOpen, 
   PlusCircle, 
@@ -28,18 +40,25 @@ import {
   MapPin,
   Image,
   ImageIcon,
-  CheckCircle
+  CheckCircle,
+  ShieldAlert,
+  Sparkles,
+  ChevronDown
 } from "lucide-react";
 import EditComicModal from "./EditComicModal";
-import ComicReader from "./ComicReader";
 import RatingSelector from "./RatingSelector";
 import FixCoverModal from "./FixCoverModal";
 import { useAppContext } from "@/context/AppContext";
 import { useSelection } from "@/context/SelectionContext";
 import { useElectron } from "@/hooks/useElectron";
-import { RATING_EMOJIS } from "@/lib/ratings";
-import { showError, showSuccess } from "@/utils/toast";
+import { RATING_EMOJIS, CONTENT_RATINGS } from "@/lib/ratings";
+import { showError, showSuccess, showLoading, dismissToast } from "@/utils/toast";
 import { getCoverUrl } from "@/lib/cover";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
+import comicVineService from "@/services/comicVineService";
+import { useSettings } from "@/context/SettingsContext";
+import { useElectronDatabaseService } from "@/services/electronDatabaseService";
 
 interface ComicInspectorProps {
   comic: Comic;
@@ -47,11 +66,13 @@ interface ComicInspectorProps {
 
 const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isReaderOpen, setIsReaderOpen] = useState(false);
   const [isFixCoverOpen, setIsFixCoverOpen] = useState(false);
-  const { comics, readingList, addToReadingList, removeComic, updateComicRating, updateComic, toggleComicReadStatus } = useAppContext();
+  const { comics, readingList, addToReadingList, removeComic, updateComicRating, updateComic, toggleComicReadStatus, openComicForReading, scanComicForMetadata } = useAppContext();
   const { setSelectedItem } = useSelection();
   const { isElectron } = useElectron();
+  const { settings } = useSettings();
+  const databaseService = useElectronDatabaseService();
+  const dropdownTriggerRef = useRef<HTMLButtonElement>(null);
 
   const comic = useMemo(() => {
     return comics.find(c => c.id === initialComic.id) || initialComic;
@@ -61,6 +82,7 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
   const isInReadingList = !!readingListItem;
   const isMarkedAsRead = readingListItem?.completed || false;
   const rating = comic.rating;
+  const contentRatingInfo = comic.contentRating ? CONTENT_RATINGS[comic.contentRating] : null;
 
   // Check if this comic is currently the series cover
   const isCurrentSeriesCover = comic.isSeriesCover;
@@ -129,6 +151,92 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
     }
   };
 
+  const handleToggleIgnoreInScans = async (checked: boolean) => {
+    try {
+      await updateComic({ ...comic, ignoreInScans: checked });
+      showSuccess(`'${comic.series} #${comic.issue}' will ${checked ? 'now be ignored' : 'no longer be ignored'} in metadata scans.`);
+    } catch (error) {
+      console.error('Error toggling ignoreInScans:', error);
+      showError('Failed to update setting.');
+    }
+  };
+
+  const handleScanForDetails = async () => {
+    // If Comic Vine API is available, try that first, then fall back to general scan
+    if (settings.comicVineApiKey && databaseService) {
+      const toastId = showLoading(`Scanning '${comic.series} #${comic.issue}' for details...`);
+      try {
+        // Try Comic Vine first
+        const result = await comicVineService.processSingleComic(comic, settings.comicVineApiKey, databaseService);
+        dismissToast(toastId);
+        
+        if (result.success && result.updated) {
+          showSuccess(`Enhanced with Comic Vine: ${result.message}`);
+          // Refresh the comic data
+          await scanComicForMetadata(comic.id);
+          return;
+        } else if (result.success) {
+          // Comic Vine succeeded but no updates were made, try fallback
+          console.log('Comic Vine scan completed but no updates made, trying fallback...');
+        } else {
+          // Comic Vine failed, try fallback
+          console.log('Comic Vine scan failed, trying fallback scan...');
+        }
+      } catch (error) {
+        dismissToast(toastId);
+        console.log('Comic Vine scan error, trying fallback scan...', error);
+      }
+    }
+    
+    // Fall back to general metadata scan
+    await scanComicForMetadata(comic.id);
+  };
+
+  const handleReadComic = useCallback(() => {
+    openComicForReading(comic);
+  }, [openComicForReading, comic]);
+
+  const handleEditComic = useCallback(() => {
+    setIsModalOpen(true);
+  }, []);
+
+  const handleFixCover = useCallback(() => {
+    setIsFixCoverOpen(true);
+  }, []);
+
+  const handleAddToList = useCallback(() => {
+    addToReadingList(comic);
+  }, [addToReadingList, comic]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Prevent default behavior for 'r' if it's not an input field
+      if (event.key === 'r' && !(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)) {
+        event.preventDefault();
+        handleReadComic();
+      }
+      if (event.key === 'e' && !(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)) {
+        event.preventDefault();
+        handleEditComic();
+      }
+      if (event.key === 'f' && !(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)) {
+        event.preventDefault();
+        handleFixCover();
+      }
+      if (event.key === 'm' && !(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)) {
+        event.preventDefault();
+        dropdownTriggerRef.current?.click(); // Programmatically open the dropdown
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleReadComic, handleEditComic, handleFixCover]);
+
+
   const coverSrc = getCoverUrl(comic.coverUrl);
 
   return (
@@ -150,6 +258,15 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
               Series Cover
             </Badge>
           )}
+          {comic.comicVineStatus && comic.comicVineStatus !== 'pending' && (
+            <Badge 
+              variant={comic.comicVineStatus === 'fetched' ? 'default' : comic.comicVineStatus === 'failed' ? 'secondary' : 'secondary'} 
+              className="mt-1 text-xs"
+            >
+              <Sparkles className="h-3 w-3 mr-1" />
+              Comic Vine: {comic.comicVineStatus === 'fetched' ? 'Enhanced' : 'Skipped'}
+            </Badge>
+          )}
         </div>
         <div className="flex-1 p-4 space-y-4 overflow-y-auto">
           <div className="aspect-w-2 aspect-h-3 rounded-lg bg-muted overflow-hidden relative">
@@ -165,35 +282,50 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
           </div>
           
           {/* Basic Details */}
-          <div>
-            <h4 className="font-semibold text-sm mb-2">Basic Information</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground flex items-center"><FileText className="h-3 w-3 mr-1.5" /> Publisher</span>
-                <span>{comic.publisher}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground flex items-center"><BookOpen className="h-3 w-3 mr-1.5" /> Volume</span>
-                <span>{comic.volume}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground flex items-center"><Calendar className="h-3 w-3 mr-1.5" /> Publication Date</span>
-                <span>{comic.publicationDate || comic.year}</span>
-              </div>
-              {comic.genre && (
+          <TooltipProvider>
+            <div>
+              <h4 className="font-semibold text-sm mb-2">Basic Information</h4>
+              <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground flex items-center"><Tag className="h-3 w-3 mr-1.5" /> Genre</span>
-                  <span>{comic.genre}</span>
+                  <span className="text-muted-foreground flex items-center"><FileText className="h-3 w-3 mr-1.5" /> Publisher</span>
+                  <span>{comic.publisher}</span>
                 </div>
-              )}
-              {comic.price && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground flex items-center"><DollarSign className="h-3 w-3 mr-1.5" /> Price</span>
-                  <span>{comic.price}</span>
+                  <span className="text-muted-foreground flex items-center"><BookOpen className="h-3 w-3 mr-1.5" /> Volume</span>
+                  <span>{comic.volume}</span>
                 </div>
-              )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground flex items-center"><Calendar className="h-3 w-3 mr-1.5" /> Publication Date</span>
+                  <span>{comic.publicationDate || comic.year}</span>
+                </div>
+                {comic.genre && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground flex items-center"><Tag className="h-3 w-3 mr-1.5" /> Genre</span>
+                    <span>{comic.genre}</span>
+                  </div>
+                )}
+                {comic.price && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground flex items-center"><DollarSign className="h-3 w-3 mr-1.5" /> Price</span>
+                    <span>{comic.price}</span>
+                  </div>
+                )}
+                {comic.contentRating && contentRatingInfo && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground flex items-center"><ShieldAlert className="h-3 w-3 mr-1.5" /> Content Rating</span>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Badge variant="outline">{comic.contentRating} - {contentRatingInfo.label}</Badge>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{contentRatingInfo.description}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          </TooltipProvider>
 
           {/* Additional Metadata */}
           {(comic.barcode || comic.languageCode || comic.countryCode) && (
@@ -287,59 +419,72 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
           </div>
         </div>
         <div className="p-4 border-t mt-auto bg-background space-y-2">
-          <Button className="w-full" onClick={() => setIsReaderOpen(true)}>
-            <BookOpen className="mr-2 h-4 w-4" /> Read Comic
-          </Button>
-          <div className="grid grid-cols-2 gap-2">
-            <Button 
-              variant="secondary" 
-              onClick={() => addToReadingList(comic)}
-              disabled={isInReadingList}
-            >
-              <PlusCircle className="mr-2 h-4 w-4" /> 
-              {isInReadingList ? 'In List' : 'Add to List'}
+          {/* Primary Actions */}
+          <div className="grid grid-cols-3 gap-2">
+            <Button className="w-full" onClick={handleReadComic} aria-label="Read Comic (R)">
+              <BookOpen className="mr-2 h-4 w-4" /> Read
             </Button>
-            <Button
-              variant={isMarkedAsRead ? "default" : "secondary"}
-              onClick={handleMarkAsRead}
-              className={isMarkedAsRead ? "bg-green-600 hover:bg-green-700" : ""}
+            <Button 
+              className="w-full" 
+              variant="outline" 
+              onClick={handleFixCover}
+              aria-label="Fix Cover (F)"
             >
-              <CheckCircle className="mr-2 h-4 w-4" />
-              {isMarkedAsRead ? 'Mark Unread' : 'Mark Read'}
+              <ImageIcon className="mr-2 h-4 w-4" /> Fix Cover
+            </Button>
+            <Button className="w-full" variant="outline" onClick={handleEditComic} aria-label="Edit (E)">
+              <Tag className="mr-2 h-4 w-4" /> Edit
             </Button>
           </div>
-          
-          {/* Cover Management */}
-          <Button 
-            className="w-full" 
-            variant="outline" 
-            onClick={() => setIsFixCoverOpen(true)}
-          >
-            <ImageIcon className="mr-2 h-4 w-4" /> 
-            Fix Cover
-          </Button>
-          
-          {/* Series Cover Controls */}
-          {hasMultipleIssues && (
-            <div className="grid grid-cols-1 gap-2">
-              {isCurrentSeriesCover ? (
-                <Button variant="outline" onClick={handleRemoveAsSeriesCover}>
-                  <Image className="mr-2 h-4 w-4" /> Remove as Series Cover
-                </Button>
-              ) : (
-                <Button variant="outline" onClick={handleSetAsSeriesCover}>
-                  <Image className="mr-2 h-4 w-4" /> Set as Series Cover
-                </Button>
+
+          {/* Secondary Actions (More Menu) */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full" ref={dropdownTriggerRef} aria-label="More Actions (M)">
+                More <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={handleAddToList} disabled={isInReadingList} aria-label="Add to Reading List">
+                <PlusCircle className="mr-2 h-4 w-4" /> 
+                {isInReadingList ? 'In Reading List' : 'Add to Reading List'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleMarkAsRead} aria-label={isMarkedAsRead ? "Mark Unread" : "Mark Read"}>
+                <CheckCircle className="mr-2 h-4 w-4" />
+                {isMarkedAsRead ? 'Mark Unread' : 'Mark Read'}
+              </DropdownMenuItem>
+              {hasMultipleIssues && (
+                isCurrentSeriesCover ? (
+                  <DropdownMenuItem onClick={handleRemoveAsSeriesCover} aria-label="Remove as Series Cover">
+                    <Image className="mr-2 h-4 w-4" /> Remove as Series Cover
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={handleSetAsSeriesCover} aria-label="Set as Series Cover">
+                    <Image className="mr-2 h-4 w-4" /> Set as Series Cover
+                  </DropdownMenuItem>
+                )
               )}
-            </div>
-          )}
-          
-          <Button variant="outline" className="w-full" onClick={() => setIsModalOpen(true)}>
-            <Tag className="mr-2 h-4 w-4" /> Edit
-          </Button>
+              <DropdownMenuItem onClick={handleScanForDetails} aria-label="Scan for Details">
+                <Sparkles className="mr-2 h-4 w-4" /> Scan for Details
+                {settings.comicVineApiKey && <span className="ml-1 text-xs text-muted-foreground">(includes Comic Vine)</span>}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Persistent Bottom Actions */}
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <Label htmlFor="ignore-in-scans" className="text-sm font-medium">Ignore in Auto Scans</Label>
+            <Switch 
+              id="ignore-in-scans" 
+              checked={comic.ignoreInScans || false} 
+              onCheckedChange={handleToggleIgnoreInScans} 
+              aria-label="Toggle ignore in auto scans"
+            />
+          </div>
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="w-full">
+              <Button variant="destructive" className="w-full" aria-label="Delete Comic">
                 <Trash2 className="mr-2 h-4 w-4" /> Delete
               </Button>
             </AlertDialogTrigger>
@@ -369,10 +514,6 @@ const ComicInspector = ({ comic: initialComic }: ComicInspectorProps) => {
         </div>
       </div>
       
-      {isReaderOpen && (
-        <ComicReader comic={comic} onClose={() => setIsReaderOpen(false)} />
-      )}
-
       {isModalOpen && (
         <EditComicModal
           comic={comic}

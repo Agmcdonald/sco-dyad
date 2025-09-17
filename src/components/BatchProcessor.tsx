@@ -10,12 +10,12 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Play, Pause, RotateCcw } from "lucide-react";
-import { QueuedFile } from "@/types";
+import { QueuedFile, Creator } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { useSettings } from "@/context/SettingsContext";
-import { useGcdDatabaseService } from "@/services/gcdDatabaseService";
 import { batchProcessFiles, getProcessingStats } from "@/lib/smartProcessor";
 import { showSuccess, showError } from "@/utils/toast";
+import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 
 interface BatchProcessorProps {
   files: QueuedFile[];
@@ -25,7 +25,7 @@ interface BatchProcessorProps {
 const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
   const { updateFile, addComic, removeFile, logAction } = useAppContext();
   const { settings } = useSettings();
-  const gcdDbService = useGcdDatabaseService();
+  const { knowledgeBase, addCreatorsToKnowledgeBase } = useKnowledgeBase();
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState("");
@@ -58,14 +58,11 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
 
     try {
       console.log(`[FILE-PROCESSOR] Starting processing of ${filesToProcess.length} files`);
-      console.log(`[FILE-PROCESSOR] GCD service available:`, !!gcdDbService);
       
       const results = await batchProcessFiles(
         filesToProcess,
         settings.comicVineApiKey,
-        settings.marvelPublicKey,
-        settings.marvelPrivateKey,
-        gcdDbService,
+        knowledgeBase,
         (processed, total, current) => {
           setProgress((processed / total) * 100);
           setCurrentFile(current);
@@ -73,6 +70,20 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
       );
 
       setLastResults(results);
+
+      // Auto-populate creators from processing results
+      const allCreators: Creator[] = [];
+      for (const [, result] of results.entries()) {
+        if (result.success && result.data && result.data.creators && result.data.creators.length > 0) {
+          allCreators.push(...result.data.creators);
+        }
+      }
+      
+      if (allCreators.length > 0) {
+        console.log(`[BATCH-PROCESSOR] Auto-populating ${allCreators.length} creators to knowledge base`);
+        addCreatorsToKnowledgeBase(allCreators);
+        logAction('info', `Auto-populated ${allCreators.length} creators to knowledge base`);
+      }
 
       // Apply results to files
       for (const [fileId, result] of results.entries()) {

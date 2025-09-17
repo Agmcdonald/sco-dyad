@@ -17,6 +17,7 @@ import {
   X,
   Loader2,
   CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,45 +26,45 @@ import { Comic } from "@/types";
 import { cn } from "@/lib/utils";
 import { useElectron } from "@/hooks/useElectron";
 import { useAppContext } from "@/context/AppContext";
-import { showError, showSuccess } from "@/utils/toast";
+import { showError } from "@/utils/toast";
 import { RATING_EMOJIS } from "@/lib/ratings";
 import RatingSelector from "./RatingSelector";
+import NextIssuePreview from "./NextIssuePreview";
 
 interface ComicReaderProps {
   comic: Comic;
   onClose: () => void;
+  comicList?: Comic[];
+  currentIndex?: number;
 }
 
-const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
-  const { 
-    isElectron, 
-    electronAPI 
-  } = useElectron();
-  const { 
-    comics,
-    readingList, 
-    logAction, 
-    addToRecentlyRead,
-    updateComicRating,
-    toggleComicReadStatus
-  } = useAppContext();
+const ComicReader = ({ comic: initialComic, onClose, comicList, currentIndex }: ComicReaderProps) => {
+  const { isElectron, electronAPI } = useElectron();
+  const { comics, readingList, updateReadingHistory, updateComicRating, toggleComicReadStatus, updateComicProgress } = useAppContext();
+  
+  const [comicIndex, setComicIndex] = useState(currentIndex ?? -1);
+  const [internalComic, setInternalComic] = useState(initialComic);
+  
   const [pages, setPages] = useState<string[]>([]);
   const [pageImageUrls, setPageImageUrls] = useState<Record<number, string>>({});
   const [totalPages, setTotalPages] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(internalComic.lastReadPage || 1);
   const [rotation, setRotation] = useState(0);
   const [viewMode, setViewMode] = useState<"single" | "double">("single");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [showThumbnails, setShowThumbnails] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState("Loading pages...");
   const [cbrTempDir, setCbrTempDir] = useState<string | null>(null);
+  const [readerError, setReaderError] = useState<string | null>(null);
   const fetchedPages = useRef(new Set());
-  const hasAddedToRecent = useRef(false);
 
   const comic = useMemo(() => {
-    return comics.find(c => c.id === initialComic.id) || initialComic;
-  }, [comics, initialComic]);
+    return comics.find(c => c.id === internalComic.id) || internalComic;
+  }, [comics, internalComic]);
+
+  const nextComic = comicList && comicIndex !== -1 && comicIndex + 1 < comicList.length ? comicList[comicIndex + 1] : null;
 
   const canReadComic = isElectron && !!comic.filePath;
   const isCbr = comic.filePath?.toLowerCase().endsWith('.cbr');
@@ -72,41 +73,59 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
   const rating = comic.rating;
   const isMarkedAsRead = readingListItem?.completed || false;
 
+  const progressToSave = useRef({ comic, currentPage, totalPages });
+  progressToSave.current = { comic, currentPage, totalPages };
+
   useEffect(() => {
-    if (!hasAddedToRecent.current) {
-      addToRecentlyRead(comic);
-      hasAddedToRecent.current = true;
+    if (comicList && comicIndex >= 0 && comicIndex < comicList.length) {
+      const newComic = comicList[comicIndex];
+      if (newComic.id !== internalComic.id) {
+        setInternalComic(newComic);
+        setCurrentPage(newComic.lastReadPage || 1);
+        setPages([]);
+        setPageImageUrls({});
+        fetchedPages.current.clear();
+        setIsLoading(true);
+        setLoadingMessage("Loading pages...");
+        setReaderError(null);
+      }
     }
-  }, [comic, addToRecentlyRead]);
+  }, [comicIndex, comicList, internalComic.id]);
 
   useEffect(() => {
     const fetchPages = async () => {
       if (!canReadComic || !electronAPI) {
         setIsLoading(false);
         setTotalPages(isElectron ? 0 : 22);
+        setReaderError(isElectron ? "File path is missing or invalid." : "Reading comics is only supported in the desktop application.");
         return;
       }
 
       setIsLoading(true);
+      setReaderError(null);
       try {
         if (isCbr) {
+          setLoadingMessage("Preparing comic archive...");
           const { tempDir, pages: pageList } = await electronAPI.prepareCbrForReading(comic.filePath!);
           setCbrTempDir(tempDir);
           setPages(pageList);
           setTotalPages(pageList.length);
         } else {
+          setLoadingMessage("Loading pages...");
           const pageList = await electronAPI.getComicPages(comic.filePath!);
           setPages(pageList);
           setTotalPages(pageList.length);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to fetch comic pages:", error);
-        showError("Failed to load comic. The file might be corrupted.");
+        setReaderError(error.message || "The file might be corrupted or too large.");
+        showError(`Failed to load comic: ${error.message || "Unknown error"}`);
         setTotalPages(0);
       } finally {
         setIsLoading(false);
       }
     };
+    
     fetchPages();
 
     return () => {
@@ -114,7 +133,7 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
         electronAPI.cleanupTempDir(cbrTempDir);
       }
     };
-  }, [canReadComic, electronAPI, comic.filePath, isCbr]);
+  }, [canReadComic, electronAPI, comic.filePath, isCbr, comic.id]);
 
   useEffect(() => {
     const preloadPage = async (pageNumber: number, pageName: string) => {
@@ -161,9 +180,22 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
     setCurrentPage(newPage);
   }, [totalPages]);
 
+  const loadNextComic = useCallback(() => {
+    if (nextComic) {
+      // Update reading context to reflect the new comic being read
+      updateReadingHistory(comic, currentPage, totalPages);
+      updateComicProgress(comic.id, currentPage, totalPages);
+      setComicIndex(prev => prev + 1);
+    }
+  }, [nextComic, setComicIndex, comic, currentPage, totalPages, updateReadingHistory, updateComicProgress]);
+
   const nextPage = useCallback(() => {
-    goToPage(currentPage + (viewMode === "double" ? 2 : 1));
-  }, [currentPage, goToPage, viewMode]);
+    if (currentPage === totalPages && nextComic) {
+      loadNextComic();
+    } else {
+      goToPage(currentPage + (viewMode === "double" ? 2 : 1));
+    }
+  }, [currentPage, totalPages, nextComic, goToPage, viewMode, loadNextComic]);
 
   const prevPage = useCallback(() => {
     goToPage(currentPage - (viewMode === "double" ? 2 : 1));
@@ -171,20 +203,23 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
 
   const handleMarkAsRead = () => {
     toggleComicReadStatus(comic);
+    if (!isMarkedAsRead) {
+      updateComicProgress(comic.id, totalPages, totalPages);
+    }
   };
 
   const handleRateComic = async (newRating: number) => {
-    console.log(`[COMIC-READER] Rating comic ${comic.series} #${comic.issue} with rating: ${newRating}`);
-    try {
-      await updateComicRating(comic.id, newRating);
-      if (readingListItem && !readingListItem.completed) {
-        toggleComicReadStatus(comic);
-      }
-      console.log(`[COMIC-READER] Rating updated successfully`);
-    } catch (error) {
-      console.error(`[COMIC-READER] Failed to update rating:`, error);
+    await updateComicRating(comic.id, newRating);
+    if (readingListItem && !readingListItem.completed) {
+      toggleComicReadStatus(comic);
     }
   };
+
+  useEffect(() => {
+    if (currentPage === totalPages && totalPages > 0 && !isMarkedAsRead) {
+      toggleComicReadStatus(comic);
+    }
+  }, [currentPage, totalPages, isMarkedAsRead, toggleComicReadStatus, comic]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -199,17 +234,33 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    const handleMouseMove = () => {
+    const handleActivity = () => {
       setShowControls(true);
       clearTimeout(timer);
-      timer = setTimeout(() => setShowControls(false), 3000);
+      timer = setTimeout(() => setShowControls(false), 4000);
     };
-    window.addEventListener("mousemove", handleMouseMove);
+
+    handleActivity();
+
+    window.addEventListener("mousemove", handleActivity);
+    window.addEventListener("click", handleActivity);
+
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mousemove", handleActivity);
+      window.removeEventListener("click", handleActivity);
       clearTimeout(timer);
     };
   }, []);
+
+  useEffect(() => {
+    return () => {
+      const { comic, currentPage, totalPages } = progressToSave.current;
+      if (totalPages > 0) {
+        updateComicProgress(comic.id, currentPage, totalPages);
+        updateReadingHistory(comic, currentPage, totalPages);
+      }
+    };
+  }, [updateComicProgress, updateReadingHistory]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -225,7 +276,7 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
     if (pageNumber < 1 || pageNumber > totalPages) return null;
     const imageUrl = pageImageUrls[pageNumber];
     return (
-      <div className="w-full h-full flex items-center justify-center">
+      <div className="h-full flex items-center justify-center">
         {!imageUrl ? (
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         ) : (
@@ -255,7 +306,7 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
             </Button>
             <div>
               <h2 className="font-semibold text-sm truncate flex items-center">
-                {comic.series} #{comic.issue}
+                {comic.series} #${comic.issue}
                 {rating !== undefined && (
                   <span className="ml-2 text-lg" title={RATING_EMOJIS[rating as keyof typeof RATING_EMOJIS]?.label}>
                     {RATING_EMOJIS[rating as keyof typeof RATING_EMOJIS]?.emoji}
@@ -282,21 +333,41 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
 
         <main className="flex-1 flex items-center justify-center overflow-hidden p-4">
           {isLoading ? (
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          ) : !canReadComic || totalPages === 0 ? (
+            <div className="text-center text-muted-foreground">
+              <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+              <p className="font-semibold">{loadingMessage}</p>
+              <p className="text-sm mt-1">This can take a moment for large files.</p>
+            </div>
+          ) : readerError ? (
+            <div className="text-center text-muted-foreground">
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="font-semibold">Cannot Read Comic</h3>
+              <p className="text-sm max-w-xs mt-2">
+                {readerError}
+              </p>
+              {!isElectron && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Reading comics is fully supported in the desktop application.
+                </p>
+              )}
+            </div>
+          ) : totalPages === 0 ? (
             <div className="text-center text-muted-foreground">
               <BookOpen className="h-12 w-12 mx-auto mb-4" />
               <h3 className="font-semibold">Cannot Read Comic</h3>
               <p className="text-sm max-w-xs mt-2">
-                {isElectron 
-                  ? "Could not load pages from the comic file. The file may be missing or corrupted."
-                  : "Reading comics is only supported in the desktop application."
-                }
+                No pages found in the comic file. It might be corrupted or in an unsupported format.
               </p>
             </div>
+          ) : currentPage === totalPages && nextComic && viewMode === 'single' ? (
+            <NextIssuePreview 
+              nextComic={nextComic} 
+              onReadNext={loadNextComic}
+              onGoBack={() => goToPage(totalPages - 1)}
+            />
           ) : (
             <div
-              className="transition-transform duration-200 flex gap-4 items-center justify-center"
+              className="transition-transform duration-200 flex items-center justify-center gap-4"
               style={{
                 transform: `scale(1) rotate(${rotation}deg)`,
                 width: "100%",
@@ -368,7 +439,7 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
             variant="outline"
             size="icon"
             onClick={nextPage}
-            disabled={currentPage >= totalPages}
+            disabled={currentPage >= totalPages && !nextComic}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>

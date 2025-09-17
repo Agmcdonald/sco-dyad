@@ -1,35 +1,54 @@
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Card, CardFooter } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import { useSelection } from "@/context/SelectionContext";
+import { useAppContext } from "@/context/AppContext";
 import { Comic } from "@/types";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { getCoverUrl } from "@/lib/cover";
+import { BookOpen } from "lucide-react";
 
 interface ComicCardProps {
   comic: Comic;
   onDoubleClick?: (seriesName: string) => void;
   onToggleInspector?: () => void;
+  selectionMode?: boolean;
+  isSelectedForBulk?: boolean;
+  onBulkSelect?: () => void;
+  comicList?: Comic[];
+  currentIndex?: number;
 }
 
-const ComicCard = ({ comic, onDoubleClick, onToggleInspector }: ComicCardProps) => {
+const ComicCard = ({ 
+  comic, 
+  onDoubleClick, 
+  onToggleInspector,
+  selectionMode = false,
+  isSelectedForBulk = false,
+  onBulkSelect,
+  comicList,
+  currentIndex
+}: ComicCardProps) => {
   const { selectedItem, setSelectedItem } = useSelection();
+  const { openComicForReading } = useAppContext();
   const [imageError, setImageError] = useState(false);
 
-  const isSelected = selectedItem?.type === 'comic' && selectedItem.id === comic.id;
+  const isSelectedForInspector = selectedItem?.type === 'comic' && selectedItem.id === comic.id;
 
   const handleClick = () => {
-    // Single click always selects the comic
-    setSelectedItem({ ...comic, type: 'comic' });
+    if (selectionMode) {
+      onBulkSelect?.();
+    } else {
+      setSelectedItem({ ...comic, type: 'comic' });
+    }
   };
 
   const handleDoubleClick = () => {
-    // Double click behavior depends on context
     if (onDoubleClick) {
-      // In series view, drill down to show issues
       onDoubleClick(comic.series);
     } else if (onToggleInspector) {
-      // In regular grid view, toggle the inspector
       setSelectedItem({ ...comic, type: 'comic' });
       onToggleInspector();
     }
@@ -49,13 +68,22 @@ const ComicCard = ({ comic, onDoubleClick, onToggleInspector }: ComicCardProps) 
   return (
     <Card 
       className={cn(
-        "overflow-hidden transition-all duration-200 hover:scale-105 hover:shadow-lg cursor-pointer",
-        isSelected && "ring-2 ring-primary shadow-lg scale-105"
+        "overflow-hidden transition-all duration-200 hover:scale-105 hover:shadow-lg cursor-pointer relative group",
+        isSelectedForInspector && !selectionMode && "ring-2 ring-primary shadow-lg scale-105",
+        isSelectedForBulk && "ring-2 ring-primary shadow-lg scale-105"
       )}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
     >
-      <AspectRatio ratio={2 / 3}>
+      {selectionMode && (
+        <div className="absolute top-2 left-2 z-10 pointer-events-none">
+          <Checkbox
+            checked={isSelectedForBulk}
+            className="bg-background border-2 shadow-sm"
+          />
+        </div>
+      )}
+      <AspectRatio ratio={2 / 3} className="relative">
         {!imageError ? (
           <img
             src={coverSrc}
@@ -70,6 +98,20 @@ const ComicCard = ({ comic, onDoubleClick, onToggleInspector }: ComicCardProps) 
               <div className="text-4xl mb-2">📚</div>
               <div className="text-xs text-muted-foreground">No Cover</div>
             </div>
+          </div>
+        )}
+        {!selectionMode && (
+          <div className="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <Button
+              variant="secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                openComicForReading(comic, comicList, currentIndex);
+              }}
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              Read
+            </Button>
           </div>
         )}
       </AspectRatio>

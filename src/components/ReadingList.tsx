@@ -23,7 +23,7 @@ const ReadingList = () => {
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("reading-list");
+  const [activeTab, setActiveTab] = useState("recently-read");
 
   // Auto-show completed when a comic is marked as read
   useEffect(() => {
@@ -121,9 +121,57 @@ const ReadingList = () => {
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="reading-list">Reading List</TabsTrigger>
                 <TabsTrigger value="recently-read">Recently Read</TabsTrigger>
+                <TabsTrigger value="reading-list">Reading List</TabsTrigger>
               </TabsList>
+
+              <TabsContent value="recently-read" className="space-y-4">
+                <div className="space-y-3">
+                  {enhancedRecentlyRead.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No recently read comics</p>
+                      <p className="text-sm">Comics you read will appear here</p>
+                    </div>
+                  ) : (
+                    enhancedRecentlyRead.map((item) => (
+                      <div key={item.id} className="flex items-center gap-4 p-4 border rounded-lg">
+                        <div className="w-12 h-16 bg-muted rounded flex-shrink-0 overflow-hidden">
+                          <img 
+                            src={item.coverUrlResolved} 
+                            alt={item.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-medium">
+                              {item.title}
+                              {item.currentRating !== undefined && (
+                                <span className="ml-3 text-lg" title={RATING_EMOJIS[item.currentRating as keyof typeof RATING_EMOJIS]?.label}>
+                                  {RATING_EMOJIS[item.currentRating as keyof typeof RATING_EMOJIS]?.emoji}
+                                </span>
+                              )}
+                            </h4>
+                          </div>
+                          <div className="text-sm text-muted-foreground mb-3">
+                            {item.publisher} • {item.year} • Read {item.dateRead.toLocaleDateString()}
+                          </div>
+                          <div>
+                            <div className="text-xs text-muted-foreground mb-2">Rate this comic:</div>
+                            <RatingSelector 
+                              currentRating={item.currentRating} 
+                              onRatingChange={(rating) => handleRatingChange(item.id, rating, true)}
+                              size="sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </TabsContent>
 
               <TabsContent value="reading-list" className="space-y-4">
                 {/* Search and Filters */}
@@ -210,54 +258,6 @@ const ReadingList = () => {
                     <Plus className="h-4 w-4 mr-2" />
                     Add from Library
                   </Button>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="recently-read" className="space-y-4">
-                <div className="space-y-3">
-                  {enhancedRecentlyRead.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No recently read comics</p>
-                      <p className="text-sm">Comics you read will appear here</p>
-                    </div>
-                  ) : (
-                    enhancedRecentlyRead.map((item) => (
-                      <div key={item.id} className="flex items-center gap-4 p-4 border rounded-lg">
-                        <div className="w-12 h-16 bg-muted rounded flex-shrink-0 overflow-hidden">
-                          <img 
-                            src={item.coverUrlResolved} 
-                            alt={item.title}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-medium">
-                              {item.title}
-                              {item.currentRating !== undefined && (
-                                <span className="ml-3 text-lg" title={RATING_EMOJIS[item.currentRating as keyof typeof RATING_EMOJIS]?.label}>
-                                  {RATING_EMOJIS[item.currentRating as keyof typeof RATING_EMOJIS]?.emoji}
-                                </span>
-                              )}
-                            </h4>
-                          </div>
-                          <div className="text-sm text-muted-foreground mb-3">
-                            {item.publisher} • {item.year} • Read {item.dateRead.toLocaleDateString()}
-                          </div>
-                          <div>
-                            <div className="text-xs text-muted-foreground mb-2">Rate this comic:</div>
-                            <RatingSelector 
-                              currentRating={item.currentRating} 
-                              onRatingChange={(rating) => handleRatingChange(item.id, rating, true)}
-                              size="sm"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
                 </div>
               </TabsContent>
             </Tabs>

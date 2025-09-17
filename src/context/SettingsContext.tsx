@@ -4,14 +4,13 @@ import { AppSettings } from '@/types';
 
 const defaultSettings: AppSettings = {
   comicVineApiKey: '',
-  marvelPublicKey: '',
-  marvelPrivateKey: '',
+  comicVineEnabled: true, // Default to enabled if API key is provided
   keepOriginalFiles: true,
   autoScanOnStartup: true,
   folderNameFormat: '{publisher}/{series} ({volume})',
   fileNameFormat: '{series} #{issue} ({year})',
   libraryPath: '',
-  gcdDbPath: '',
+  hasLaunchedBefore: false, // Default to false
 };
 
 interface SettingsContextType {

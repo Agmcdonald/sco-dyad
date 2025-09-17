@@ -4,6 +4,7 @@ export interface ParsedComicInfo {
   year: number | null;
   volume: string | null;
   publisher?: string | null;
+  ofTotal?: string | null; // New field for 'of #' total
 }
 
 // Character to publisher mapping
@@ -11,19 +12,16 @@ const characterPublisherMap: Record<string, string> = {
   // DC Comics characters
   'superman': 'DC Comics', 'batman': 'DC Comics', 'wonder woman': 'DC Comics', 'flash': 'DC Comics', 'green lantern': 'DC Comics', 'aquaman': 'DC Comics', 'cyborg': 'DC Comics', 'green arrow': 'DC Comics', 'martian manhunter': 'DC Comics', 'shazam': 'DC Comics', 'nightwing': 'DC Comics', 'robin': 'DC Comics', 'batgirl': 'DC Comics', 'supergirl': 'DC Comics', 'harley quinn': 'DC Comics', 'joker': 'DC Comics', 'catwoman': 'DC Comics', 'poison ivy': 'DC Comics', 'lex luthor': 'DC Comics', 'deathstroke': 'DC Comics', 'teen titans': 'DC Comics', 'justice league': 'DC Comics', 'birds of prey': 'DC Comics', 'suicide squad': 'DC Comics',
   // Marvel Comics characters
-  'spider-man': 'Marvel Comics', 'spiderman': 'Marvel Comics', 'iron man': 'Marvel Comics', 'captain america': 'Marvel Comics', 'thor': 'Marvel Comics', 'hulk': 'Marvel Comics', 'black widow': 'Marvel Comics', 'hawkeye': 'Marvel Comics', 'ant-man': 'Marvel Comics', 'wasp': 'Marvel Comics', 'captain marvel': 'Marvel Comics', 'ms marvel': 'Marvel Comics', 'daredevil': 'Marvel Comics', 'punisher': 'Marvel Comics', 'deadpool': 'Marvel Comics', 'wolverine': 'Marvel Comics', 'x-men': 'Marvel Comics', 'fantastic four': 'Marvel Comics', 'avengers': 'Marvel Comics', 'guardians of the galaxy': 'Marvel Comics', 'doctor strange': 'Marvel Comics', 'scarlet witch': 'Marvel Comics', 'vision': 'Marvel Comics', 'falcon': 'Marvel Comics', 'winter soldier': 'Marvel Comics', 'black panther': 'Marvel Comics', 'storm': 'Marvel Comics', 'cyclops': 'Marvel Comics', 'jean grey': 'Marvel Comics', 'magneto': 'Marvel Comics', 'professor x': 'Marvel Comics', 'venom': 'Marvel Comics', 'carnage': 'Marvel Comics', 'green goblin': 'Marvel Comics', 'doctor octopus': 'Marvel Comics', 'thanos': 'Marvel Comics', 'loki': 'Marvel Comics', 'galactus': 'Marvel Comics',
+  'spider-man': 'Marvel Comics', 'spiderman': 'Marvel Comics', 'iron man': 'Marvel Comics', 'captain america': 'Marvel Comics', 'thor': 'Marvel Comics', 'hulk': 'Marvel Comics', 'black widow': 'Marvel Comics', 'hawkeye': 'Marvel Comics', 'ant-man': 'Marvel Comics', 'wasp': 'Marvel Comics', 'captain marvel': 'Marvel Comics', 'ms marvel': 'Marvel Comics', 'daredevil': 'Marvel Comics', 'punisher': 'Marvel Comics', 'deadpool': 'Marvel Comics', 'wolverine': 'Marvel Comics', 'x-men': 'Marvel Comics', 'fantastic four': 'Marvel Comics', 'avengers': 'Marvel Comics', 'guardians of the galaxy': 'Marvel Comics', 'doctor strange': 'Marvel Comics', 'scarlet witch': 'Marvel Comics', 'vision': 'Marvel Comics', 'falcon': 'Marvel Comics', 'winter soldier': 'Marvel Comics', 'black panther': 'Marvel Comics', 'storm': 'Marvel Comics', 'cyclops': 'Marvel Comics', 'jean grey': 'DC Comics', 'magneto': 'Marvel Comics', 'professor x': 'Marvel Comics', 'venom': 'Marvel Comics', 'carnage': 'Marvel Comics', 'green goblin': 'Marvel Comics', 'doctor octopus': 'Marvel Comics', 'thanos': 'Marvel Comics', 'loki': 'Marvel Comics', 'galactus': 'Marvel Comics',
 };
 
 // Patterns to remove common metadata that clutters series names
+// Note: (of #) patterns are handled separately before these general patterns.
 const metadataPatterns = [
     /\(digital\)/gi, /\(web-rip\)/gi, /\(webrip\)/gi, /\(scan\)/gi, /\(cbr\)/gi, /\(cbz\)/gi, /\(pdf\)/gi, /\([^)]*-[^)]*\)/gi, /\([^)]*rip[^)]*\)/gi, /\([^)]*scan[^)]*\)/gi, /\(dcp\)/gi, /\(empire\)/gi, /\(son of ultron-empire\)/gi, /\(the last kryptonian-dcp\)/gi, /\(\d+\s*covers?\)/gi, /\(annual\)/gi, /\(one-shot\)/gi,
+    /\(GetComics\.INFO\)/gi, // Added to remove GetComics.INFO
+    /\(Digital\)/gi, // Ensure this is also caught
 ];
-
-const clean = (name: string): string => {
-  let cleaned = name.replace(/_/g, ' ').replace(/\.[^/.]+$/, "").trim();
-  metadataPatterns.forEach(pattern => { cleaned = cleaned.replace(pattern, ''); });
-  return cleaned.replace(/\s+/g, ' ').trim();
-};
 
 const detectPublisherFromCharacters = (seriesName: string): string | null => {
   if (!seriesName) return null;
@@ -36,7 +34,20 @@ const detectPublisherFromCharacters = (seriesName: string): string | null => {
 
 export const parseFilename = (path: string): ParsedComicInfo => {
   const filename = path.split(/[\\/]/).pop() || '';
-  let cleaned = clean(filename);
+  // Preserve hyphens for series names like "A-Force"
+  let cleaned = filename.replace(/_/g, ' ').replace(/\.[^/.]+$/, "").trim();
+
+  // 0. Extract "of Total" first to prevent it from being removed by other patterns
+  let ofTotal: string | null = null;
+  const ofTotalMatch = cleaned.match(/\(of\s*(\d+)\)/i);
+  if (ofTotalMatch) {
+    ofTotal = ofTotalMatch[1]; // Just the number, e.g., "04"
+    cleaned = cleaned.replace(ofTotalMatch[0], '').trim();
+  }
+
+  // Apply general metadata patterns
+  metadataPatterns.forEach(pattern => { cleaned = cleaned.replace(pattern, ''); });
+  cleaned = cleaned.replace(/\s+/g, ' ').trim(); // Final trim after all replacements
 
   // 1. Extract Year
   let year: number | null = null;
@@ -48,18 +59,26 @@ export const parseFilename = (path: string): ParsedComicInfo => {
 
   // 2. Extract Volume
   let volume: string | null = null;
-  const volumeMatch = cleaned.match(/(?:\(v|vol|volume)\s*(\d{1,3})\)/i);
-  if (volumeMatch) {
-    volume = volumeMatch[1];
-    cleaned = cleaned.replace(volumeMatch[0], '').trim();
+  // Check for standalone volume first, e.g., "V1", "V 1", "Vol 2"
+  const standaloneVolumeMatch = cleaned.match(/\s(v|vol|volume)\s?(\d+)/i);
+  if (standaloneVolumeMatch) {
+    volume = standaloneVolumeMatch[2];
+    cleaned = cleaned.replace(standaloneVolumeMatch[0], ' ');
+  } else {
+    const parenVolumeMatch = cleaned.match(/(?:\(v|vol|volume)\s*(\d{1,3})\)/i);
+    if (parenVolumeMatch) {
+      volume = parenVolumeMatch[1];
+      cleaned = cleaned.replace(parenVolumeMatch[0], '');
+    }
   }
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
 
-  // 3. Extract Issue (from most specific to least specific)
+  // 3. Extract Issue
   let issue: string | null = null;
   const issuePatterns = [
     { regex: /\s#(\d{1,4}(?:\.\d{1,2})?)/, group: 1 }, // #123
     { regex: /\sissue\s#?(\d{1,4}(?:\.\d{1,2})?)/i, group: 1 }, // issue 123
-    { regex: /\s(\d{3,4})/, group: 1 }, // 001 (3 or 4 digits)
+    { regex: /\s(\d{3,4})(?!\d)/, group: 1 }, // 001 (3 or 4 digits, not followed by another digit)
     { regex: /\s(\d{1,2}(?:\.\d{1,2})?)$/, group: 1 }, // 1 or 1.5 at the end
   ];
 
@@ -67,7 +86,11 @@ export const parseFilename = (path: string): ParsedComicInfo => {
     const issueMatch = cleaned.match(pattern.regex);
     if (issueMatch) {
       issue = issueMatch[pattern.group];
-      cleaned = cleaned.replace(issueMatch[0], '').trim();
+      // This is the key change: split the string at the issue number
+      // to separate the series from the title.
+      const parts = cleaned.split(issueMatch[0]);
+      cleaned = parts[0]; // Everything before the issue is the series
+      // The title (parts[1]) is effectively discarded from the series name, cleaning it up.
       break;
     }
   }
@@ -75,8 +98,8 @@ export const parseFilename = (path: string): ParsedComicInfo => {
   // 4. The remainder is the series
   let series = cleaned.replace(/\[[^\]]*\]/g, '').replace(/\([^)]*\)/g, '').trim();
   // Clean up trailing characters like '#'
-  series = series.replace(/[^a-zA-Z0-9\s]+$/, '').trim();
-
+  series = series.replace(/[^a-zA-Z0-9\s-]+$/, '').trim(); // Preserve hyphens here
+  
   // 5. Detect Publisher
   const publisher = detectPublisherFromCharacters(series);
 
@@ -85,7 +108,8 @@ export const parseFilename = (path: string): ParsedComicInfo => {
     issue: issue ? issue.padStart(3, '0') : null,
     year,
     volume: volume || (year ? String(year) : null),
-    publisher
+    publisher,
+    ofTotal // Include the new field
   };
 };
 
@@ -93,6 +117,7 @@ export const generateSuggestedFilename = (parsed: ParsedComicInfo): string => {
   if (!parsed.series || !parsed.issue) return '';
   let suggested = parsed.series;
   suggested += ` #${parsed.issue}`;
+  if (parsed.ofTotal) suggested += ` (of ${parsed.ofTotal})`; // Add (of #) to suggested filename
   if (parsed.year) suggested += ` (${parsed.year})`;
   return suggested;
 };

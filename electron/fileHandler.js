@@ -3,15 +3,15 @@
  * 
  * This module is responsible for all file system operations related to comic files.
  * It runs in the Electron main process and provides functionalities like:
- * - Scanning folders for comic files (CBR, CBZ)
+ * - Scanning folders for comic files (CBR, CBZ, PDF)
  * - Reading file metadata (size, type, etc.)
  * - Extracting cover images from comic archives
  * - Getting a list of pages from an archive
  * - Extracting individual pages as data URLs for the reader
  * - Organizing (moving/copying) files to the library
  * 
- * It uses libraries like `node-stream-zip` for ZIP archives and `unrar-promise`
- * for RAR archives, with robust error handling and timeouts.
+ * It uses libraries like `node-stream-zip` for ZIP archives, `unrar-promise`
+ * for RAR archives, and `pdfjs-dist` for PDF documents.
  */
 
 const fs = require('fs').promises;
@@ -20,12 +20,87 @@ const StreamZip = require('node-stream-zip');
 const sharp = require('sharp');
 const os = require('os');
 
+// --- Canvas Module Conditional Loading ---
+let createCanvas;
+let canvasAvailable = false;
+
+try {
+  // Try to load canvas module. This may fail if native bindings are not built for Electron.
+  const canvasModule = require('canvas');
+  createCanvas = canvasModule.createCanvas;
+  canvasAvailable = true;
+  console.log('Canvas module loaded successfully. PDF rendering is enabled.');
+} catch (error) {
+  console.warn('Canvas module not available. PDF rendering will use a placeholder fallback.', error.message);
+  // canvasAvailable remains false, allowing the app to run without crashing.
+}
+
+// --- Robust PDF.js Initialization ---
+let pdfjs, getDocument, GlobalWorkerOptions;
+let pdfjsAvailable = false;
+
+try {
+  // Try different possible paths for PDF.js
+  let pdfjsModule, pdfjsWorkerPath;
+  
+  // First try the standard build
+  try {
+    pdfjsModule = require('pdfjs-dist');
+    const pdfjsDistPath = path.dirname(require.resolve('pdfjs-dist/package.json'));
+    pdfjsWorkerPath = path.join(pdfjsDistPath, 'build', 'pdf.worker.js');
+    
+    // Check if worker file exists
+    require('fs').accessSync(pdfjsWorkerPath);
+    
+    pdfjs = pdfjsModule;
+    getDocument = pdfjsModule.getDocument;
+    GlobalWorkerOptions = pdfjsModule.GlobalWorkerOptions;
+    GlobalWorkerOptions.workerSrc = pdfjsWorkerPath;
+    
+    pdfjsAvailable = true;
+    console.log('PDF.js initialized successfully (standard build)');
+  } catch (standardError) {
+    console.log('Standard PDF.js build not found, trying legacy build...');
+    
+    // Try legacy build as fallback
+    try {
+      const pdfjsDistPath = path.dirname(require.resolve('pdfjs-dist/package.json'));
+      const pdfjsLegacyPath = path.join(pdfjsDistPath, 'legacy', 'build', 'pdf.js');
+      pdfjsWorkerPath = path.join(pdfjsDistPath, 'legacy', 'build', 'pdf.worker.js');
+
+      // Verify that both files exist
+      require('fs').accessSync(pdfjsLegacyPath);
+      require('fs').accessSync(pdfjsWorkerPath);
+
+      // Require the legacy module
+      pdfjsModule = require(pdfjsLegacyPath);
+      pdfjs = pdfjsModule;
+      getDocument = pdfjsModule.getDocument;
+      GlobalWorkerOptions = pdfjsModule.GlobalWorkerOptions;
+      GlobalWorkerOptions.workerSrc = pdfjsWorkerPath;
+      
+      pdfjsAvailable = true;
+      console.log('PDF.js initialized successfully (legacy build)');
+    } catch (legacyError) {
+      console.error('Failed to initialize PDF.js with both standard and legacy builds:', {
+        standard: standardError.message,
+        legacy: legacyError.message
+      });
+    }
+  }
+} catch (error) {
+  console.error('Failed to initialize PDF.js. PDF functionality will be disabled.', error.message);
+}
+// --- End of PDF.js Initialization ---
+
 class ComicFileHandler {
   constructor() {
-    this.supportedExtensions = ['.cbr', '.cbz'];
+    this.supportedExtensions = ['.cbr', '.cbz', '.pdf'];
     this.imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
     this.unrarAvailable = false;
     this.unrar = null;
+    this.pdfjsAvailable = pdfjsAvailable; // Store the status
+    this.canvasAvailable = canvasAvailable; // Store canvas availability
     this.initUnrar();
   }
 
@@ -61,13 +136,13 @@ class ComicFileHandler {
             if (stats.isDirectory()) return this._walk(filePath);
             else if(stats.isFile()) return filePath;
           } catch (error) {
-            console.warn(`Could not stat file ${filePath}:`, error.message);
+            console.warn(`[FileHandler] Could not stat file ${filePath}:`, error.message);
             return [];
           }
       }));
       return files.reduce((all, folderContents) => all.concat(folderContents), []).filter(Boolean);
     } catch (error) {
-      console.error(`Error walking directory ${dir}:`, error);
+      console.error(`[FileHandler] Error walking directory ${dir}:`, error);
       return [];
     }
   }
@@ -111,7 +186,7 @@ class ComicFileHandler {
       }
       return files;
     } catch (error) {
-      console.error('Error scanning folder:', error);
+      console.error('[FileHandler] Error scanning folder:', error);
       throw error;
     }
   }
@@ -143,22 +218,22 @@ class ComicFileHandler {
         lastModified: stats.mtime
       };
 
-      if (fileInfo.type === 'cbz' || fileInfo.type === 'cbr') {
+      if (['cbz', 'cbr', 'pdf'].includes(fileInfo.type)) {
         try {
           fileInfo.pageCount = await this.getPageCount(filePath);
         } catch (error) {
-          console.warn('Could not get page count for', filePath, error.message);
+          console.warn(`[FileHandler] Could not get page count for ${filePath}:`, error.message);
         }
       }
       return fileInfo;
     } catch (error) {
-      console.error('Error reading comic file:', error);
+      console.error(`[FileHandler] Error reading comic file ${filePath}:`, error);
       throw error;
     }
   }
 
   /**
-   * Get page count from a comic archive
+   * Get page count from a comic archive or PDF
    * @param filePath - Path to the comic file
    * @returns Number of image pages in the archive
    */
@@ -171,22 +246,44 @@ class ComicFileHandler {
         zip = new StreamZip.async({ file: filePath });
         const entries = await zip.entries();
         return Object.values(entries).filter(e => !e.isDirectory && this.isImageFile(e.name)).length;
+      } catch (error) {
+        console.error(`[FileHandler] Error getting page count from CBZ file ${filePath}:`, error);
+        throw new Error(`Failed to get page count from CBZ: ${error.message}`);
       } finally {
         if (zip) await zip.close().catch(() => {});
       }
     } else if (fileType === 'cbr') {
-      if (!this.unrarAvailable) return 0;
+      if (!this.unrarAvailable) {
+        console.warn(`[FileHandler] RAR support not available for ${filePath}. Cannot get page count.`);
+        return 0;
+      }
       let tempDir = null;
       try {
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-pages-'));
         await Promise.race([
           this.unrar(filePath, tempDir),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('CBR page count timeout')), 15000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('CBR page count timeout')), 300000)) // Increased timeout to 5 minutes
         ]);
         const allFiles = await this._walk(tempDir);
         return allFiles.filter(file => this.isImageFile(file)).length;
+      } catch (error) {
+        console.error(`[FileHandler] Error getting page count from CBR file ${filePath}:`, error);
+        throw new Error(`Failed to get page count from CBR: ${error.message}`);
       } finally {
         if (tempDir) await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      }
+    } else if (fileType === 'pdf') {
+      if (!this.pdfjsAvailable) {
+        console.warn(`[FileHandler] PDF processing is disabled for ${filePath}. Cannot get page count.`);
+        return 0;
+      }
+      try {
+        const data = new Uint8Array(await fs.readFile(filePath));
+        const pdf = await getDocument(data).promise;
+        return pdf.numPages;
+      } catch (error) {
+        console.error(`[FileHandler] Error getting page count from PDF file ${filePath}:`, error);
+        throw new Error(`Failed to get page count from PDF: ${error.message}`);
       }
     }
     return 0;
@@ -203,9 +300,13 @@ class ComicFileHandler {
     try {
       if (ext === '.cbz') return await this.extractCoverFromZipArchive(filePath, outputDir);
       if (ext === '.cbr') return await this.extractCoverFromRarArchive(filePath, outputDir);
-      throw new Error(`Unsupported file type: ${ext}`);
+      if (ext === '.pdf') {
+        if (!this.pdfjsAvailable) throw new Error('PDF processing is disabled. Cannot extract cover.');
+        return await this.extractCoverFromPdf(filePath, outputDir);
+      }
+      throw new Error(`Unsupported file type for cover extraction: ${ext}`);
     } catch (error) {
-      console.error(`Error extracting cover:`, error);
+      console.error(`[FileHandler] Error extracting cover for ${filePath}:`, error);
       throw error;
     }
   }
@@ -232,6 +333,9 @@ class ComicFileHandler {
       if (stats.size === 0) throw new Error('Cover file is empty');
       
       return publicCoverPath;
+    } catch (error) {
+      console.error(`[FileHandler] Error extracting cover to public directory for ${filePath}:`, error);
+      throw error;
     } finally {
       if (tempDir) await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
     }
@@ -264,6 +368,9 @@ class ComicFileHandler {
         .toFile(outputPath);
       
       return outputPath;
+    } catch (error) {
+      console.error(`[FileHandler] Error extracting cover from CBZ ${filePath}:`, error);
+      throw new Error(`Failed to extract cover from CBZ: ${error.message}`);
     } finally {
       if (zip) await zip.close().catch(() => {});
     }
@@ -280,10 +387,12 @@ class ComicFileHandler {
     let tempDir = null;
     try {
       tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-cover-'));
+      console.log(`[FileHandler] Starting CBR cover extraction for ${filePath} to temp dir ${tempDir}`);
       await Promise.race([
         this.unrar(filePath, tempDir),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR cover extraction timeout')), 30000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR cover extraction timeout')), 300000)) // Increased timeout to 5 minutes
       ]);
+      console.log(`[FileHandler] CBR extraction complete for cover of ${filePath}`);
       
       const allFiles = await this._walk(tempDir);
       const imageFiles = allFiles
@@ -299,10 +408,94 @@ class ComicFileHandler {
         .jpeg({ quality: 85 })
         .toFile(outputPath);
         
+      console.log(`[FileHandler] Cover saved to ${outputPath}`);
       return outputPath;
+    } catch (error) {
+      console.error(`[FileHandler] Error extracting cover from CBR ${filePath}:`, error);
+      throw new Error(`Failed to extract cover from CBR: ${error.message}`);
     } finally {
-      if (tempDir) await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      if (tempDir) {
+        console.log(`[FileHandler] Cleaning up temp dir ${tempDir}`);
+        await fs.rm(tempDir, { recursive: true, force: true }).catch(e => console.error(`[FileHandler] Error cleaning up temp dir ${tempDir}:`, e));
+      }
     }
+  }
+
+  /**
+   * Extract cover from a PDF document
+   * Alternative implementation that doesn't require canvas module
+   * @param filePath - Path to the PDF file
+   * @param outputDir - Directory to save the cover
+   * @returns Path to the extracted cover
+   */
+  async extractCoverFromPdf(filePath, outputDir) {
+    if (!this.pdfjsAvailable) throw new Error('PDF processing is disabled.');
+    
+    const outputPath = path.join(outputDir, `${path.basename(filePath, '.pdf')}_cover.jpg`);
+    await fs.mkdir(outputDir, { recursive: true });
+
+    if (this.canvasAvailable) {
+      // Use canvas if available
+      try {
+        const data = new Uint8Array(await fs.readFile(filePath));
+        const pdf = await getDocument(data).promise;
+        if (pdf.numPages === 0) {
+          throw new Error('PDF has no pages');
+        }
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = createCanvas(viewport.width, viewport.height);
+        const context = canvas.getContext('2d');
+
+        await page.render({ canvasContext: context, viewport }).promise;
+
+        const buffer = canvas.toBuffer('image/jpeg');
+        await sharp(buffer)
+          .resize(400, 600, { fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 85 })
+          .toFile(outputPath);
+      } catch (error) {
+        console.error(`[FileHandler] Error rendering PDF cover with canvas for ${filePath}:`, error);
+        throw new Error(`Failed to render PDF cover: ${error.message}`);
+      }
+    } else {
+      // Alternative: Create a placeholder cover or extract embedded images
+      // For now, we'll create a simple placeholder with PDF metadata
+      console.warn(`[FileHandler] Canvas not available. Creating placeholder cover for PDF ${filePath}.`);
+      
+      try {
+        const data = new Uint8Array(await fs.readFile(filePath));
+        const pdf = await getDocument(data).promise;
+        
+        if (pdf.numPages === 0) {
+          throw new Error('PDF has no pages');
+        }
+
+        // Try to get the first page's text content as metadata
+        const page = await pdf.getPage(1);
+        const textContent = await page.getTextContent();
+        const text = textContent.items.map(item => item.str).join(' ').slice(0, 100);
+
+        // Create a simple SVG placeholder with sharp
+        const svg = `
+          <svg width="400" height="600" xmlns="http://www.w3.org/2000/svg">
+            <rect width="400" height="600" fill="#f0f0f0"/>
+            <text x="200" y="280" text-anchor="middle" font-size="24" fill="#333">PDF Document</text>
+            <text x="200" y="320" text-anchor="middle" font-size="16" fill="#666">${pdf.numPages} pages</text>
+            <text x="200" y="360" text-anchor="middle" font-size="12" fill="#999">${path.basename(filePath, '.pdf')}</text>
+          </svg>
+        `;
+
+        await sharp(Buffer.from(svg))
+          .jpeg({ quality: 85 })
+          .toFile(outputPath);
+      } catch (error) {
+        console.error(`[FileHandler] Error creating placeholder PDF cover for ${filePath}:`, error);
+        throw new Error(`Failed to create placeholder PDF cover: ${error.message}`);
+      }
+    }
+
+    return outputPath;
   }
 
   /**
@@ -327,7 +520,32 @@ class ComicFileHandler {
         await fs.unlink(sourcePath);
         return true;
       }
-      console.error('Error organizing file:', error);
+      console.error(`[FileHandler] Error organizing file from ${sourcePath} to ${targetPath}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Move a file from one location to another.
+   * @param {string} sourcePath - The current absolute path of the file.
+   * @param {string} targetPath - The new absolute path for the file.
+   * @returns {Promise<boolean>} - True on success.
+   */
+  async moveFile(sourcePath, targetPath) {
+    try {
+      // Ensure target directory exists
+      await fs.mkdir(path.dirname(targetPath), { recursive: true });
+
+      // Move the file
+      await fs.rename(sourcePath, targetPath);
+      return true;
+    } catch (error) {
+      if (error.code === 'EXDEV') { // Handle cross-device move
+        await fs.copyFile(sourcePath, targetPath);
+        await fs.unlink(sourcePath);
+        return true;
+      }
+      console.error(`[FileHandler] Error moving file from ${sourcePath} to ${targetPath}:`, error);
       throw error;
     }
   }
@@ -335,34 +553,60 @@ class ComicFileHandler {
   /**
    * Get a list of page filenames from a comic archive
    * @param filePath - Path to the comic file
-   * @returns Array of page filenames
+   * @returns Array of page filenames or numbers
    */
   async getPages(filePath) {
     const ext = path.extname(filePath).toLowerCase();
-    if (ext === '.cbz') {
-      let zip;
-      try {
-        zip = new StreamZip.async({ file: filePath });
-        const entries = await zip.entries();
-        return Object.values(entries)
-          .filter(e => !e.isDirectory && this.isImageFile(e.name))
-          .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
-          .map(e => e.name);
-      } finally {
-        if (zip) await zip.close().catch(() => {});
+
+    switch (ext) {
+      case '.cbz': {
+        let zip;
+        try {
+          zip = new StreamZip.async({ file: filePath });
+          const entries = await zip.entries();
+          return Object.values(entries)
+            .filter(e => !e.isDirectory && this.isImageFile(e.name))
+            .sort((a, b) => a.name.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))
+            .map(e => e.name);
+        } catch (error) {
+          console.error(`[FileHandler] Error reading CBZ file ${filePath} for pages:`, error);
+          throw new Error(`Failed to read CBZ file pages: ${error.message}`);
+        } finally {
+          if (zip) await zip.close().catch(() => {});
+        }
       }
+      
+      case '.cbr':
+        // For CBR files, the entire archive is extracted to a temporary directory for reading.
+        // The list of pages is generated during that process by `prepareCbrForReading`.
+        // This `getPages` method is for quick info and doesn't perform a full extraction.
+        // The ComicReader component handles this by calling prepareCbrForReading directly.
+        // We throw here to indicate that a different method is required for CBR page lists.
+        throw new Error('Use prepareCbrForReading for CBR page lists');
+      
+      case '.pdf': {
+        if (!this.pdfjsAvailable) {
+          console.error(`[FileHandler] PDF processing is disabled for ${filePath}. Cannot get pages.`);
+          throw new Error('PDF processing is disabled. Cannot get pages from PDF.');
+        }
+        try {
+          const pageCount = await this.getPageCount(filePath);
+          return Array.from({ length: pageCount }, (_, i) => String(i + 1));
+        } catch (error) {
+          console.error(`[FileHandler] Error getting pages from PDF ${filePath}:`, error);
+          throw new Error(`Failed to get pages from PDF: ${error.message}`);
+        }
+      }
+
+      default:
+        throw new Error(`Unsupported file type for page extraction: ${ext}`);
     }
-    if (ext === '.cbr') {
-      // CBR reading for pages is handled by prepareCbrForReading
-      throw new Error('Use prepareCbrForReading for CBR page lists');
-    }
-    throw new Error(`Unsupported file type for page extraction: ${ext}`);
   }
 
   /**
    * Extract a specific page from a comic archive as a data URL
    * @param filePath - Path to the comic file
-   * @param pageName - Filename of the page to extract
+   * @param pageName - Filename or page number of the page to extract
    * @returns Data URL of the page image
    */
   async extractPageAsDataUrl(filePath, pageName) {
@@ -373,8 +617,61 @@ class ComicFileHandler {
         zip = new StreamZip.async({ file: filePath });
         const pageData = await zip.entryData(pageName);
         return `data:${this.getMimeType(pageName)};base64,${pageData.toString('base64')}`;
+      } catch (error) {
+        console.error(`[FileHandler] Error extracting page ${pageName} from CBZ ${filePath}:`, error);
+        throw new Error(`Failed to extract page from CBZ: ${error.message}`);
       } finally {
         if (zip) await zip.close().catch(() => {});
+      }
+    }
+    if (fileType === 'pdf') {
+      if (!this.pdfjsAvailable) throw new Error('PDF processing is disabled.');
+      
+      const pageNumber = parseInt(pageName, 10);
+      if (isNaN(pageNumber)) throw new Error('Invalid page number for PDF');
+
+      try {
+        const data = new Uint8Array(await fs.readFile(filePath));
+        const pdf = await getDocument(data).promise;
+        if (pageNumber < 1 || pageNumber > pdf.numPages) {
+          throw new Error(`Page number ${pageNumber} is out of range.`);
+        }
+
+        if (this.canvasAvailable) {
+          // Use canvas if available
+          const page = await pdf.getPage(pageNumber);
+          const viewport = page.getViewport({ scale: 2.0 });
+          const canvas = createCanvas(viewport.width, viewport.height);
+          const context = canvas.getContext('2d');
+
+          await page.render({ canvasContext: context, viewport }).promise;
+          return canvas.toDataURL('image/jpeg');
+        } else {
+          // Alternative: Return a placeholder or basic page info
+          console.warn(`[FileHandler] Canvas not available. Cannot render PDF page ${pageNumber} as image for ${filePath}.`);
+          
+          // Create a simple SVG placeholder with page info
+          const page = await pdf.getPage(pageNumber);
+          const viewport = page.getViewport({ scale: 1.0 });
+          
+          const svg = `
+            <svg width="${viewport.width}" height="${viewport.height}" xmlns="http://www.w3.org/2000/svg">
+              <rect width="${viewport.width}" height="${viewport.height}" fill="#f8f8f8"/>
+              <text x="${viewport.width/2}" y="${viewport.height/2}" text-anchor="middle" font-size="24" fill="#666">
+                Page ${pageNumber} of ${pdf.numPages}
+              </text>
+              <text x="${viewport.width/2}" y="${viewport.height/2 + 40}" text-anchor="middle" font-size="16" fill="#999">
+                PDF rendering requires canvas module
+              </text>
+            </svg>
+          `;
+          
+          const buffer = Buffer.from(svg);
+          return `data:image/svg+xml;base64,${buffer.toString('base64')}`;
+        }
+      } catch (error) {
+        console.error(`[FileHandler] Error extracting page ${pageName} from PDF ${filePath}:`, error);
+        throw new Error(`Failed to extract page from PDF: ${error.message}`);
       }
     }
     // CBR page extraction is handled by getPageDataUrlFromTemp
@@ -400,24 +697,43 @@ class ComicFileHandler {
    * @returns Object with temp directory path and list of page filenames
    */
   async prepareCbrForReading(filePath) {
-    if (!this.unrarAvailable) throw new Error('RAR support is not available');
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-reader-'));
+    if (!this.unrarAvailable) {
+      console.error(`[FileHandler] CBR: RAR support is not available for ${filePath}`);
+      throw new Error('RAR support is not available');
+    }
+    console.log(`[FileHandler] CBR: Starting prepareCbrForReading for ${filePath}`);
+    let tempDir = null;
     try {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-reader-'));
+      console.log(`[FileHandler] CBR: Created temp dir ${tempDir}`);
+      
+      console.log(`[FileHandler] CBR: Starting unrar extraction for ${filePath} to ${tempDir}`);
       await Promise.race([
         this.unrar(filePath, tempDir),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR extraction timeout')), 60000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('CBR extraction timeout')), 300000)) // Increased timeout to 5 minutes
       ]);
+      console.log(`[FileHandler] CBR: Unrar extraction complete for ${filePath}`);
+
+      console.log(`[FileHandler] CBR: Walking temp dir ${tempDir} for image files`);
       const allFiles = await this._walk(tempDir);
       const imageFiles = allFiles
         .filter(file => this.isImageFile(file))
         .map(file => path.relative(tempDir, file).replace(/\\/g, '/'))
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
       
-      if (imageFiles.length === 0) throw new Error('No image files found in CBR archive');
+      if (imageFiles.length === 0) {
+        console.error(`[FileHandler] CBR: No image files found in extracted archive for ${filePath}`);
+        throw new Error('No image files found in CBR archive');
+      }
+      console.log(`[FileHandler] CBR: Found ${imageFiles.length} image files.`);
       return { tempDir, pages: imageFiles };
     } catch (error) {
-      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
-      throw error;
+      console.error(`[FileHandler] CBR: Error preparing CBR ${filePath} for reading:`, error);
+      if (tempDir) {
+        console.log(`[FileHandler] CBR: Cleaning up temp dir ${tempDir} after error.`);
+        await fs.rm(tempDir, { recursive: true, force: true }).catch(e => console.error(`[FileHandler] CBR: Error cleaning up temp dir ${tempDir} after failed CBR prep:`, e));
+      }
+      throw new Error(`Failed to prepare CBR for reading: ${error.message}`);
     }
   }
 
@@ -429,10 +745,19 @@ class ComicFileHandler {
    */
   async getPageDataUrlFromTemp(tempDir, pageName) {
     const safePagePath = path.join(tempDir, pageName);
-    if (!safePagePath.startsWith(tempDir)) throw new Error('Invalid page path');
+    // Basic security check to ensure we don't read outside the tempDir
+    if (!safePagePath.startsWith(tempDir)) {
+      console.error(`[FileHandler] Attempted to access path outside temp directory: ${safePagePath}`);
+      throw new Error('Invalid page path: Attempted to access file outside designated temporary directory.');
+    }
     
-    const pageData = await fs.readFile(safePagePath);
-    return `data:${this.getMimeType(pageName)};base64,${pageData.toString('base64')}`;
+    try {
+      const pageData = await fs.readFile(safePagePath);
+      return `data:${this.getMimeType(pageName)};base64,${pageData.toString('base64')}`;
+    } catch (error) {
+      console.error(`[FileHandler] Error getting page data from temp ${safePagePath}:`, error);
+      throw new Error(`Failed to get page data from temp: ${error.message}`);
+    }
   }
 
   /**
@@ -441,9 +766,12 @@ class ComicFileHandler {
    */
   async cleanupTempDir(tempDir) {
     if (tempDir && tempDir.startsWith(os.tmpdir())) {
+      console.log(`[FileHandler] Cleaning up temp dir ${tempDir}`);
       await fs.rm(tempDir, { recursive: true, force: true }).catch(e => 
-        console.error(`Failed to clean up temp dir ${tempDir}`, e)
+        console.error(`[FileHandler] Failed to clean up temp dir ${tempDir}`, e)
       );
+    } else {
+      console.warn(`[FileHandler] Attempted to clean up non-temp or invalid directory: ${tempDir}`);
     }
   }
 }

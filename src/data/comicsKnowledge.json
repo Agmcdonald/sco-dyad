@@ -373,6 +373,21 @@
     ]
   },
   {
+    "series": "What If?",
+    "publisher": "Marvel Comics",
+    "startYear": 1977,
+    "volumes": [
+      {
+        "volume": "1",
+        "year": 1977
+      },
+      {
+        "volume": "2",
+        "year": 1989
+      }
+    ]
+  },
+  {
     "series": "Saga",
     "publisher": "Image Comics",
     "startYear": 2012,
@@ -3163,6 +3178,25 @@
       {
         "volume": "1",
         "year": 2021
+      }
+    ]
+  },
+  {
+    "series": "Animosity",
+    "publisher": "AfterShock Comics",
+    "startYear": 2016,
+    "volumes": [
+      {
+        "volume": "2016",
+        "year": 2016
+      },
+      {
+        "volume": "2017",
+        "year": 2017
+      },
+      {
+        "volume": "2018",
+        "year": 2018
       }
     ]
   }

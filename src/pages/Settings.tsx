@@ -23,8 +23,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettings } from "@/context/SettingsContext";
 import { useElectron } from "@/hooks/useElectron";
 import { showError, showSuccess } from "@/utils/toast";
-import { testApiConnection, testMarvelApiConnection } from "@/lib/scraper";
-import { Loader2, FolderOpen, Sun, Moon } from "lucide-react";
+import { testApiConnection } from "@/lib/scraper";
+import { Loader2, FolderOpen, Sun, Moon, Keyboard } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 const Settings = () => {
@@ -32,7 +32,6 @@ const Settings = () => {
   const { settings, setSettings } = useSettings();
   const { isElectron, electronAPI } = useElectron();
   const [isTesting, setIsTesting] = useState(false);
-  const [isTestingMarvel, setIsTestingMarvel] = useState(false);
   const [libraryPath, setLibraryPath] = useState("");
   const location = useLocation();
 
@@ -86,13 +85,6 @@ const Settings = () => {
     setIsTesting(false);
   };
 
-  const handleTestMarvelConnection = async () => {
-    setIsTestingMarvel(true);
-    const result = await testMarvelApiConnection(settings.marvelPublicKey, settings.marvelPrivateKey);
-    result.success ? showSuccess(result.message) : showError(result.message);
-    setIsTestingMarvel(false);
-  };
-
   return (
     <div className="space-y-6">
       <div>
@@ -105,10 +97,10 @@ const Settings = () => {
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="library">Library</TabsTrigger>
-          <TabsTrigger value="scrapers">Scrapers</TabsTrigger>
+          <TabsTrigger value="metadata-sources">Metadata Sources</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="general">
+        <TabsContent value="general" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Appearance</CardTitle>
@@ -125,6 +117,34 @@ const Settings = () => {
                   <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                   <span className="sr-only">Toggle theme</span>
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Keyboard className="h-5 w-5" />
+                Keyboard Shortcuts
+              </CardTitle>
+              <CardDescription>Quickly navigate and perform actions using your keyboard.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h4 className="font-semibold mb-2">Comic Reader</h4>
+                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+                  <li><kbd>Right Arrow</kbd> / <kbd>Space</kbd> - Next Page</li>
+                  <li><kbd>Left Arrow</kbd> - Previous Page</li>
+                  <li><kbd>R</kbd> - Mark as Read/Unread</li>
+                  <li><kbd>Esc</kbd> - Close Reader</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2">Knowledge Base Editor</h4>
+                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+                  <li><kbd>N</kbd> / <kbd>J</kbd> - Jump to next search result</li>
+                  <li><kbd>P</kbd> / <kbd>K</kbd> - Jump to previous search result</li>
+                </ul>
               </div>
             </CardContent>
           </Card>
@@ -178,29 +198,45 @@ const Settings = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="scrapers">
-          <div className="relative opacity-50 pointer-events-none">
-            <div className="absolute inset-0 z-10 flex items-center justify-center">
-              <div className="bg-background/80 backdrop-blur-sm px-4 py-2 rounded-lg border shadow-lg">
-                <p className="font-semibold text-foreground">Coming Soon</p>
+        <TabsContent value="metadata-sources">
+          <Card>
+            <CardHeader>
+              <CardTitle>Comic Vine API</CardTitle>
+              <CardDescription>
+                Enter your API key to fetch metadata from Comic Vine. 
+                You can get a free key by registering on their website.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label>Enable Comic Vine Integration</Label>
+                  <p className="text-sm text-muted-foreground">Enable or disable Comic Vine metadata fetching while keeping your API key saved.</p>
+                </div>
+                <Switch 
+                  checked={settings.comicVineEnabled} 
+                  onCheckedChange={(enabled) => setSettings({ ...settings, comicVineEnabled: enabled })} 
+                />
               </div>
-            </div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Comic Vine API</CardTitle>
-                <CardDescription>Enter your API key to fetch metadata from Comic Vine.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Input type="password" value={settings.comicVineApiKey} onChange={(e) => setSettings({ ...settings, comicVineApiKey: e.target.value })} />
-              </CardContent>
-              <CardFooter className="border-t px-6 py-4 flex justify-between">
-                <Button onClick={handleSave}>Save</Button>
-                <Button variant="secondary" onClick={handleTestConnection} disabled={isTesting}>
-                  {isTesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Test
-                </Button>
-              </CardFooter>
-            </Card>
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="comic-vine-key">API Key</Label>
+                <Input 
+                  id="comic-vine-key"
+                  type="password" 
+                  value={settings.comicVineApiKey} 
+                  onChange={(e) => setSettings({ ...settings, comicVineApiKey: e.target.value })} 
+                  placeholder="Enter your Comic Vine API Key"
+                  disabled={!settings.comicVineEnabled}
+                />
+              </div>
+            </CardContent>
+            <CardFooter className="border-t px-6 py-4 flex justify-between">
+              <Button onClick={handleSave}>Save API Key</Button>
+              <Button variant="secondary" onClick={handleTestConnection} disabled={isTesting || !settings.comicVineApiKey || !settings.comicVineEnabled}>
+                {isTesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Test Connection
+              </Button>
+            </CardFooter>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

@@ -36,7 +36,7 @@ let publicCoversDir;
 
 /**
  * Create Main Window
- * Creates and configures the main browser window for the application
+ * Creates and- configures the main browser window for the application
  */
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -130,7 +130,7 @@ async function initializeKnowledgeBaseFile() {
     // Determine path to default data files
     const dataDir = isDev
       ? path.join(__dirname, '../src/data')
-      : path.join(process.resourcesPath, 'app.asar.unpacked/src/data');
+      : path.join(process.resourcesPath, 'data');
 
     const defaultSeriesKBPath = path.join(dataDir, 'comicsKnowledge.json');
     const defaultCreatorsKBPath = path.join(dataDir, 'creatorsKnowledge.json');
@@ -228,6 +228,21 @@ app.on('window-all-closed', () => {
   if (database) database.close();
   if (process.platform !== 'darwin') app.quit(); // Quit on Windows/Linux
 });
+
+/**
+ * Forceful Shutdown
+ * This helps prevent file locking issues during rebuilds in development.
+ */
+const forceQuit = () => {
+  console.log('Force quitting application to release file locks for rebuild.');
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.destroy(); // Use destroy() to bypass confirmation dialogs
+  }
+  app.exit(); // Force exit the process
+};
+
+process.on('SIGTERM', forceQuit);
+process.on('SIGINT', forceQuit);
 
 /**
  * Security: Web Contents Created

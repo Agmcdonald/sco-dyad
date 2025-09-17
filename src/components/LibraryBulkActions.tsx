@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Trash2, Edit, Check, BookOpen, ImageIcon } from "lucide-react";
+import { ChevronDown, Trash2, Edit, Check, BookOpen, ImageIcon, Sparkles } from "lucide-react";
 import { Comic } from "@/types";
 import { useAppContext } from "@/context/AppContext";
 import { showSuccess, showError } from "@/utils/toast";
@@ -21,7 +21,7 @@ interface LibraryBulkActionsProps {
 }
 
 const LibraryBulkActions = ({ comics, selectedComics, onSelectionChange }: LibraryBulkActionsProps) => {
-  const { removeComic, addToReadingList, readingList } = useAppContext();
+  const { removeComic, addToReadingList, readingList, scanSelectedComicsForMetadata } = useAppContext();
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
   const [isBulkFixCoversOpen, setIsBulkFixCoversOpen] = useState(false);
 
@@ -62,6 +62,11 @@ const LibraryBulkActions = ({ comics, selectedComics, onSelectionChange }: Libra
     setIsBulkFixCoversOpen(true);
   };
 
+  const handleBulkScanForDetails = async () => {
+    await scanSelectedComicsForMetadata(selectedComics);
+    onSelectionChange([]); // Clear selection after action
+  };
+
   if (comics.length === 0) return null;
 
   return (
@@ -99,6 +104,10 @@ const LibraryBulkActions = ({ comics, selectedComics, onSelectionChange }: Libra
                 <DropdownMenuItem onClick={handleBulkAddToReadingList}>
                   <BookOpen className="h-4 w-4 mr-2" />
                   Add to Reading List
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleBulkScanForDetails}>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Scan for Details
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleBulkDelete} className="text-destructive">
                   <Trash2 className="h-4 w-4 mr-2" />
