@@ -1,7 +1,7 @@
 const { ipcMain, dialog, app, BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
-const { pathToFileURL } = require('url');
+const { pathToFileURL } = require('url'); // Ensure this is imported
 const https = require('https');
 const sharp = require('sharp');
 let Store = require('electron-store');
@@ -17,6 +17,9 @@ const API_HOURLY_LIMIT = 200;
 
 function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBasePath, publicCoversDir }) {
   console.log('[IPCManager] Registering IPC handlers...');
+
+  // Pass publicCoversDir to the paths object for the new IPC handler
+  const paths = { publicCoversDir };
 
   ipcMain.handle('get-app-version', () => app.getVersion());
 
@@ -101,7 +104,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
               report.skipped++;
             }
           } else {
-            const placeholder = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMzMzMiPk5vIENvdmVyPC90ZXh0PjxyZWN0IHg9IjEwIiB5PSIxMCIgd2lkdGg9IjM4MCIgaGVpZ2h0PSI1ODAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+';
+            const placeholder = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQ yeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMzMzMiPk5vIENvdmVyPC90ZXh0PjxyZWN0IHg9IjEwIiB5PSIxMCIgd2lkdGg9IjM4MCIgaGVpZ2h0PSI1ODAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+';
             if (comic.coverUrl !== placeholder) {
               comic.coverUrl = placeholder;
               await database.updateComic({ ...comic });
@@ -270,11 +273,11 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
               copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQ yeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMzMzMiPk5vIENvdmVyPC90ZXh0PjxyZWN0IHg9IjEwIiB5PSIxMCIgd2lkdGg9IjM4MCIgaGVpZ2h0PSI1ODAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+';
             }
           } else {
-            copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQ yeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMzMzMiPk5vIENvdmVyPC90ZXh0PjxyZWN0IHg9IjEwIiB5PSIxMCIgd2lkdGg9IjM4MCIgaGVpZ2h0PSI1ODAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+';
+            copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQ yeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMzMzMiPk5vIENvdmVyPC90ZXh0PjxyZWN0IHg9IjEwIiB5PSIxMCIgd2lkdGg9IjM4MCIgaGVpZ2h0PSI1ODAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zZ3Y+';
           }
         } catch (e) {
           console.error('Error normalizing coverUrl for comic:', copy.id, e);
-          copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQ yeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMzMzMiPk5vIENvdmVyPC90ZXh0PjxyZWN0IHg9IjEwIiB5PSIxMCIgd2lkdGg9IjM4MCIgaGVpZ2h0PSI1ODAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+';
+          copy.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQ yeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMzMzMiPk5vIENvdmVyPC90ZXh0PjxyZWN0IHg9IjEwIiB5PSIxMCIgd2lkdGg9IjM4MCIgaGVpZ2h0PSI1ODAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zZ3Y+';
         }
         return copy;
       });
@@ -305,7 +308,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     try {
       if (!comic.id) throw new Error("Comic must have an ID to be saved.");
       
-      comic.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQ yeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMzMzMiPk5vIENvdmVyPC90ZXh0PjxyZWN0IHg9IjEwIiB5PSIxMCIgd2lkdGg9IjM4MCIgaGVpZ2h0PSI1ODAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+';
+      comic.coverUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjYwMCI yeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQ yeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMzMzMiPk5vIENvdmVyPC90ZXh0PjxyZWN0IHg9IjEwIiB5PSIxMCIgd2lkdGg9IjM4MCIgaGVpZ2h0PSI1ODAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zZ3Y+';
       
       if (comic.filePath) {
         try {
@@ -383,26 +386,30 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
-  // Extract cover — now always delegates to fileHandler.extractCoverToPublic
-  ipcMain.handle('extract-cover', async (event, filePath) => {
-    console.log(`[IPC] extract-cover handler called for: ${filePath}`);
-    try {
-      if (!publicCoversDir || typeof publicCoversDir !== 'string') {
-        const errorMsg = `Covers directory is invalid or not set: ${publicCoversDir}. Please reinstall the application or report this issue.`;
-        console.error(`[IPC] extract-cover error: ${errorMsg}`);
-        throw new Error(errorMsg);
-      }
-      await fs.mkdir(publicCoversDir, { recursive: true }); // Ensure target dir exists
+  // Replace the entire ipcMain.handle('extract-cover') block with the new code
+  ipcMain.handle('extract-cover', async (_event, filePath) => {
+    if (typeof filePath !== 'string' || filePath.length === 0) {
+      throw new TypeError('[extract-cover] filePath must be a non-empty string');
+    }
 
-      // Delegate all extraction logic to fileHandler.extractCoverToPublic
-      // This function is responsible for handling CBR, CBZ, PDF, and direct images.
-      const absoluteCoverPath = await fileHandler.extractCoverToPublic(filePath, publicCoversDir);
-      console.log(`[IPC] extract-cover handler successfully returned path: ${absoluteCoverPath}`);
-      return absoluteCoverPath; // Should always be a string path
-    } catch (error) {
-      console.error(`[IPC] extract-cover handler error for ${filePath}:`, error);
-      // Re-throw the error to propagate to the renderer process
-      throw error;
+    console.log('[extract-cover] v2 handler running', filePath);
+
+    try {
+      const outputAbsPath = await fileHandler.extractCoverToPublic(filePath, paths.publicCoversDir);
+
+      if (typeof outputAbsPath !== 'string' || outputAbsPath.length === 0) {
+        throw new TypeError('[extract-cover] backend returned non-string/empty path');
+      }
+
+      const fileUrl = outputAbsPath.startsWith('file://')
+        ? outputAbsPath
+        : pathToFileURL(path.resolve(outputAbsPath)).toString();
+
+      console.log('[extract-cover] Returning URL:', fileUrl);
+      return fileUrl;
+    } catch (err) {
+      console.error('[extract-cover] Failed:', err);
+      throw err;
     }
   });
 

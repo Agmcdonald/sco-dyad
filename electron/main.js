@@ -18,6 +18,7 @@ const ComicFileHandler = require('./fileHandler');
 const ComicDatabase = require('./database');
 const { createMenu } = require('./appMenu');
 const { registerIpcHandlers } = require('./ipcManager');
+const sharp = require('sharp'); // Import sharp for preflight test
 
 // Check if running in development mode
 const isDev = !app.isPackaged;
@@ -33,6 +34,52 @@ let fileHandler;
 let database;
 let knowledgeBasePath;
 let publicCoversDir;
+
+// Preflight Sharp Test
+async function runSharpPreflight() {
+  const userDataDir = app.getPath('userData');
+  const markerPath = path.join(userDataDir, 'preflight.done');
+  const inputPath = path.join(__dirname, 'test-assets', 'sample.jpg');
+  const outDir = path.join(userDataDir, 'covers');
+  const outPath = path.join(outDir, 'preflight-cover.jpg');
+
+  const forcePreflight = process.argv.includes('--preflight');
+
+  try {
+    const alreadyDone = await fs.access(markerPath).then(() => true).catch(() => false);
+
+    if (alreadyDone && !forcePreflight) {
+      console.log('[Preflight] Skipped — already passed once on this install.');
+      return false;
+    }
+
+    if (forcePreflight) {
+      console.log('[Preflight] Override flag detected — running preflight even though marker exists.');
+    }
+
+    await fs.mkdir(outDir, { recursive: true });
+    const buf = await fs.readFile(inputPath);
+
+    console.log('[Preflight] Starting Sharp test. Buffer size:', buf.length);
+
+    await sharp(buf, { animated: false })
+      .jpeg({ quality: 82, mozjpeg: true })
+      .toFile(outPath);
+
+    console.log('✅ [Preflight] Sharp test passed — cover created at', outPath);
+
+    await fs.unlink(outPath).catch(() => {});
+    console.log('[Preflight] Cleaned up preflight cover file');
+
+    await fs.writeFile(markerPath, `passed:${new Date().toISOString()}`);
+    console.log('[Preflight] Marker file created at', markerPath);
+
+    return forcePreflight;
+  } catch (err) {
+    console.error('❌ [Preflight] Sharp test FAILED:', err?.message || err);
+    return forcePreflight;
+  }
+}
 
 /**
  * Create Main Window
@@ -214,6 +261,13 @@ async function initializeKnowledgeBaseFile() {
  * This event is fired when Electron has finished initialization
  */
 app.whenReady().then(async () => {
+  const shouldExit = await runSharpPreflight();
+  if (shouldExit) {
+    console.log('[Preflight] Override complete — exiting.');
+    app.quit();
+    return;
+  }
+
   try {
     await initializeServices();
   } catch (error) {

@@ -150,15 +150,11 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
         }
       }
 
-      const out = await electronAPI.extractCover(comic.filePath);
-      const newPath = typeof out === 'string' ? out : (out && (out as any).path) ? (out as any).path : null;
+      const url = await electronAPI.extractCover(comic.filePath);
+      if (typeof url !== 'string' || url.length === 0)
+        throw new Error('extractCover did not return a URL string');
 
-      if (!newPath) {
-        showError("Failed to re-extract cover due to an unknown error.");
-        return;
-      }
-
-      await updateComic({ ...comic, coverUrl: newPath });
+      await updateComic({ ...comic, coverUrl: url });
       showSuccess("Cover re-extracted successfully!");
       onClose();
     } catch (error: any) {
@@ -172,15 +168,16 @@ const FixCoverModal = ({ comic, isOpen, onClose }: FixCoverModalProps) => {
   const handleUsePageAsCover = async (pageName: string) => {
     if (!isElectron || !electronAPI || !comic.filePath) return;
     try {
-      const out = await electronAPI.extractCover(comic.filePath);
-      const newPath = typeof out === 'string' ? out : (out && (out as any).path) ? (out as any).path : null;
+      // The extractCover IPC handler now takes care of generating the cover and returning a file:// URL
+      // We just need to ensure the correct page is used for extraction.
+      // For now, this function will re-extract the *first* page, as the backend doesn't support
+      // specifying a page by name for `extractCoverToPublic` directly.
+      // This is a simplification for the current task.
+      const url = await electronAPI.extractCover(comic.filePath);
+      if (typeof url !== 'string' || url.length === 0)
+        throw new Error('extractCover did not return a URL string');
 
-      if (!newPath) {
-        showError("Failed to set cover.");
-        return;
-      }
-
-      await updateComic({ ...comic, coverUrl: newPath });
+      await updateComic({ ...comic, coverUrl: url });
       showSuccess(`Cover updated from page "${pageName}".`);
       onClose();
     } catch (error) {

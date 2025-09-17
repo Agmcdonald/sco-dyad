@@ -1,9 +1,61 @@
 const fs = require('fs').promises;
 const path = require('path');
 const StreamZip = require('node-stream-zip');
-const sharp = require('sharp');
+const sharp = require('sharp'); // Moved up for early configuration
 const os = require('os');
 const fsExtra = require('fs-extra'); // Import fs-extra
+const { app } = require('electron'); // Import app from electron
+
+// Disable SIMD and cache in packaged mode for stability
+if (app.isPackaged) {
+  sharp.simd(false);
+  sharp.cache(false);
+  console.log('[SHARP] Running in packaged mode - SIMD disabled');
+}
+
+// Debug Sharp environment state
+function debugSharpOptions() {
+  const testValues = {
+    'isPackaged': app.isPackaged,
+    'env.NODE_ENV': process.env.NODE_ENV,
+  };
+  console.log('[SHARP-DEBUG] Environment state:', JSON.stringify(testValues, null, 2));
+}
+debugSharpOptions();
+
+// Safe writeCover() Helper
+async function writeCover(bufferOrPath, outputPath) {
+  return new Promise((resolve, reject) => {
+    const inputDesc = Buffer.isBuffer(bufferOrPath)
+      ? `Buffer(${bufferOrPath.length})`
+      : `Path(${String(bufferOrPath)})`;
+    console.log('[FileHandler][COVER] sharp input:', inputDesc, '→', outputPath);
+
+    sharp(bufferOrPath)
+      .resize(400, 600, {
+        fit: 'inside',
+        withoutEnlargement: true // hardcoded boolean
+      })
+      .jpeg({
+        quality: 82,
+        mozjpeg: true // hardcoded boolean
+      })
+      .toBuffer((err, buffer) => {
+        if (err) {
+          console.error('[FileHandler][COVER] sharp toBuffer failed:', err);
+          reject(err);
+          return;
+        }
+
+        fs.writeFile(outputPath, buffer) // Use fs.writeFile (from fs.promises)
+          .then(() => {
+            console.log('[FileHandler][COVER] Successfully wrote:', outputPath);
+            resolve(outputPath);
+          })
+          .catch(reject);
+      });
+  });
+}
 
 // --- Canvas Module Conditional Loading ---
 let createCanvas;
@@ -290,25 +342,14 @@ class ComicFileHandler {
         throw new Error("No image files found in CBR archive.");
       }
 
-      const imagePath = imageFiles[0];
-      console.log(`[FileHandler][CBR-COVER] First image file found: ${imagePath}`);
-      const buffer = await fs.readFile(imagePath);
-      console.log(`[FileHandler][CBR-COVER] Buffer read. Size: ${buffer.length} bytes, Type: ${typeof buffer}`);
-
-      await fsExtra.ensureDir(path.dirname(outputPath)); // Ensure output directory exists
-      
-      // Attempt sharp operation with specific error handling
-      try {
-        await sharp(buffer, { failOnError: true })
-          .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
-          .jpeg({ quality: 85, progressive: true })
-          .toFile(outputPath);
-        console.log(`[FileHandler][CBR-COVER] Sharp operation successful. Saved cover: ${outputPath}`);
-      } catch (sharpError) {
-        console.error(`[FileHandler][CBR-COVER] Sharp processing failed for ${imagePath}:`, sharpError);
-        throw new Error(`Image processing failed: ${sharpError.message}`);
+      const firstImageFullPath = imageFiles[0];
+      const firstImageName = path.basename(firstImageFullPath);
+      const firstImageBuffer = await fs.readFile(firstImageFullPath);
+      if (!firstImageBuffer || firstImageBuffer.length === 0) {
+        throw new Error('[CBR] First image buffer is empty');
       }
-      
+      console.log('[CBR] Processing image:', firstImageName, 'Size:', firstImageBuffer.length);
+      await writeCover(firstImageBuffer, outputPath);
       return outputPath;
     } catch (err) {
       console.error("[FileHandler][CBR-COVER] Error extracting cover:", err);
@@ -339,21 +380,13 @@ class ComicFileHandler {
         throw new Error('No images found in CBZ archive');
       }
 
-      const coverData = await zip.entryData(imageFiles[0]);
-      console.log(`[FileHandler][CBZ-COVER] Buffer read. Size: ${coverData.length} bytes, Type: ${typeof coverData}`);
-      
-      await fsExtra.ensureDir(path.dirname(outputPath)); // Ensure output directory exists
-      try {
-        await sharp(coverData, { failOnError: true })
-          .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
-          .jpeg({ quality: 85, progressive: true })
-          .toFile(outputPath);
-        console.log(`[FileHandler][CBZ-COVER] Sharp operation successful. Saved cover: ${outputPath}`);
-      } catch (sharpError) {
-        console.error(`[FileHandler][CBZ-COVER] Sharp processing failed for ${archivePath}:`, sharpError);
-        throw new Error(`Image processing failed: ${sharpError.message}`);
+      const firstImageEntry = imageFiles[0];
+      const buffer = await zip.entryData(firstImageEntry.name);
+      if (!buffer || buffer.length === 0) {
+        throw new Error('[CBZ] First image buffer is empty');
       }
-      
+      console.log('[CBZ] Processing image:', firstImageEntry.name, 'Size:', buffer.length);
+      await writeCover(buffer, outputPath);
       return outputPath;
     } catch (error) {
       console.error(`[FileHandler][CBZ-COVER] Error extracting cover:`, error);
@@ -387,18 +420,9 @@ class ComicFileHandler {
 
         await page.render({ canvasContext: context, viewport }).promise;
 
-        const buffer = canvas.toBuffer('image/jpeg');
-        console.log(`[FileHandler][PDF-COVER] Buffer read. Size: ${buffer.length} bytes, Type: ${typeof buffer}`);
-        try {
-          await sharp(buffer, { failOnError: true })
-            .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
-            .jpeg({ quality: 85, progressive: true })
-            .toFile(outputPath);
-          console.log(`[FileHandler][PDF-COVER] Sharp operation successful. Saved cover (canvas): ${outputPath}`);
-        } catch (sharpError) {
-          console.error(`[FileHandler][PDF-COVER] Sharp processing failed for ${pdfPath}:`, sharpError);
-          throw new Error(`Image processing failed: ${sharpError.message}`);
-        }
+        const imageBuffer = canvas.toBuffer('image/jpeg');
+        console.log('[PDF] Processing rendered page, Size:', imageBuffer.length);
+        await writeCover(imageBuffer, outputPath);
       } catch (error) {
         console.error(`[FileHandler][PDF-COVER] Error rendering PDF cover with canvas:`, error);
         throw new Error(`Failed to render PDF cover: ${error.message}`);
@@ -421,17 +445,9 @@ class ComicFileHandler {
             <text x="200" y="360" text-anchor="middle" font-size="12" fill="#999">${path.basename(pdfPath, '.pdf')}</text>
           </svg>
         `;
-        const buffer = Buffer.from(svg);
-        console.log(`[FileHandler][PDF-COVER] Buffer read. Size: ${buffer.length} bytes, Type: ${typeof buffer}`);
-        try {
-          await sharp(buffer, { failOnError: true })
-            .jpeg({ quality: 85, progressive: true })
-            .toFile(outputPath);
-          console.log(`[FileHandler][PDF-COVER] Sharp operation successful. Saved cover (placeholder): ${outputPath}`);
-        } catch (sharpError) {
-          console.error(`[FileHandler][PDF-COVER] Sharp processing failed for ${pdfPath} (placeholder):`, sharpError);
-          throw new Error(`Image processing failed: ${sharpError.message}`);
-        }
+        const imageBuffer = Buffer.from(svg);
+        console.log('[PDF] Processing rendered page, Size:', imageBuffer.length);
+        await writeCover(imageBuffer, outputPath);
       } catch (error) {
         console.error(`[FileHandler][PDF-COVER] Error creating placeholder PDF cover:`, error);
         throw new Error(`Failed to create placeholder PDF cover: ${error.message}`);
@@ -459,19 +475,8 @@ class ComicFileHandler {
         return await this.extractCoverFromPdf(sourcePath, outputPath);
       } else if (this.isImageFile(sourcePath)) {
         // Handle direct image files
-        const buffer = await fs.readFile(sourcePath);
-        console.log(`[FileHandler] Direct Image Cover: Buffer read. Size: ${buffer.length} bytes, Type: ${typeof buffer}`);
-        await fsExtra.ensureDir(path.dirname(outputPath)); // Ensure output directory exists
-        try {
-          await sharp(buffer, { failOnError: true })
-            .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
-            .jpeg({ quality: 85, progressive: true })
-            .toFile(outputPath);
-          console.log(`[FileHandler] Sharp operation successful. Saved direct image cover: ${outputPath}`);
-        } catch (sharpError) {
-          console.error(`[FileHandler] Sharp processing failed for direct image ${sourcePath}:`, sharpError);
-          throw new Error(`Image processing failed: ${sharpError.message}`);
-        }
+        console.log('[IMAGE] Processing direct image file:', ext);
+        await writeCover(sourcePath, outputPath); // Pass filePath directly to writeCover
         return outputPath;
       } else {
         throw new Error(`Unsupported file type for cover extraction: ${ext}`);
