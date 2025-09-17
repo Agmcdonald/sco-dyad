@@ -151,59 +151,6 @@ class ComicFileHandler {
   }
 
   /**
-   * Scan a folder for comic files
-   * @param folderPath - Path to the folder to scan
-   * @param signal - AbortSignal for cancellation
-   * @returns Array of comic file information objects
-   */
-  async scanFolder(folderPath, signal) {
-    if (signal && signal.aborted) {
-      throw new Error('Operation aborted', { name: 'AbortError' });
-    }
-    try {
-      const files = [];
-      const entries = await fs.readdir(folderPath, { withFileTypes: true });
-
-      for (const entry of entries) {
-        if (signal && signal.aborted) {
-          throw new Error('Operation aborted', { name: 'AbortError' });
-        }
-        const fullPath = path.join(folderPath, entry.name);
-        
-        if (entry.isFile() && this.isComicFile(fullPath)) {
-          const stats = await fs.stat(fullPath);
-          files.push({
-            path: fullPath,
-            name: entry.name,
-            size: stats.size,
-            type: this.getFileType(fullPath),
-            lastModified: stats.mtime
-          });
-        } else if (entry.isDirectory()) {
-          const subFiles = await this.scanFolder(fullPath, signal); // Pass signal recursively
-          files.push(...subFiles);
-        }
-      }
-      return files;
-    } catch (error) {
-      if (error.name === 'AbortError') throw error;
-      console.error('[FileHandler] Error scanning folder:', error);
-      throw error;
-    }
-  }
-
-  // Get file type from extension
-  getFileType(filePath) {
-    const ext = path.extname(filePath).toLowerCase();
-    switch (ext) {
-      case '.cbr': return 'cbr';
-      case '.cbz': return 'cbz';
-      case '.pdf': return 'pdf';
-      default: return 'unknown';
-    }
-  }
-
-  /**
    * Read comic file information (metadata)
    * @param filePath - Path to the comic file
    * @param signal - AbortSignal for cancellation
@@ -236,6 +183,17 @@ class ComicFileHandler {
       if (error.name === 'AbortError') throw error;
       console.error(`[FileHandler] Error reading comic file ${filePath}:`, error);
       throw error;
+    }
+  }
+
+  // Get file type from extension
+  getFileType(filePath) {
+    const ext = path.extname(filePath).toLowerCase();
+    switch (ext) {
+      case '.cbr': return 'cbr';
+      case '.cbz': return 'cbz';
+      case '.pdf': return 'pdf';
+      default: return 'unknown';
     }
   }
 
@@ -312,14 +270,13 @@ class ComicFileHandler {
     if (!this.unrarAvailable || !this.unrar) {
       throw new Error('RAR support is not available for CBR cover extraction.');
     }
-    console.log(`[FileHandler][CBR-COVER] Type of this.unrar: ${typeof this.unrar}`); // DIAGNOSTIC LOG
+    console.log(`[FileHandler][CBR-COVER] Starting extraction for: ${archivePath}`);
 
     let tempDir = null;
     try {
-      console.log(`[FileHandler][CBR-COVER] Starting extraction for: ${archivePath}`);
       tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cbr-cover-'));
       
-      await Promise.race([ // ADDED PROMISE.RACE FOR CONSISTENCY
+      await Promise.race([
         this.unrar(archivePath, tempDir, { overwrite: true }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('CBR cover extraction timeout')), 300000)) // 5 minutes
       ]);
@@ -334,15 +291,24 @@ class ComicFileHandler {
       }
 
       const imagePath = imageFiles[0];
+      console.log(`[FileHandler][CBR-COVER] First image file found: ${imagePath}`);
       const buffer = await fs.readFile(imagePath);
+      console.log(`[FileHandler][CBR-COVER] Buffer read. Size: ${buffer.length} bytes, Type: ${typeof buffer}`);
 
       await fsExtra.ensureDir(path.dirname(outputPath)); // Ensure output directory exists
-      await sharp(buffer, { failOnError: true })
-        .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 85, progressive: true })
-        .toFile(outputPath);
-
-      console.log(`[FileHandler][CBR-COVER] Saved cover: ${outputPath}`);
+      
+      // Attempt sharp operation with specific error handling
+      try {
+        await sharp(buffer, { failOnError: true })
+          .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 85, progressive: true })
+          .toFile(outputPath);
+        console.log(`[FileHandler][CBR-COVER] Sharp operation successful. Saved cover: ${outputPath}`);
+      } catch (sharpError) {
+        console.error(`[FileHandler][CBR-COVER] Sharp processing failed for ${imagePath}:`, sharpError);
+        throw new Error(`Image processing failed: ${sharpError.message}`);
+      }
+      
       return outputPath;
     } catch (err) {
       console.error("[FileHandler][CBR-COVER] Error extracting cover:", err);
@@ -374,14 +340,20 @@ class ComicFileHandler {
       }
 
       const coverData = await zip.entryData(imageFiles[0]);
+      console.log(`[FileHandler][CBZ-COVER] Buffer read. Size: ${coverData.length} bytes, Type: ${typeof coverData}`);
       
       await fsExtra.ensureDir(path.dirname(outputPath)); // Ensure output directory exists
-      await sharp(coverData, { failOnError: true })
-        .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 85, progressive: true })
-        .toFile(outputPath);
+      try {
+        await sharp(coverData, { failOnError: true })
+          .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 85, progressive: true })
+          .toFile(outputPath);
+        console.log(`[FileHandler][CBZ-COVER] Sharp operation successful. Saved cover: ${outputPath}`);
+      } catch (sharpError) {
+        console.error(`[FileHandler][CBZ-COVER] Sharp processing failed for ${archivePath}:`, sharpError);
+        throw new Error(`Image processing failed: ${sharpError.message}`);
+      }
       
-      console.log(`[FileHandler][CBZ-COVER] Saved cover: ${outputPath}`);
       return outputPath;
     } catch (error) {
       console.error(`[FileHandler][CBZ-COVER] Error extracting cover:`, error);
@@ -416,11 +388,17 @@ class ComicFileHandler {
         await page.render({ canvasContext: context, viewport }).promise;
 
         const buffer = canvas.toBuffer('image/jpeg');
-        await sharp(buffer, { failOnError: true })
-          .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
-          .jpeg({ quality: 85, progressive: true })
-          .toFile(outputPath);
-        console.log(`[FileHandler][PDF-COVER] Saved cover (canvas): ${outputPath}`);
+        console.log(`[FileHandler][PDF-COVER] Buffer read. Size: ${buffer.length} bytes, Type: ${typeof buffer}`);
+        try {
+          await sharp(buffer, { failOnError: true })
+            .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
+            .jpeg({ quality: 85, progressive: true })
+            .toFile(outputPath);
+          console.log(`[FileHandler][PDF-COVER] Sharp operation successful. Saved cover (canvas): ${outputPath}`);
+        } catch (sharpError) {
+          console.error(`[FileHandler][PDF-COVER] Sharp processing failed for ${pdfPath}:`, sharpError);
+          throw new Error(`Image processing failed: ${sharpError.message}`);
+        }
       } catch (error) {
         console.error(`[FileHandler][PDF-COVER] Error rendering PDF cover with canvas:`, error);
         throw new Error(`Failed to render PDF cover: ${error.message}`);
@@ -443,11 +421,17 @@ class ComicFileHandler {
             <text x="200" y="360" text-anchor="middle" font-size="12" fill="#999">${path.basename(pdfPath, '.pdf')}</text>
           </svg>
         `;
-
-        await sharp(Buffer.from(svg), { failOnError: true })
-          .jpeg({ quality: 85, progressive: true })
-          .toFile(outputPath);
-        console.log(`[FileHandler][PDF-COVER] Saved cover (placeholder): ${outputPath}`);
+        const buffer = Buffer.from(svg);
+        console.log(`[FileHandler][PDF-COVER] Buffer read. Size: ${buffer.length} bytes, Type: ${typeof buffer}`);
+        try {
+          await sharp(buffer, { failOnError: true })
+            .jpeg({ quality: 85, progressive: true })
+            .toFile(outputPath);
+          console.log(`[FileHandler][PDF-COVER] Sharp operation successful. Saved cover (placeholder): ${outputPath}`);
+        } catch (sharpError) {
+          console.error(`[FileHandler][PDF-COVER] Sharp processing failed for ${pdfPath} (placeholder):`, sharpError);
+          throw new Error(`Image processing failed: ${sharpError.message}`);
+        }
       } catch (error) {
         console.error(`[FileHandler][PDF-COVER] Error creating placeholder PDF cover:`, error);
         throw new Error(`Failed to create placeholder PDF cover: ${error.message}`);
@@ -464,7 +448,7 @@ class ComicFileHandler {
    */
   async extractCover(sourcePath, outputPath) {
     const ext = path.extname(sourcePath).toLowerCase();
-    console.log(`[FileHandler] extractCover called for ${sourcePath} (ext: ${ext})`);
+    console.log(`[FileHandler] extractCover dispatcher called for ${sourcePath} (ext: ${ext})`);
 
     try {
       if (ext === ".cbr") {
@@ -476,18 +460,24 @@ class ComicFileHandler {
       } else if (this.isImageFile(sourcePath)) {
         // Handle direct image files
         const buffer = await fs.readFile(sourcePath);
+        console.log(`[FileHandler] Direct Image Cover: Buffer read. Size: ${buffer.length} bytes, Type: ${typeof buffer}`);
         await fsExtra.ensureDir(path.dirname(outputPath)); // Ensure output directory exists
-        await sharp(buffer, { failOnError: true })
-          .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
-          .jpeg({ quality: 85, progressive: true })
-          .toFile(outputPath);
-        console.log(`[FileHandler] Saved direct image cover: ${outputPath}`);
+        try {
+          await sharp(buffer, { failOnError: true })
+            .resize({ width: 400, height: 600, fit: 'inside', withoutEnlargement: true })
+            .jpeg({ quality: 85, progressive: true })
+            .toFile(outputPath);
+          console.log(`[FileHandler] Sharp operation successful. Saved direct image cover: ${outputPath}`);
+        } catch (sharpError) {
+          console.error(`[FileHandler] Sharp processing failed for direct image ${sourcePath}:`, sharpError);
+          throw new Error(`Image processing failed: ${sharpError.message}`);
+        }
         return outputPath;
       } else {
         throw new Error(`Unsupported file type for cover extraction: ${ext}`);
       }
     } catch (err) {
-      console.error("[FileHandler] extractCover error:", err);
+      console.error("[FileHandler] extractCover dispatcher error:", err);
       throw new Error(`Cover extraction failed: ${err.message}`);
     }
   }
@@ -513,7 +503,8 @@ class ComicFileHandler {
       const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comic-cover-temp-'));
       tempCoverPath = path.join(tempDir, `temp_cover.jpg`);
       
-      await this.extractCover(filePath, tempCoverPath); // Use the main extractCover dispatcher
+      // Use the main extractCover dispatcher to get the image into tempCoverPath
+      await this.extractCover(filePath, tempCoverPath); 
 
       // Generate a unique filename for the public cover
       const publicCoverFilename = `comic-${Date.now()}-${Math.random().toString(36).slice(2, 11)}-cover.jpg`;
@@ -577,12 +568,12 @@ class ComicFileHandler {
 
       // Move the file
       await fs.rename(sourcePath, targetPath);
-      return true;
+      return { success: true, newPath: targetPath }; // Return object for consistency
     } catch (error) {
       if (error.code === 'EXDEV') { // Handle cross-device move
         await fs.copyFile(sourcePath, targetPath);
         await fs.unlink(sourcePath);
-        return true;
+        return { success: true, newPath: targetPath };
       }
       console.error(`[FileHandler] Error moving file from ${sourcePath} to ${targetPath}:`, error);
       throw error;
@@ -740,7 +731,6 @@ class ComicFileHandler {
       console.error(`[FileHandler] CBR: RAR support is not available for ${filePath}`);
       throw new Error('RAR support is not available');
     }
-    console.log(`[FileHandler] CBR: Type of this.unrar: ${typeof this.unrar}`); // DIAGNOSTIC LOG
     console.log(`[FileHandler] CBR: Starting prepareCbrForReading for ${filePath}`);
     let tempDir = null;
     try {
