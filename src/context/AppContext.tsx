@@ -1,3 +1,11 @@
+/**
+ * @file AppContext.tsx
+ * @summary The main application context and provider.
+ * @description This file defines the central `AppContext` for the entire application.
+ * It consolidates state and logic from various custom hooks (`useFileQueue`, `useComicLibrary`, etc.)
+ * into a single, cohesive provider. This approach simplifies state management and provides a
+ * unified interface for components to access and manipulate application data and actions.
+ */
 import {
   createContext,
   useContext,
@@ -19,7 +27,6 @@ import {
 import { useElectronDatabaseService } from "@/services/electronDatabaseService";
 import { useElectron } from "@/hooks/useElectron";
 import { useSettings } from "@/context/SettingsContext";
-import { formatPath } from "@/lib/formatter";
 import { showSuccess, showError } from "@/utils/toast";
 import { useActionLog } from "./hooks/useActionLog";
 import { useFileQueue } from "./hooks/useFileQueue";
@@ -27,75 +34,128 @@ import { useComicLibrary } from "./hooks/useComicLibrary";
 import { useReadingList } from "./hooks/useReadingList";
 import { useRecentlyRead } from "./hooks/useRecentlyRead";
 import { useKnowledgeBase } from "./KnowledgeBaseContext";
-import { processComicFile } from "@/lib/smartProcessor";
 
+/**
+ * @interface AppContextType
+ * @summary Defines the shape of the application context, including all state and actions.
+ */
 interface AppContextType {
-  // Comic Library
+  // --- Comic Library State & Actions ---
+  /** The main collection of comics in the user's library. */
   comics: Comic[];
+  /** Adds a new comic to the library after it has been processed. */
   addComic: (comicData: NewComic, originalFile: QueuedFile) => Promise<void>;
+  /** Removes a comic from the library and optionally deletes its file. */
   removeComic: (comicId: string, deleteFile: boolean) => Promise<void>;
+  /** Updates the data for a single comic. */
   updateComic: (comic: Comic) => Promise<void>;
+  /** Updates the rating for a specific comic. */
   updateComicRating: (comicId: string, rating: number) => Promise<void>;
+  /** Applies a batch of updates to multiple comics. */
   batchUpdateComics: (updates: (Partial<Comic> & { id: string })[]) => Promise<void>;
+  /** Imports a list of comics, skipping duplicates. */
   importComics: (comics: Comic[]) => Promise<{ added: number; skipped: number } | undefined>;
 
-  // File Queue
+  // --- File Queue State & Actions ---
+  /** The list of files currently in the processing queue. */
   files: QueuedFile[];
+  /** Adds multiple files to the processing queue. */
   addFiles: (files: QueuedFile[]) => void;
+  /** Removes a single file from the queue. */
   removeFile: (fileId: string) => void;
+  /** Updates the data for a file in the queue. */
   updateFile: (file: QueuedFile) => void;
+  /** Skips a file, removing it from the queue and logging the action. */
   skipFile: (file: QueuedFile) => void;
+  /** Quickly adds files to the library if they have sufficient metadata. */
   quickAddFiles: (files: QueuedFile[]) => Promise<void>;
+  /** Adds mock files for testing in a web environment. */
   addMockFiles: () => void;
+  /** Handles files added via drag-and-drop. */
   addFilesFromDrop: (droppedFiles: File[]) => void;
+  /** The current status of file loading operations (e.g., scanning folders). */
   fileLoadStatus: { isLoading: boolean; progress: number; total: number; currentFile: string; isCancellable: boolean; };
+  /** Cancels any ongoing file loading operations. */
   cancelFileLoading: () => void;
 
-  // Processing
+  // --- Processing State & Actions ---
+  /** Starts the main processing pipeline for files in the queue. */
   startProcessing: () => void;
+  /** Indicates if a metadata scan is currently in progress. */
   isScanningMetadata: boolean;
+  /** The progress of the current metadata scan. */
   metadataScanProgress: { processed: number; total: number; updated: number } | null;
+  /** Initiates a metadata scan for the entire library. */
   startMetadataScan: () => void;
+  /** Scans a single comic for updated metadata from external sources. */
   scanComicForMetadata: (comicId: string) => Promise<void>;
+  /** Scans a selection of comics for updated metadata. */
   scanSelectedComicsForMetadata: (comicIds: string[]) => Promise<void>;
 
-  // Actions & Undo
+  // --- Actions & Undo ---
+  /** A log of recent actions performed by the user. */
   actions: RecentAction[];
+  /** The most recent action that can be undone. */
   lastUndoableAction: UndoPayload | undefined;
+  /** Executes the undo logic for the last undoable action. */
   undoLastAction: () => void;
 
-  // Reading
+  // --- Reading State & Actions ---
+  /** The comic currently being viewed in the reader. */
   readingComic: Comic | null;
+  /** Sets the comic to be viewed in the reader. */
   setReadingComic: (comic: Comic | null) => void;
+  /** Opens a comic in the reader and adds it to the recently read list. */
   openComicForReading: (comic: Comic) => void;
+  /** The user's reading list. */
   readingList: ReturnType<typeof useReadingList>['readingList'];
+  /** Adds a comic to the reading list. */
   addToReadingList: ReturnType<typeof useReadingList>['addToReadingList'];
+  /** Removes a comic from the reading list. */
   removeFromReadingList: ReturnType<typeof useReadingList>['removeFromReadingList'];
+  /** Toggles the completed status of an item in the reading list. */
   toggleReadingItemCompleted: ReturnType<typeof useReadingList>['toggleReadingItemCompleted'];
+  /** Toggles the read status of a comic. */
   toggleComicReadStatus: ReturnType<typeof useReadingList>['toggleComicReadStatus'];
+  /** The list of recently read comics. */
   recentlyRead: ReturnType<typeof useRecentlyRead>['recentlyRead'];
 
-  // Triggers for Electron dialogs
+  // --- Electron Dialog Triggers ---
+  /** Triggers the native "Select Files" dialog. */
   triggerSelectFiles: () => void;
+  /** Triggers the native "Scan Folder" dialog. */
   triggerScanFolder: () => void;
+  /** Triggers the "Quick Add" functionality. */
   triggerQuickAddFiles: () => void;
 
-  // API Usage
+  // --- API Usage ---
+  /** Statistics on Comic Vine API usage. */
   apiUsageStats: ApiUsageStats | null;
+  /** Fetches the latest API usage statistics. */
   fetchApiUsageStats: () => void;
 
-  // Knowledge Base Sync
+  // --- Knowledge Base ---
+  /** Synchronizes the knowledge base with the main comic library. */
   syncKnowledgeBaseToLibrary: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+/**
+ * @provider AppProvider
+ * @summary Provides the central application state to all child components.
+ * @description This component wraps the application and provides the `AppContext`. It initializes
+ * all the custom hooks for state management, defines callback functions for actions, and
+ * passes them all down through the context value.
+ * @param {{ children: ReactNode }} props - The child components to be rendered within the provider.
+ */
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const { electronAPI, isElectron } = useElectron();
   const databaseService = useElectronDatabaseService();
   const { settings } = useSettings();
   const { knowledgeBase, addToKnowledgeBase, addCreatorsToKnowledgeBase } = useKnowledgeBase();
 
+  // --- State Hooks ---
   const { actions, logAction, setActions } = useActionLog();
   const { files, setFiles, addFile, addFiles: addQueuedFiles, removeFile, updateFile } = useFileQueue();
   const { comics, setComics, refreshComics } = useComicLibrary();
@@ -109,6 +169,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const operationIdCounter = useRef(0);
 
+  /**
+   * Fetches API usage stats from the main process.
+   */
   const fetchApiUsageStats = useCallback(async () => {
     if (isElectron && electronAPI) {
       try {
@@ -121,12 +184,18 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isElectron, electronAPI]);
 
+  /**
+   * Effect to fetch API usage stats on mount and then periodically.
+   */
   useEffect(() => {
     fetchApiUsageStats();
     const interval = setInterval(fetchApiUsageStats, 60000);
     return () => clearInterval(interval);
   }, [fetchApiUsageStats]);
 
+  /**
+   * Adds a processed comic to the library.
+   */
   const addComic = useCallback(async (comicData: NewComic, originalFile: QueuedFile) => {
     if (!databaseService) return;
     try {
@@ -145,6 +214,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [databaseService, logAction, setComics]);
 
+  /**
+   * Removes a comic from the library.
+   */
   const removeComic = useCallback(async (comicId: string, deleteFile: boolean) => {
     if (!databaseService) return;
     const comicToRemove = comics.find(c => c.id === comicId);
@@ -159,6 +231,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [comics, databaseService, logAction, setComics]);
 
+  /**
+   * Updates an existing comic's data.
+   */
   const updateComic = useCallback(async (comic: Comic) => {
     if (!databaseService) return;
     try {
@@ -170,6 +245,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [databaseService, logAction, setComics]);
 
+  /**
+   * Updates a comic's rating.
+   */
   const updateComicRating = useCallback(async (comicId: string, rating: number) => {
     const comic = comics.find(c => c.id === comicId);
     if (comic) {
@@ -178,6 +256,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [comics, updateComic, recentlyReadHook]);
 
+  /**
+   * Applies updates to multiple comics in a single database transaction.
+   */
   const batchUpdateComics = useCallback(async (updates: (Partial<Comic> & { id: string })[]) => {
     if (!databaseService) return;
     try {
@@ -189,16 +270,25 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [databaseService, refreshComics]);
 
+  /**
+   * Imports comics from a backup file.
+   */
   const importComics = useCallback(async (importedComics: Comic[]) => {
     if (!databaseService) return;
     return await databaseService.importComics(importedComics);
   }, [databaseService]);
 
+  /**
+   * Skips a file in the processing queue.
+   */
   const skipFile = useCallback((file: QueuedFile) => {
     removeFile(file.id);
     logAction('info', `Skipped file: ${file.name}`, { type: 'SKIP_FILE', payload: { skippedFile: file } });
   }, [removeFile, logAction]);
 
+  /**
+   * Quickly adds files to the library if they have enough pre-filled metadata.
+   */
   const quickAddFiles = useCallback(async (filesToQuickAdd: QueuedFile[]) => {
     for (const file of filesToQuickAdd) {
       if (file.series && file.issue && file.year && file.publisher) {
@@ -218,13 +308,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [addComic, removeFile]);
 
   const addMockFiles = useCallback(() => {
-    // Mock implementation for web
+    // Mock implementation for web environment
   }, []);
 
   const addFilesFromDrop = useCallback((droppedFiles: File[]) => {
-    // Mock implementation for web
+    // Mock implementation for web environment
   }, []);
 
+  /**
+   * Cancels any ongoing file scanning or loading operations.
+   */
   const cancelFileLoading = useCallback(() => {
     if (electronAPI) {
       electronAPI.cancelFileLoading();
@@ -233,36 +326,48 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [electronAPI]);
 
   const startProcessing = useCallback(async () => {
-    // Implementation for processing files
+    // Placeholder for the main file processing logic
   }, []);
 
   const startMetadataScan = useCallback(async () => {
-    // Implementation for metadata scan
+    // Placeholder for library-wide metadata scanning
   }, []);
 
   const scanComicForMetadata = useCallback(async (comicId: string) => {
-    // Implementation for single comic scan
+    // Placeholder for single comic metadata scan
   }, []);
 
   const scanSelectedComicsForMetadata = useCallback(async (comicIds: string[]) => {
-    // Implementation for selected comics scan
+    // Placeholder for batch metadata scan
   }, []);
 
+  /**
+   * Memoized value of the last action that can be undone.
+   */
   const lastUndoableAction = useMemo(() => actions.find(a => a.undo)?.undo, [actions]);
 
   const undoLastAction = useCallback(() => {
-    // Implementation for undo
+    // Placeholder for the undo logic
   }, []);
 
+  /**
+   * Opens a comic in the reader view and marks it as recently read.
+   */
   const openComicForReading = useCallback((comic: Comic) => {
     setReadingComic(comic);
     recentlyReadHook.addToRecentlyRead(comic);
   }, [recentlyReadHook]);
 
+  /**
+   * Triggers a native file selection dialog in the main process.
+   */
   const triggerSelectFiles = useCallback(() => {
     if (electronAPI) electronAPI.selectFilesDialog();
   }, [electronAPI]);
 
+  /**
+   * Triggers a native folder selection dialog in the main process.
+   */
   const triggerScanFolder = useCallback(() => {
     if (electronAPI) electronAPI.selectFolderDialog();
   }, [electronAPI]);
@@ -272,9 +377,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const syncKnowledgeBaseToLibrary = useCallback(async () => {
-    // Implementation for KB sync
+    // Placeholder for KB sync logic
   }, []);
 
+  // Consolidate all state and actions into the context value
   const value: AppContextType = {
     comics,
     addComic,
@@ -326,6 +432,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
+/**
+ * @hook useAppContext
+ * @summary A custom hook for consuming the `AppContext`.
+ * @description This hook provides a convenient way for components to access the application
+ * context. It also includes a check to ensure it's used within an `AppProvider`.
+ * @returns {AppContextType} The application context value.
+ */
 export const useAppContext = () => {
   const context = useContext(AppContext);
   if (context === undefined) {

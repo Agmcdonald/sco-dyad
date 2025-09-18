@@ -16,31 +16,61 @@ import {
 import RatingSelector from './RatingSelector';
 import NextIssuePreview from './NextIssuePreview';
 
+/**
+ * @interface ComicReaderProps
+ * @summary Defines the props for the ComicReader component.
+ * @property {Comic} comic - The comic object to be displayed.
+ * @property {() => void} onClose - Callback function to close the reader.
+ */
 interface ComicReaderProps {
   comic: Comic;
   onClose: () => void;
 }
 
+/**
+ * @component ComicReader
+ * @summary A full-screen component for reading comic books.
+ * @description This component provides a feature-rich reading experience. It handles loading pages from
+ * various comic file formats (CBR, CBZ, PDF), navigation, zoom, two-page spreads, and full-screen mode.
+ * It also integrates with the application's context for rating and marking comics as read.
+ * @param {ComicReaderProps} props - The props for the component.
+ */
 const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
   const { electronAPI } = useElectron();
   const { comics, updateComicRating, toggleComicReadStatus, readingList } = useAppContext();
+
+  // --- State Management ---
+  /** The currently displayed comic. Can change if the user navigates to the next issue. */
   const [comic, setComic] = useState(initialComic);
+  /** An array of page filenames or numbers for the current comic. */
   const [pages, setPages] = useState<string[]>([]);
+  /** The current page number being displayed (1-based index). */
   const [currentPage, setCurrentPage] = useState(1);
+  /** A cache of loaded page images as data URLs. */
   const [pageImages, setPageImages] = useState<Record<string, string>>({});
+  /** Loading state for the comic pages. */
   const [isLoading, setIsLoading] = useState(true);
+  /** Error message if loading fails. */
   const [error, setError] = useState<string | null>(null);
+  /** Toggles between single and two-page view mode. */
   const [isTwoPage, setIsTwoPage] = useState(false);
+  /** The current zoom level percentage. */
   const [zoom, setZoom] = useState(100);
+  /** Toggles full-screen mode for the reader. */
   const [isFullScreen, setIsFullScreen] = useState(false);
+  /** Controls the visibility of the UI controls (header and footer). */
   const [showControls, setShowControls] = useState(true);
+
   const controlsTimeout = useRef<NodeJS.Timeout | null>(null);
+  /** Stores the temporary directory path for extracted CBR files. */
   const cbrTempDir = useRef<string | null>(null);
 
+  /** Memoized value to check if the current comic is marked as read. */
   const isMarkedAsRead = useMemo(() => {
     return readingList.some(item => item.comicId === comic.id && item.completed);
   }, [readingList, comic.id]);
 
+  /** Memoized value to find the next comic in the same series. */
   const nextComicInSeries = useMemo(() => {
     const seriesComics = comics
       .filter(c => c.series === comic.series && c.publisher === comic.publisher)
@@ -51,6 +81,12 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
       : null;
   }, [comics, comic]);
 
+  /**
+   * @function loadPages
+   * @summary Loads the list of pages for the current comic.
+   * @description It calls the appropriate Electron API based on the file type (CBR, CBZ, PDF)
+   * to get the list of page entries. For CBRs, it also handles the temporary extraction directory.
+   */
   const loadPages = useCallback(async () => {
     if (!electronAPI || !comic.filePath) {
       setError("This comic cannot be read in the current environment.");
@@ -80,6 +116,7 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
     }
   }, [electronAPI, comic.filePath]);
 
+  /** Effect to load pages when the component mounts or the comic changes, and to clean up temp files on unmount. */
   useEffect(() => {
     loadPages();
     return () => {
@@ -90,6 +127,11 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
     };
   }, [loadPages, electronAPI]);
 
+  /**
+   * @function loadPageImage
+   * @summary Fetches the data URL for a specific page and caches it.
+   * @param {string} pageName - The identifier for the page to load.
+   */
   const loadPageImage = useCallback(async (pageName: string) => {
     if (!electronAPI || !comic.filePath || pageImages[pageName]) return;
     try {
@@ -105,6 +147,7 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
     }
   }, [electronAPI, comic.filePath, pageImages]);
 
+  /** Effect to preload the current, next, and previous pages for a smoother user experience. */
   useEffect(() => {
     if (pages.length > 0) {
       const preloadPages = [currentPage - 1, currentPage, currentPage + 1];
@@ -131,12 +174,14 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
     }
   };
 
+  /** Shows the UI controls and resets the auto-hide timer on mouse movement. */
   const handleMouseMove = () => {
     setShowControls(true);
     if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
     controlsTimeout.current = setTimeout(() => setShowControls(false), 2000);
   };
 
+  /** Effect to handle keyboard shortcuts for navigation and other reader actions. */
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight' || e.key === ' ') handleNextPage();
@@ -149,6 +194,12 @@ const ComicReader = ({ comic: initialComic, onClose }: ComicReaderProps) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose, isTwoPage, toggleComicReadStatus, comic]);
 
+  /**
+   * @function renderPage
+   * @summary Renders a single page of the comic.
+   * @param {number} pageNumber - The 1-based page number to render.
+   * @returns {JSX.Element | null} The rendered page image or a loading spinner.
+   */
   const renderPage = (pageNumber: number) => {
     if (pageNumber < 1 || pageNumber > pages.length) return null;
     const pageName = pages[pageNumber - 1];

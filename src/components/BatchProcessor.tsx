@@ -16,24 +16,49 @@ import { useSettings } from "@/context/SettingsContext";
 import { batchProcessFiles, getProcessingStats } from "@/lib/smartProcessor";
 import { showSuccess, showError } from "@/utils/toast";
 import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
-import { useElectron } from "@/hooks/useElectron"; // Import useElectron
+import { useElectron } from "@/hooks/useElectron";
 
+/**
+ * @interface BatchProcessorProps
+ * @summary Defines the props for the BatchProcessor component.
+ * @property {QueuedFile[]} files - The complete list of files in the queue.
+ * @property {string[]} selectedFiles - An array of IDs for the currently selected files.
+ */
 interface BatchProcessorProps {
   files: QueuedFile[];
   selectedFiles: string[];
 }
 
+/**
+ * @component BatchProcessor
+ * @summary A component that manages and displays the batch processing of comic files.
+ * @description This component provides the UI for starting, monitoring, and viewing the results
+ * of the batch metadata processing. It allows users to process all pending files, only
+ * selected files, or all files in the queue. It displays progress and a summary of the results.
+ * @param {BatchProcessorProps} props - The props for the component.
+ */
 const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
   const { updateFile, addComic, removeFile, logAction } = useAppContext();
   const { settings } = useSettings();
   const { knowledgeBase } = useKnowledgeBase();
-  const { electronAPI } = useElectron(); // Get electronAPI
+  const { electronAPI } = useElectron();
+
+  /** State to track if processing is currently active. */
   const [isProcessing, setIsProcessing] = useState(false);
+  /** State to track the progress percentage of the batch operation. */
   const [progress, setProgress] = useState(0);
+  /** State to store the name of the file currently being processed. */
   const [currentFile, setCurrentFile] = useState("");
+  /** State to manage which group of files to process ('all', 'selected', 'pending'). */
   const [processingMode, setProcessingMode] = useState<"all" | "selected" | "pending">("pending");
+  /** State to store the results of the last batch processing operation. */
   const [lastResults, setLastResults] = useState<Map<string, any> | null>(null);
 
+  /**
+   * @function getFilesToProcess
+   * @summary Determines which files to process based on the current processing mode.
+   * @returns {QueuedFile[]} An array of files to be processed.
+   */
   const getFilesToProcess = () => {
     switch (processingMode) {
       case "all":
@@ -48,6 +73,13 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
 
   const filesToProcess = getFilesToProcess();
 
+  /**
+   * @function handleBatchProcess
+   * @summary Initiates and manages the batch processing of the selected files.
+   * @description This function calls the `batchProcessFiles` utility, updates the UI with progress,
+   * and then applies the results to the files in the queue. High-confidence results are
+   * automatically added to the library.
+   */
   const handleBatchProcess = async () => {
     if (filesToProcess.length === 0) {
       showError("No files to process");
@@ -65,7 +97,7 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
         filesToProcess,
         settings.comicVineApiKey,
         knowledgeBase,
-        electronAPI, // Pass electronAPI here
+        electronAPI,
         (processed, total, current) => {
           setProgress((processed / total) * 100);
           setCurrentFile(current);
@@ -74,7 +106,6 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
 
       setLastResults(results);
 
-      // Apply results to files
       for (const [fileId, result] of results.entries()) {
         const file = files.find(f => f.id === fileId);
         if (!file) continue;
@@ -87,7 +118,6 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
             confidence: result.confidence
           });
 
-          // Auto-add high confidence matches
           if (result.confidence === 'High') {
             setTimeout(() => {
               addComic(result.data, file);
@@ -129,7 +159,6 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Processing Mode Selection */}
         <div className="flex items-center gap-4">
           <label className="text-sm font-medium">Process:</label>
           <Select value={processingMode} onValueChange={(value: any) => setProcessingMode(value)}>
@@ -144,7 +173,6 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
           </Select>
         </div>
 
-        {/* Processing Progress */}
         {isProcessing && (
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
@@ -155,7 +183,6 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
           </div>
         )}
 
-        {/* Last Results */}
         {stats && !isProcessing && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             <div className="text-center p-2 border rounded">
@@ -177,7 +204,6 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
           </div>
         )}
 
-        {/* Action Buttons */}
         <div className="flex gap-2">
           <Button 
             onClick={handleBatchProcess}
@@ -205,7 +231,6 @@ const BatchProcessor = ({ files, selectedFiles }: BatchProcessorProps) => {
           )}
         </div>
 
-        {/* File Count Info */}
         <div className="text-sm text-muted-foreground">
           {filesToProcess.length === 0 ? (
             "No files available for processing"

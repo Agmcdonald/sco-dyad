@@ -3,17 +3,37 @@ const path = require('path');
 const fs = require('fs').promises;
 let Store = require('electron-store');
 
-// Handle cases where the module is wrapped in a default export, which can happen with some bundlers.
 if (Store && Store.default) {
   Store = Store.default;
 }
 
+/**
+ * @class ComicDatabase
+ * @summary Manages all database operations for the comic book library.
+ * @description This class encapsulates the logic for interacting with the SQLite database
+ * using `better-sqlite3`. It handles schema creation, migrations, and all CRUD
+ * operations for comics, creators, and other related data. It also uses `electron-store`
+ * to manage application settings.
+ */
 class ComicDatabase {
+  /**
+   * @constructor
+   * @description Initializes the database and settings store instances.
+   */
   constructor() {
+    /** @type {import('better-sqlite3').Database | null} */
     this.db = null;
+    /** @type {Store} */
     this.settingsStore = new Store();
   }
 
+  /**
+   * @async
+   * @function initialize
+   * @summary Initializes the database connection and sets up the schema.
+   * @description This method gets the database path from settings (or uses a default),
+   * ensures the directory exists, opens the database connection, and calls `setupSchema`.
+   */
   async initialize() {
     const dbPath = this.settingsStore.get('dbPath', path.join(require('electron').app.getPath('userData'), 'comics.sqlite'));
     
@@ -27,6 +47,13 @@ class ComicDatabase {
     this.setupSchema();
   }
 
+  /**
+   * @function setupSchema
+   * @summary Defines and creates the database schema if it doesn't exist.
+   * @description This method creates the `comics`, `creators`, `reading_list`, and
+   * `recently_read` tables. It also includes a simple migration system to add
+   * new columns to the `comics` table in older databases.
+   */
   setupSchema() {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS comics (
@@ -85,7 +112,6 @@ class ComicDatabase {
     `);
 
     // --- Schema Migration ---
-    // This ensures that older databases are updated with new columns.
     try {
       const columns = this.db.pragma('table_info(comics)');
       const columnNames = columns.map(col => col.name);
@@ -103,6 +129,12 @@ class ComicDatabase {
     }
   }
 
+  /**
+   * @function saveSetting
+   * @summary Saves a key-value pair to the settings store.
+   * @param {string} key - The setting key.
+   * @param {*} value - The setting value.
+   */
   saveSetting(key, value) {
     try {
       this.settingsStore.set(key, value);
@@ -112,10 +144,21 @@ class ComicDatabase {
     }
   }
 
+  /**
+   * @function getAllSettings
+   * @summary Retrieves all settings from the settings store.
+   * @returns {object} An object containing all settings.
+   */
   getAllSettings() {
     return this.settingsStore.store;
   }
 
+  /**
+   * @function saveComic
+   * @summary Saves or replaces a comic and its creators in the database.
+   * @param {object} comic - The comic object to save.
+   * @returns {object} The saved comic object, retrieved from the database.
+   */
   saveComic(comic) {
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO comics (
@@ -130,7 +173,6 @@ class ComicDatabase {
     `);
 
     const transaction = this.db.transaction((c) => {
-      // Ensure all fields have default values to prevent "Missing named parameter" errors
       const comicData = {
         id: c.id || null,
         series: c.series || null,
@@ -174,6 +216,12 @@ class ComicDatabase {
     return this.getComic(comic.id);
   }
 
+  /**
+   * @function updateComic
+   * @summary Updates an existing comic in the database.
+   * @param {object} comic - The comic object with updated fields. It must include an `id`.
+   * @returns {object} The updated comic object.
+   */
   updateComic(comic) {
     const { creators, ...comicData } = comic;
     const fields = Object.keys(comicData).filter(k => k !== 'id');
@@ -188,7 +236,7 @@ class ComicDatabase {
       stmt.run({
         ...c,
         lastModified: new Date().toISOString(),
-        ignoreInScans: c.ignoreInScans ? 1 : 0, // Ensure boolean is converted to integer
+        ignoreInScans: c.ignoreInScans ? 1 : 0,
         isSeriesCover: c.isSeriesCover ? 1 : 0,
       });
       
@@ -204,6 +252,12 @@ class ComicDatabase {
     return this.getComic(comic.id);
   }
 
+  /**
+   * @function batchUpdateComics
+   * @summary Updates multiple comics in a single transaction.
+   * @param {object[]} updates - An array of update objects. Each object must have an `id` and the fields to update.
+   * @returns {number} The number of comics that were successfully updated.
+   */
   batchUpdateComics(updates) {
     const transaction = this.db.transaction((updatesToApply) => {
       let updatedCount = 0;
@@ -214,7 +268,6 @@ class ComicDatabase {
         const fields = Object.keys(dataToUpdate);
         const setClause = fields.map(f => `${f} = ?`).join(', ');
         const values = fields.map(f => {
-          // Convert boolean to integer for ignoreInScans
           if (f === 'ignoreInScans') {
             return dataToUpdate[f] ? 1 : 0;
           }
@@ -233,6 +286,12 @@ class ComicDatabase {
     return transaction(updates);
   }
 
+  /**
+   * @function getComic
+   * @summary Retrieves a single comic from the database by its ID.
+   * @param {string} id - The ID of the comic to retrieve.
+   * @returns {object | undefined} The comic object, or `undefined` if not found.
+   */
   getComic(id) {
     const comic = this.db.prepare('SELECT * FROM comics WHERE id = ?').get(id);
     if (comic) {
@@ -243,6 +302,11 @@ class ComicDatabase {
     return comic;
   }
 
+  /**
+   * @function getComics
+   * @summary Retrieves all comics from the database.
+   * @returns {object[]} An array of all comic objects.
+   */
   getComics() {
     const comics = this.db.prepare('SELECT * FROM comics ORDER BY series, CAST(issue AS REAL), issue').all();
     const creators = this.db.prepare('SELECT * FROM creators').all();
@@ -260,12 +324,24 @@ class ComicDatabase {
     }));
   }
 
+  /**
+   * @function deleteComic
+   * @summary Deletes a comic from the database.
+   * @param {string} id - The ID of the comic to delete.
+   * @returns {boolean} `true` if a comic was deleted, `false` otherwise.
+   */
   deleteComic(id) {
     const stmt = this.db.prepare('DELETE FROM comics WHERE id = ?');
     const info = stmt.run(id);
     return info.changes > 0;
   }
 
+  /**
+   * @function importComics
+   * @summary Imports an array of comics into the database, skipping duplicates.
+   * @param {object[]} comics - An array of comic objects to import.
+   * @returns {{added: number, skipped: number}} An object with counts of added and skipped comics.
+   */
   importComics(comics) {
     const transaction = this.db.transaction((comicsToImport) => {
       let added = 0;
@@ -284,6 +360,10 @@ class ComicDatabase {
     return transaction(comics);
   }
 
+  /**
+   * @function close
+   * @summary Closes the database connection.
+   */
   close() {
     if (this.db) {
       this.db.close();

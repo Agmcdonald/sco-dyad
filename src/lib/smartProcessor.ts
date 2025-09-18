@@ -1,34 +1,29 @@
 /**
- * Smart Comic File Processor
- * 
- * This module provides intelligent processing of comic files to extract and enrich metadata.
- * It combines multiple data sources and processing strategies to achieve the best possible
- * metadata detection and enrichment.
- * 
- * Processing Pipeline:
- * 1. Parse filename using intelligent patterns
- * 2. Query local Knowledge Base (for known series/publishers)
- * 3. Query Comic Vine API
- * 4. Fall back to parsed data only
- * 
- * The processor returns confidence levels to help users understand the reliability
- * of the detected information.
+ * @file Smart Comic File Processor
+ * @summary Provides intelligent processing of comic files to extract and enrich metadata.
+ * @description This module combines multiple data sources and processing strategies to achieve
+ * the best possible metadata detection. The pipeline involves filename parsing,
+ * local Knowledge Base lookups, and external API calls (Comic Vine), returning results
+ * with confidence levels to guide the user.
  */
 
-import { parseFilename, ParsedComicInfo } from "./parser";
+import { parseFilename } from "./parser";
 import { Creator, QueuedFile, Confidence, KnowledgeBase } from "@/types";
 import { fetchComicMetadata } from "./scraper";
-import { GcdDatabaseService } from "@/services/gcdDatabaseService"; // Keep import for type, but won't be used
-import { ElectronAPI } from "@/hooks/useElectron"; // Import ElectronAPI
+import { ElectronAPI } from "@/hooks/useElectron";
 
 /**
- * Processing Result Interface
- * Structure returned by the smart processor containing detected metadata and confidence
+ * @interface ProcessingResult
+ * @summary Defines the structure for the output of the smart processing function.
+ * @property {boolean} success - Indicates if the processing was successful.
+ * @property {Confidence} confidence - The confidence level of the detected metadata.
+ * @property {object} [data] - The extracted and enriched metadata.
+ * @property {string} [error] - An error message if processing failed.
  */
 export interface ProcessingResult {
-  success: boolean;           // Whether processing succeeded
-  confidence: Confidence;     // How confident we are about the results
-  data?: {                   // Detected metadata (if successful)
+  success: boolean;
+  confidence: Confidence;
+  data?: {
     series: string;
     issue: string;
     year: number;
@@ -37,52 +32,60 @@ export interface ProcessingResult {
     summary: string;
     creators?: Creator[];
     confidence: 'High' | 'Medium' | 'Low';
-    source: 'knowledge' | 'api' | 'filename';  // Where the data came from
-    
-    // Extended metadata fields
-    title?: string;           // Specific issue title
-    publicationDate?: string; // Exact publication date
-    genre?: string;           // Genre classification
-    characters?: string;      // Featured characters
-    price?: string;           // Cover price
-    barcode?: string;         // UPC barcode
-    languageCode?: string;    // Language code
-    countryCode?: string;     // Country code
-    pageCount?: number;       // Page count, now fetched here
+    source: 'knowledge' | 'api' | 'filename';
+    title?: string;
+    publicationDate?: string;
+    genre?: string;
+    characters?: string;
+    price?: string;
+    barcode?: string;
+    languageCode?: string;
+    countryCode?: string;
+    pageCount?: number;
   };
-  error?: string;            // Error message (if failed)
+  error?: string;
 }
 
+/**
+ * @function normalize
+ * @summary Normalizes a string for comparison by trimming and converting to lowercase.
+ * @param {string | undefined | null} s - The string to normalize.
+ * @returns {string} The normalized string.
+ */
 const normalize = (s: string | undefined | null) => (s || "").trim().toLowerCase();
 
 /**
- * Process Comic File
- * Main processing function that attempts to extract and enrich metadata for a comic file
- * 
- * @param file - QueuedFile to process
- * @param comicVineApiKey - Comic Vine API key
- * @param knowledgeBase - Local knowledge base for series/publishers
- * @param electronAPI - Electron API for file system operations (optional, for web compatibility)
- * @returns ProcessingResult with detected metadata and confidence
+ * @async
+ * @function processComicFile
+ * @summary The main processing function that extracts and enriches metadata for a single comic file.
+ * @description This function orchestrates the metadata extraction pipeline:
+ * 1. Parses the filename for initial data.
+ * 2. Looks up the series in the local Knowledge Base for high-confidence data.
+ * 3. Uses the best available data to query the Comic Vine API for detailed enrichment.
+ * 4. Merges all data sources, prioritizing the most reliable information.
+ * 5. Fetches the page count if it wasn't available initially.
+ * @param {QueuedFile} file - The file to be processed.
+ * @param {string} comicVineApiKey - The API key for the Comic Vine service.
+ * @param {KnowledgeBase} knowledgeBase - The local knowledge base of comic series.
+ * @param {ElectronAPI} [electronAPI] - The Electron API for deferred file operations (like page count).
+ * @returns {Promise<ProcessingResult>} An object containing the processed data and confidence score.
  */
 export const processComicFile = async (
   file: QueuedFile, 
   comicVineApiKey: string,
   knowledgeBase: KnowledgeBase,
-  electronAPI?: ElectronAPI // Make electronAPI optional
+  electronAPI?: ElectronAPI
 ): Promise<ProcessingResult> => {
   try {
     console.log(`[SMART-PROCESSOR] Processing file: ${file.name}`);
     const parsed = parseFilename(file.path);
     console.log(`[SMART-PROCESSOR] Parsed data:`, parsed);
     
-    // If no issue number detected, assume it's issue #1
     if (parsed.series && !parsed.issue) {
       parsed.issue = '1';
       console.log(`[SMART-PROCESSOR] No issue found, assuming issue #1 for: ${file.name}`);
     }
     
-    // Require at minimum a series name and issue number
     if (!parsed.series || !parsed.issue) {
       console.log(`[SMART-PROCESSOR] Failed to parse series or issue from: ${file.name}`);
       return {
@@ -92,7 +95,6 @@ export const processComicFile = async (
       };
     }
 
-    // Initialize base data with parsed info
     let currentComicData: ProcessingResult['data'] = {
       series: parsed.series,
       issue: parsed.issue,
@@ -103,10 +105,9 @@ export const processComicFile = async (
       creators: [],
       confidence: parsed.publisher ? "Medium" : "Low",
       source: 'filename',
-      pageCount: file.pageCount, // Preserve existing pageCount
+      pageCount: file.pageCount,
     };
 
-    // If pageCount is missing, try to fetch it now (deferred operation)
     if ((currentComicData.pageCount === null || currentComicData.pageCount === undefined) && electronAPI && file.path && !file.path.startsWith('mock://')) {
       try {
         console.log(`[SMART-PROCESSOR] Fetching page count for ${file.name}...`);
@@ -118,18 +119,17 @@ export const processComicFile = async (
       }
     }
 
-    // 1. Attempt Knowledge Base Lookup
     const kbMatch = knowledgeBase.series.find(kb => normalize(kb.series) === normalize(parsed.series));
     if (kbMatch) {
       console.log(`[SMART-PROCESSOR] Found match in Knowledge Base for series: ${parsed.series}`);
       const matchingVolume = (kbMatch.volumes || []).find(v => Number(v.year) === Number(parsed.year));
 
       currentComicData = {
-        ...currentComicData, // Keep existing parsed data
-        series: kbMatch.series, // Override with KB series name
-        publisher: kbMatch.publisher, // Override with KB publisher
-        year: parsed.year || kbMatch.startYear, // Prefer parsed year, fallback to KB start year
-        volume: matchingVolume?.volume || parsed.volume || String(parsed.year || kbMatch.startYear), // Prefer parsed volume, then KB volume, then KB start year
+        ...currentComicData,
+        series: kbMatch.series,
+        publisher: kbMatch.publisher,
+        year: parsed.year || kbMatch.startYear,
+        volume: matchingVolume?.volume || parsed.volume || String(parsed.year || kbMatch.startYear),
         summary: `Matched from local Knowledge Base: ${kbMatch.series}`,
         confidence: "High",
         source: 'knowledge'
@@ -139,13 +139,10 @@ export const processComicFile = async (
       console.log(`[SMART-PROCESSOR] No Knowledge Base match found for series: ${parsed.series}`);
     }
 
-    // 2. ALWAYS Attempt Comic Vine API fetch for enrichment
     if (comicVineApiKey && currentComicData.series) {
       console.log(`[SMART-PROCESSOR] Attempting Comic Vine API search for: ${currentComicData.series} #${currentComicData.issue}`);
-      // Pass currentComicData to fetchComicMetadata so it can use the best available series/publisher/year
       const apiResult = await fetchComicMetadata(currentComicData, comicVineApiKey);
 
-      // --- DEBUG LOGGING START ---
       console.log(`[SMART-PROCESSOR] Comic Vine returned:`, {
         success: apiResult?.success,
         summaryLength: apiResult?.data?.summary?.length || 0,
@@ -153,44 +150,32 @@ export const processComicFile = async (
       });
       console.log(`[SMART-PROCESSOR] Base data summary (before API merge):`, currentComicData.summary?.substring(0, 50));
       console.log(`[SMART-PROCESSOR] Comic Vine summary:`, apiResult?.data?.summary?.substring(0, 50));
-      // --- DEBUG LOGGING END ---
 
       if (apiResult.success && apiResult.data) {
         console.log(`[SMART-PROCESSOR] Comic Vine API success for: ${currentComicData.series} #${currentComicData.issue}`);
         
-        // Merge API data, prioritizing API for detailed fields
         currentComicData = {
-          ...currentComicData, // Keep existing data (from parsed or KB)
-          ...apiResult.data,   // Overlay with API data
-          // Explicitly ensure summary and creators from API take precedence if available and not empty
+          ...currentComicData,
+          ...apiResult.data,
           summary: apiResult.data.summary || currentComicData.summary,
           creators: apiResult.data.creators || currentComicData.creators,
-          
-          // Ensure series, publisher, year, volume from currentComicData are preserved
-          // if API data is less specific or we want to keep local parsing/KB values.
-          // This prevents API from potentially giving a less specific series name.
           series: currentComicData.series,
           publisher: currentComicData.publisher,
           year: currentComicData.year,
           volume: currentComicData.volume,
-
-          // Use API confidence if it's higher or more specific
           confidence: apiResult.data.confidence === 'High' ? 'High' : currentComicData.confidence,
           source: 'api'
         };
         
-        // --- DEBUG LOGGING AFTER MERGE ---
         console.log(`[SMART-PROCESSOR] Final summary source (after API merge): ${currentComicData.summary.includes('Knowledge Base') ? 'Knowledge Base' : 'Comic Vine'}`);
         console.log(`[SMART-PROCESSOR] Final summary length (after API merge): ${currentComicData.summary?.length || 0}`);
         console.log(`[SMART-PROCESSOR] Final creators count (after API merge): ${currentComicData.creators?.length || 0}`);
-        // --- DEBUG LOGGING AFTER MERGE ---
 
       } else {
         console.log(`[SMART-PROCESSOR] Comic Vine API failed for ${currentComicData.series} #${currentComicData.issue}: ${apiResult.error || 'No data'}`);
       }
     }
 
-    // Final check for confidence and success
     if (currentComicData.series && currentComicData.issue && currentComicData.publisher && currentComicData.year) {
       return {
         success: true,
@@ -198,12 +183,11 @@ export const processComicFile = async (
         data: currentComicData
       };
     } else {
-      // If after all attempts, essential data is still missing
       return {
         success: false,
         confidence: "Low",
         error: "Insufficient information to process file after all lookups",
-        data: currentComicData // Return partial data for manual review
+        data: currentComicData
       };
     }
 
@@ -218,20 +202,21 @@ export const processComicFile = async (
 };
 
 /**
- * Batch Process Files
- * Processes multiple queued files in a batch, updating progress via a callback.
- * @param files - Array of QueuedFile objects to process
- * @param comicVineApiKey - Comic Vine API key
- * @param knowledgeBase - Local knowledge base for series/publishers
- * @param electronAPI - Electron API for file system operations (optional, for web compatibility)
- * @param onProgress - Callback for progress updates (processed count, total count, current file name)
- * @returns A Map of fileId to ProcessingResult
+ * @async
+ * @function batchProcessFiles
+ * @summary Processes multiple queued files in a batch, providing progress updates.
+ * @param {QueuedFile[]} files - An array of files to process.
+ * @param {string} comicVineApiKey - The API key for the Comic Vine service.
+ * @param {KnowledgeBase} knowledgeBase - The local knowledge base of comic series.
+ * @param {ElectronAPI | undefined} electronAPI - The Electron API for deferred file operations.
+ * @param {(processed: number, total: number, currentFile: string) => void} onProgress - A callback function to report progress.
+ * @returns {Promise<Map<string, ProcessingResult>>} A map of file IDs to their processing results.
  */
 export const batchProcessFiles = async (
   files: QueuedFile[],
   comicVineApiKey: string,
   knowledgeBase: KnowledgeBase,
-  electronAPI: ElectronAPI | undefined, // Add electronAPI here
+  electronAPI: ElectronAPI | undefined,
   onProgress: (processed: number, total: number, currentFile: string) => void
 ): Promise<Map<string, ProcessingResult>> => {
   const results = new Map<string, ProcessingResult>();
@@ -240,19 +225,19 @@ export const batchProcessFiles = async (
   for (let i = 0; i < totalFiles; i++) {
     const file = files[i];
     onProgress(i + 1, totalFiles, file.name);
-    const result = await processComicFile(file, comicVineApiKey, knowledgeBase, electronAPI); // Pass electronAPI
+    const result = await processComicFile(file, comicVineApiKey, knowledgeBase, electronAPI);
     results.set(file.id, result);
-    await new Promise(resolve => setTimeout(resolve, 50)); // Small delay to prevent API rate limits and UI freezing
+    await new Promise(resolve => setTimeout(resolve, 50));
   }
 
   return results;
 };
 
 /**
- * Get Processing Statistics
- * Calculates statistics from a map of processing results.
- * @param results - Map of fileId to ProcessingResult
- * @returns Object with counts for total, successful, failed, and confidence levels
+ * @function getProcessingStats
+ * @summary Calculates statistics from a collection of processing results.
+ * @param {Map<string, ProcessingResult>} results - A map of file IDs to their processing results.
+ * @returns {{total: number, successful: number, failed: number, highConfidence: number, mediumConfidence: number, lowConfidence: number}} An object containing processing statistics.
  */
 export const getProcessingStats = (results: Map<string, ProcessingResult>) => {
   let successful = 0;

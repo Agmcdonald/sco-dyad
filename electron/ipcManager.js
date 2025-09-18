@@ -1,7 +1,15 @@
+/**
+ * @file IPC Manager
+ * @summary Registers and handles all Inter-Process Communication (IPC) channels.
+ * @description This module centralizes the registration of all IPC handlers for the application.
+ * It connects the renderer process (frontend) with the main process (backend) to perform
+ * tasks like file system operations, database queries, and showing native dialogs.
+ * Each handler is documented to explain its purpose, parameters, and return value.
+ */
 const { ipcMain, dialog, app, BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
-const { pathToFileURL } = require('url'); // Ensure this is imported
+const { pathToFileURL } = require('url');
 const https = require('https');
 const sharp = require('sharp');
 let Store = require('electron-store');
@@ -10,19 +18,38 @@ if (Store && Store.default) {
   Store = Store.default;
 }
 
+// A map to store cancellable operations for features like aborting file scans.
 const cancellableOperations = new Map();
 
+// Electron-store instance for tracking API usage.
 const apiUsageStore = new Store({ name: 'api-usage' });
 const API_HOURLY_LIMIT = 200;
 
+/**
+ * @function registerIpcHandlers
+ * @summary Registers all IPC handlers for the application.
+ * @param {BrowserWindow} mainWindow - The main application window.
+ * @param {object} services - An object containing backend services.
+ * @param {ComicFileHandler} services.fileHandler - The file handler instance.
+ * @param {ComicDatabase} services.database - The database instance.
+ * @param {string} services.knowledgeBasePath - Path to the user's knowledge base file.
+ * @param {string} services.publicCoversDir - Path to the directory for storing cover images.
+ */
 function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBasePath, publicCoversDir }) {
   console.log('[IPCManager] Registering IPC handlers...');
 
-  // Pass publicCoversDir to the paths object for the new IPC handler
   const paths = { publicCoversDir };
 
+  /**
+   * @description Get the application version.
+   * @returns {string} The application version.
+   */
   ipcMain.handle('get-app-version', () => app.getVersion());
 
+  /**
+   * @description Initializes the database connection.
+   * @returns {Promise<{success: boolean}>}
+   */
   ipcMain.handle('init-database', async () => {
     try {
       if (!database) throw new Error('Database service not available');
@@ -34,6 +61,10 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
+  /**
+   * @description Gets the absolute path to the covers directory.
+   * @returns {Promise<string>} The path to the covers directory.
+   */
   ipcMain.handle('app:get-covers-dir', async () => {
     try {
       return publicCoversDir || '';
@@ -43,6 +74,10 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
+  /**
+   * @description Migrates comic cover paths to the new `file://` format for consistency.
+   * @returns {Promise<object>} A report detailing the migration results.
+   */
   ipcMain.handle('app:migrate-covers', async () => {
     const report = { total: 0, updated: 0, skipped: 0, failed: 0, updatedIds: [], failedIds: [] };
 
@@ -128,10 +163,19 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
+  /**
+   * @description Shows a native message box.
+   * @param {object} options - Options for the `dialog.showMessageBox`.
+   * @returns {Promise<object>} The result from `dialog.showMessageBox`.
+   */
   ipcMain.handle('show-message-box', async (event, options) => {
     return await dialog.showMessageBox(mainWindow, options);
   });
 
+  /**
+   * @description Shows a dialog to select files.
+   * @returns {Promise<string[]>} An array of selected file paths.
+   */
   ipcMain.handle('dialog:select-files', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
       title: 'Select Comic Files',
@@ -144,6 +188,10 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     return canceled ? [] : filePaths;
   });
 
+  /**
+   * @description Shows a dialog to select a folder.
+   * @returns {Promise<string[]>} An array containing the selected folder path.
+   */
   ipcMain.handle('dialog:select-folder', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
       title: 'Select Folder',
@@ -152,6 +200,12 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     return canceled ? [] : filePaths;
   });
 
+  /**
+   * @description Reads a comic file's contents (metadata).
+   * @param {string} filePath - The path to the comic file.
+   * @param {string} operationId - A unique ID for cancellable operations.
+   * @returns {Promise<object>} The comic file's metadata.
+   */
   ipcMain.handle('read-comic-file', async (event, filePath, operationId) => {
     const controller = new AbortController();
     cancellableOperations.set(operationId, controller);
@@ -170,6 +224,12 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
+  /**
+   * @description Scans a folder for comic files.
+   * @param {string} folderPath - The path to the folder.
+   * @param {string} operationId - A unique ID for cancellable operations.
+   * @returns {Promise<string[]>} A list of comic files found in the folder.
+   */
   ipcMain.handle('scan-folder', async (event, folderPath, operationId) => {
     const controller = new AbortController();
     cancellableOperations.set(operationId, controller);
@@ -188,12 +248,21 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
+  /**
+   * @description Cancels all ongoing file loading operations.
+   */
   ipcMain.handle('cancel-file-loading', async () => {
     cancellableOperations.forEach(controller => controller.abort());
     cancellableOperations.clear();
     console.log('All ongoing file loading operations cancelled.');
   });
 
+  /**
+   * @description Organizes a file by moving/copying it to the library.
+   * @param {string} sourcePath - The original path of the file.
+   * @param {string} relativeTargetPath - The target path relative to the library root.
+   * @returns {Promise<{success: boolean, newPath?: string, error?: string}>}
+   */
   ipcMain.handle('organize-file', async (event, sourcePath, relativeTargetPath) => {
     try {
       const settings = database.getAllSettings();
@@ -209,6 +278,12 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
+  /**
+   * @description Moves a file to a new location within the library.
+   * @param {string} sourcePath - The original path of the file.
+   * @param {string} relativeTargetPath - The target path relative to the library root.
+   * @returns {Promise<{success: boolean, newPath?: string, error?: string}>}
+   */
   ipcMain.handle('move-file', async (event, sourcePath, relativeTargetPath) => {
     try {
       const settings = database.getAllSettings();
@@ -227,6 +302,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
+  // --- Comic Reader Handlers ---
   ipcMain.handle('get-comic-pages', (event, filePath) => fileHandler.getPages(filePath));
   ipcMain.handle('get-comic-page-data-url', (event, filePath, pageName) => fileHandler.extractPageAsDataUrl(filePath, pageName));
   ipcMain.handle('reader:prepare-cbr', (event, filePath) => fileHandler.prepareCbrForReading(filePath));
@@ -251,6 +327,10 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
+  /**
+   * @description Retrieves all comics from the database and normalizes their cover URLs.
+   * @returns {Promise<object[]>} A list of all comics.
+   */
   ipcMain.handle('get-comics', async () => {
     try {
       const comics = await database.getComics();
@@ -289,10 +369,17 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
+  // --- Database Handlers ---
   ipcMain.handle('update-comic', (event, comic) => database.updateComic(comic));
   ipcMain.handle('db:import-comics', (event, comics) => database.importComics(comics));
   ipcMain.handle('db:batch-update-comics', (event, updates) => database.batchUpdateComics(updates));
   
+  /**
+   * @description Deletes a comic from the database and optionally its associated file.
+   * @param {string} id - The ID of the comic to delete.
+   * @param {string} [filePath] - The path to the comic file to delete.
+   * @returns {Promise<any>}
+   */
   ipcMain.handle('delete-comic', async (event, id, filePath) => {
     if (filePath) {
       try {
@@ -304,6 +391,11 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     return database.deleteComic(id);
   });
 
+  /**
+   * @description Saves a new comic to the database, extracting its cover first.
+   * @param {object} comic - The comic object to save.
+   * @returns {Promise<any>}
+   */
   ipcMain.handle('save-comic', async (event, comic) => {
     try {
       if (!comic.id) throw new Error("Comic must have an ID to be saved.");
@@ -335,6 +427,10 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
+  /**
+   * @description Gets the current API usage stats.
+   * @returns {Promise<{currentUsage: number, hourlyLimit: number, timeUntilResetMs: number}>}
+   */
   ipcMain.handle('get-api-usage', async () => {
     let currentUsage = apiUsageStore.get('currentUsage', 0);
     let lastReset = apiUsageStore.get('lastReset', Date.now());
@@ -356,6 +452,7 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     };
   });
 
+  // --- Backup and Restore Handlers ---
   ipcMain.handle('dialog:save-backup', async (event, data) => {
     const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
       title: 'Export Library Backup',
@@ -386,7 +483,11 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
-  // Replace the entire ipcMain.handle('extract-cover') block with the new code
+  /**
+   * @description Extracts a cover image from a comic file.
+   * @param {string} filePath - Path to the comic file.
+   * @returns {Promise<string>} A file URL for the extracted cover.
+   */
   ipcMain.handle('extract-cover', async (_event, filePath) => {
     if (typeof filePath !== 'string' || filePath.length === 0) {
       throw new TypeError('[extract-cover] filePath must be a non-empty string');
@@ -413,13 +514,13 @@ function registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBaseP
     }
   });
 
-  // --- NEW HANDLERS FOR SETTINGS AND KNOWLEDGE BASE ---
+  // --- Settings and Knowledge Base Handlers ---
   ipcMain.handle('get-settings', async () => {
     try {
       return database.getAllSettings();
     } catch (error) {
       console.error('[IPC] get-settings error:', error);
-      return {}; // Return empty object on error
+      return {};
     }
   });
 

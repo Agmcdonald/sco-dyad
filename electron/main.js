@@ -1,14 +1,11 @@
 /**
- * Electron Main Process
- * 
- * This is the entry point for the Electron application. It handles:
- * - Creating and managing the main browser window
- * - Initializing backend services (file handler, database)
- * - Setting up the application menu
- * - Registering IPC (Inter-Process Communication) handlers for communication
- *   with the renderer process (the React app)
- * - Handling application lifecycle events (ready, activate, window-all-closed)
- * - Security settings for the web contents
+ * @file Electron Main Process
+ * @summary This file is the entry point for the Electron application. It handles window creation,
+ * application lifecycle events, and initialization of backend services.
+ * @description This script manages the main browser window, sets up the application menu,
+ * registers IPC handlers for communication with the renderer process, and ensures
+ * security settings are in place. It also performs a pre-flight check for the 'sharp'
+ * library to prevent common installation issues.
  */
 
 const { app, BrowserWindow, shell, dialog } = require('electron');
@@ -28,14 +25,29 @@ if (isDev) {
   app.commandLine.appendSwitch('remote-debugging-port', '9222');
 }
 
-// Global references to main window and services
+// --- Global References ---
+/** @type {BrowserWindow | null} */
 let mainWindow;
+/** @type {ComicFileHandler | null} */
 let fileHandler;
+/** @type {ComicDatabase | null} */
 let database;
+/** @type {string | null} */
 let knowledgeBasePath;
+/** @type {string | null} */
 let publicCoversDir;
 
-// Preflight Sharp Test
+
+/**
+ * @async
+ * @function runSharpPreflight
+ * @summary Performs a pre-flight test of the 'sharp' image processing library.
+ * @description This function checks if the 'sharp' library is installed and working correctly
+ * by attempting to process a sample image. This helps catch common native dependency
+ * issues on first launch. A marker file is created in userData to skip the test
+ * on subsequent launches unless the `--preflight` flag is passed.
+ * @returns {Promise<boolean>} Resolves to `true` if the app should exit after the test (e.g., on forced re-run), `false` otherwise.
+ */
 async function runSharpPreflight() {
   const userDataDir = app.getPath('userData');
   const markerPath = path.join(userDataDir, 'preflight.done');
@@ -82,8 +94,11 @@ async function runSharpPreflight() {
 }
 
 /**
- * Create Main Window
- * Creates and- configures the main browser window for the application
+ * @function createWindow
+ * @summary Creates and configures the main browser window.
+ * @description This function initializes the `BrowserWindow` with specific dimensions,
+ * security settings, and web preferences. It loads the React application from the
+ * development server or the local file system, depending on the environment.
  */
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -109,36 +124,36 @@ function createWindow() {
   
   console.log('Loading URL:', startUrl);
   
-  // Load the React application
   mainWindow.loadURL(startUrl).catch(err => {
     console.error('ERROR: Failed to load start URL:', startUrl, err);
   });
 
-  // Show the window once it's ready to avoid a blank screen
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
   });
 
-  // Clean up on close
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
 
-  // Open external links in the user's default browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
   });
 
-  // Error handling for web contents
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
     console.error('Failed to load:', validatedURL, 'Error:', errorCode, errorDescription);
   });
 }
 
 /**
- * Initialize Backend Services
- * Sets up the file handler, database, and necessary paths
+ * @async
+ * @function initializeServices
+ * @summary Sets up backend services like the database and file handler.
+ * @description This function instantiates the `ComicFileHandler` and `ComicDatabase`,
+ * initializes the database connection, and determines the paths for the user's
+ * knowledge base and cover images. It ensures the necessary directories exist.
+ * @throws {Error} Throws an error if service initialization fails.
  */
 async function initializeServices() {
   try {
@@ -156,7 +171,6 @@ async function initializeServices() {
       publicCoversDir = path.join(userDataPath, 'covers');
     }
     
-    // Issue 2: Ensure publicCoversDir is always defined
     if (!publicCoversDir) {
       publicCoversDir = path.join(userDataPath, 'covers'); // Fallback to a safe path
       console.warn(`[Main] publicCoversDir was undefined, defaulted to: ${publicCoversDir}`);
@@ -166,23 +180,26 @@ async function initializeServices() {
     await initializeKnowledgeBaseFile();
     
     console.log('Services initialized successfully');
-    console.log(`[Main] Resolved publicCoversDir: ${publicCoversDir}`); // Log the resolved path
+    console.log(`[Main] Resolved publicCoversDir: ${publicCoversDir}`);
   } catch (error) {
     console.error('Failed to initialize services:', error);
-    throw error; // Re-throw the error to be caught by the whenReady handler
+    throw error;
   }
 }
 
 /**
- * Initialize Knowledge Base File
- * Merges the default knowledge base with the user's custom knowledge base
- * This ensures users get updates to the default KB without losing their custom entries
+ * @async
+ * @function initializeKnowledgeBaseFile
+ * @summary Merges the default knowledge base with the user's custom knowledge base.
+ * @description This function ensures that users receive updates to the default knowledge
+ * base (shipped with the app) without overwriting their own custom entries. It loads
+ * both the default and user KBs, merges them (with user entries taking precedence),
+ * and writes the result back to the user's data directory.
  */
 async function initializeKnowledgeBaseFile() {
   const normalize = (s) => (s || "").trim().toLowerCase();
 
   try {
-    // Determine path to default data files
     const dataDir = isDev
       ? path.join(__dirname, '../src/data')
       : path.join(process.resourcesPath, 'data');
@@ -190,7 +207,6 @@ async function initializeKnowledgeBaseFile() {
     const defaultSeriesKBPath = path.join(dataDir, 'comicsKnowledge.json');
     const defaultCreatorsKBPath = path.join(dataDir, 'creatorsKnowledge.json');
 
-    // Load default knowledge bases
     let masterSeries = [];
     let masterCreators = [];
 
@@ -208,12 +224,11 @@ async function initializeKnowledgeBaseFile() {
       console.warn(`Could not load default creators file:`, e.message);
     }
 
-    // Load user's knowledge base
     let userKB = { series: [], creators: [] };
     try {
       const userKBData = await fs.readFile(knowledgeBasePath, 'utf-8');
       const parsedUserKB = JSON.parse(userKBData);
-      if (Array.isArray(parsedUserKB)) { // Handle old format
+      if (Array.isArray(parsedUserKB)) {
         userKB.series = parsedUserKB;
       } else {
         userKB = { series: parsedUserKB.series || [], creators: parsedUserKB.creators || [] };
@@ -222,7 +237,6 @@ async function initializeKnowledgeBaseFile() {
       console.log('No existing user knowledge base found, will create new one.');
     }
 
-    // Merge series (user data takes precedence)
     const seriesMap = new Map();
     for (const entry of userKB.series) {
       if (entry.series) seriesMap.set(normalize(entry.series), entry);
@@ -234,7 +248,6 @@ async function initializeKnowledgeBaseFile() {
     }
     const mergedSeries = Array.from(seriesMap.values());
 
-    // Merge creators (user data takes precedence)
     const creatorsMap = new Map();
     for (const entry of userKB.creators) {
       if (entry.name) creatorsMap.set(normalize(entry.name), entry);
@@ -246,7 +259,6 @@ async function initializeKnowledgeBaseFile() {
     }
     const mergedCreators = Array.from(creatorsMap.values());
 
-    // Write the merged knowledge base back to the user's directory
     const finalKB = { series: mergedSeries, creators: mergedCreators };
     await fs.writeFile(knowledgeBasePath, JSON.stringify(finalKB, null, 2), 'utf-8');
     console.log(`Knowledge base merged. Series: ${mergedSeries.length}, Creators: ${mergedCreators.length}`);
@@ -257,8 +269,12 @@ async function initializeKnowledgeBaseFile() {
 }
 
 /**
- * Application Lifecycle: Ready
- * This event is fired when Electron has finished initialization
+ * @event app#ready
+ * @summary Fired when Electron has finished initialization.
+ * @description This is the main entry point for the application's logic after Electron
+ * is ready. It runs the preflight check, initializes services, creates the main
+ * window and menu, and registers all IPC handlers. It also includes error handling
+ * for fatal startup errors.
  */
 app.whenReady().then(async () => {
   const shouldExit = await runSharpPreflight();
@@ -282,10 +298,13 @@ app.whenReady().then(async () => {
   
   createWindow();
   createMenu(mainWindow);
-  console.log('[Main] Calling registerIpcHandlers...'); // Added log
+  console.log('[Main] Calling registerIpcHandlers...');
   registerIpcHandlers(mainWindow, { fileHandler, database, knowledgeBasePath, publicCoversDir });
 
-  // Handle macOS dock icon click
+  /**
+   * @event app#activate
+   * @summary Fired on macOS when the dock icon is clicked and there are no other windows open.
+   */
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
@@ -301,36 +320,42 @@ app.whenReady().then(async () => {
 });
 
 /**
- * Application Lifecycle: Window All Closed
- * This event is fired when all windows have been closed
+ * @event app#window-all-closed
+ * @summary Fired when all application windows have been closed.
+ * @description This handler closes the database connection and quits the application,
+ * except on macOS where it's common for applications to remain active.
  */
 app.on('window-all-closed', () => {
   if (database) database.close();
-  if (process.platform !== 'darwin') app.quit(); // Quit on Windows/Linux
+  if (process.platform !== 'darwin') app.quit();
 });
 
 /**
- * Forceful Shutdown
- * This helps prevent file locking issues during rebuilds in development.
+ * @function forceQuit
+ * @summary Forcefully shuts down the application.
+ * @description This function is registered to handle `SIGTERM` and `SIGINT` signals.
+ * It's primarily used in development to prevent file locking issues during hot-reloads
+ * by ensuring the application process exits completely.
  */
 const forceQuit = () => {
   console.log('Force quitting application to release file locks for rebuild.');
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.destroy(); // Use destroy() to bypass confirmation dialogs
+    mainWindow.destroy();
   }
-  app.exit(); // Force exit the process
+  app.exit();
 };
 
 process.on('SIGTERM', forceQuit);
 process.on('SIGINT', forceQuit);
 
 /**
- * Security: Web Contents Created
- * This event is fired when a new web contents is created
- * Used to enforce security policies
+ * @event app#web-contents-created
+ * @summary Fired when a new web contents (e.g., a browser window) is created.
+ * @description This security handler prevents the application from navigating to
+ * external websites within the app window and ensures that any requests to open
+ * a new window are redirected to the user's default external browser.
  */
 app.on('web-contents-created', (event, contents) => {
-  // Prevent navigation to external sites within the app
   contents.on('will-navigate', (event, navigationUrl) => {
     const parsedUrl = new URL(navigationUrl);
     if (parsedUrl.origin !== 'http://localhost:5173' && !navigationUrl.startsWith('file://')) {
@@ -338,7 +363,6 @@ app.on('web-contents-created', (event, contents) => {
     }
   });
   
-  // Open new windows in external browser
   contents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };

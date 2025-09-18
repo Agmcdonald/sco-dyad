@@ -24,32 +24,56 @@ import { useAppContext } from "@/context/AppContext";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { Comic, LibraryViewMode } from "@/types";
 import { RATING_EMOJIS, CONTENT_RATINGS } from "@/lib/ratings";
-import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
-import { Label } from "@/components/ui/label"; // Import Label
-import LibraryBulkActions from "@/components/LibraryBulkActions"; // Ensure this is imported
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import LibraryBulkActions from "@/components/LibraryBulkActions";
 
 interface LibraryProps {
+  /** Optional callback to toggle the inspector panel. */
   onToggleInspector?: () => void;
 }
 
+/**
+ * @component Library
+ * @summary The main page for browsing and managing the comic book collection.
+ * @description This component serves as the central hub for the user's library. It provides
+ * extensive functionality for searching, sorting, and filtering comics. It also manages
+ * different view modes (grid, series, publisher) and handles user interactions like
+ * cover size adjustments and bulk actions through a selection mode.
+ * @param {LibraryProps} props - The props for the Library component.
+ */
 const Library = ({ onToggleInspector }: LibraryProps) => {
   const { comics, readingList } = useAppContext();
   const location = useLocation();
+
+  // --- State Management ---
+  /** Manages the current search term entered by the user. */
   const [searchTerm, setSearchTerm] = useState("");
+  /** Manages the primary sorting option for the library view, persisted in local storage. */
   const [sortOption, setSortOption] = useLocalStorage("library-sort-option", "issue-asc");
+  /** Manages the secondary sorting option, used when the primary sort is by publisher. */
   const [secondarySort, setSecondarySort] = useLocalStorage("library-secondary-sort", "series-asc");
+  /** Manages the current view mode (grid, series, or publisher), persisted in local storage. */
   const [viewMode, setViewMode] = useLocalStorage<LibraryViewMode>("library-view-mode", "grid");
+  /** Manages the size of the comic covers in the grid view, persisted in local storage. */
   const [coverSize, setCoverSize] = useLocalStorage("library-cover-size", 3);
+  /** Tracks if the user has "drilled down" into a specific series from the series view. */
   const [isDrilledDown, setIsDrilledDown] = useState(false);
+  /** Manages the filter for comic ratings. */
   const [ratingFilter, setRatingFilter] = useState<string>("all");
+  /** Manages the filter for read/unread status. */
   const [readStatusFilter, setReadStatusFilter] = useState<string>("all");
+  /** Manages the filter for content ratings (e.g., "Teen", "Mature"). */
   const [contentRatingFilter, setContentRatingFilter] = useState<string>("all");
-  const [selectedComics, setSelectedComics] = useState<string[]>([]); // State for selected comics
-  const [selectionMode, setSelectionMode] = useLocalStorage("library-selection-mode", false); // State for selection mode
+  /** Stores the IDs of comics selected for bulk actions. */
+  const [selectedComics, setSelectedComics] = useState<string[]>([]);
+  /** Toggles the visibility of bulk action controls. */
+  const [selectionMode, setSelectionMode] = useLocalStorage("library-selection-mode", false);
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Handle search from sidebar
+  /** Effect to handle incoming search terms from other parts of the app (e.g., sidebar). */
   useEffect(() => {
     if (location.state?.searchTerm) {
       setSearchTerm(location.state.searchTerm);
@@ -58,11 +82,10 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
     }
   }, [location.state]);
 
-  // Restore scroll position on mount
+  /** Effect to restore the scroll position of the library view when the component mounts. */
   useEffect(() => {
     const savedScrollPosition = sessionStorage.getItem("library-scroll-position");
     if (savedScrollPosition && scrollContainerRef.current) {
-      // Use a small timeout to ensure content is rendered before scrolling
       setTimeout(() => {
         if (scrollContainerRef.current) {
           scrollContainerRef.current.scrollTop = parseInt(savedScrollPosition, 10);
@@ -71,6 +94,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
     }
   }, []);
 
+  /** Callback to save the current scroll position to session storage, debounced for performance. */
   const handleScroll = useCallback(() => {
     if (scrollTimeoutRef.current) {
       clearTimeout(scrollTimeoutRef.current);
@@ -79,9 +103,10 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
       if (scrollContainerRef.current) {
         sessionStorage.setItem("library-scroll-position", String(scrollContainerRef.current.scrollTop));
       }
-    }, 200); // Debounce scroll saving
+    }, 200);
   }, []);
 
+  /** Memoized calculation to filter comics based on search term and active filters. */
   const filteredComics = useMemo(() => {
     let filtered = comics.filter((comic) => {
       const lowerSearchTerm = searchTerm.toLowerCase().trim();
@@ -95,31 +120,29 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
       
       let inIssue = false;
       const searchAsNum = Number(lowerSearchTerm);
-      if (!isNaN(searchAsNum)) { // If search term is a number
+      if (!isNaN(searchAsNum)) {
         const issueAsNum = Number(comic.issue);
         if (!isNaN(issueAsNum) && issueAsNum === searchAsNum) {
           inIssue = true;
         }
-      } else { // If search term is not a number (e.g., "Annual")
+      } else {
         inIssue = comic.issue.toLowerCase().includes(lowerSearchTerm);
       }
 
       return inSeries || inPublisher || inCreators || inIssue;
     });
 
-    // Apply read status filter
     if (readStatusFilter !== "all") {
       const readComicIds = new Set(
         readingList.filter(item => item.completed).map(item => item.comicId)
       );
       if (readStatusFilter === "read") {
         filtered = filtered.filter(comic => readComicIds.has(comic.id));
-      } else { // "unread"
+      } else {
         filtered = filtered.filter(comic => !readComicIds.has(comic.id));
       }
     }
 
-    // Apply rating filter
     if (ratingFilter !== "all") {
       if (ratingFilter === "unrated") {
         filtered = filtered.filter(comic => comic.rating === undefined);
@@ -129,7 +152,6 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
       }
     }
 
-    // Apply content rating filter
     if (contentRatingFilter !== "all") {
       if (contentRatingFilter === "none") {
         filtered = filtered.filter(comic => !comic.contentRating);
@@ -141,6 +163,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
     return filtered;
   }, [comics, searchTerm, ratingFilter, readStatusFilter, contentRatingFilter, readingList]);
 
+  /** Memoized calculation to sort and group the filtered comics based on the selected view and sort options. */
   const sortedAndGroupedComics = useMemo(() => {
     const comicsToSort = [...filteredComics];
 
@@ -150,15 +173,12 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
         const seriesKey = `${comic.series.toLowerCase()}-${comic.publisher.toLowerCase()}`;
         const existing = seriesGroups.get(seriesKey);
         
-        // Prioritize series cover, then most recent, then first issue
         if (!existing) {
           seriesGroups.set(seriesKey, comic);
         } else {
-          // If this comic is marked as series cover, use it
           if (comic.isSeriesCover) {
             seriesGroups.set(seriesKey, comic);
           }
-          // If existing isn't series cover and this one is newer, use this one
           else if (!existing.isSeriesCover && comic.dateAdded > existing.dateAdded) {
             seriesGroups.set(seriesKey, comic);
           }
@@ -175,7 +195,6 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
     }
 
     return comicsToSort.sort((a, b) => {
-      // Primary sort
       let primaryCompare = 0;
       switch (sortOption) {
         case "issue-asc":
@@ -196,17 +215,16 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
         case "year-asc":
           primaryCompare = a.year - b.year;
           break;
-        case "date-added-desc": // New sort option
+        case "date-added-desc":
           primaryCompare = b.dateAdded.getTime() - a.dateAdded.getTime();
           break;
-        case "date-added-asc": // New sort option
+        case "date-added-asc":
           primaryCompare = a.dateAdded.getTime() - b.dateAdded.getTime();
           break;
         default:
           return 0;
       }
 
-      // If primary sort is equal and we're sorting by publisher, apply secondary sort
       if (primaryCompare === 0 && sortOption.startsWith('publisher-')) {
         switch (secondarySort) {
           case "series-asc":
@@ -218,7 +236,6 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
           case "year-desc":
             return b.year - a.year;
           case "issue-count-desc":
-            // Count issues per series for each comic
             const aIssueCount = comicsToSort.filter(c => c.series === a.series && c.publisher === a.publisher).length;
             const bIssueCount = comicsToSort.filter(c => c.series === b.series && c.publisher === b.publisher).length;
             return bIssueCount - aIssueCount;
@@ -235,6 +252,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
     });
   }, [filteredComics, sortOption, secondarySort]);
 
+  /** Handles the double-click event on a series card to "drill down" into that series. */
   const handleSeriesDoubleClick = (seriesName: string) => {
     if (sortOption.startsWith('series-')) {
       setSearchTerm(seriesName);
@@ -243,12 +261,14 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
     }
   };
 
+  /** Handles returning to the main series or publisher view after drilling down. */
   const handleBackToSeriesView = () => {
     setSearchTerm('');
     setSortOption('series-asc');
     setIsDrilledDown(false);
   };
 
+  /** Clears all currently selected comics in selection mode. */
   const handleClearSelection = useCallback(() => {
     setSelectedComics([]);
   }, []);
@@ -311,7 +331,7 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
             </Select>
             <Select value={contentRatingFilter} onValueChange={setContentRatingFilter}>
               <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Content Rating" /> {/* Renamed here */}
+                <SelectValue placeholder="Content Rating" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Content</SelectItem>
@@ -339,12 +359,11 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                 <SelectItem value="publisher-desc">Publisher (Z-A)</SelectItem>
                 <SelectItem value="year-desc">Year (Newest)</SelectItem>
                 <SelectItem value="year-asc">Year (Oldest)</SelectItem>
-                <SelectItem value="date-added-desc">Recently Added</SelectItem> {/* New */}
-                <SelectItem value="date-added-asc">Earliest Added</SelectItem> {/* New */}
+                <SelectItem value="date-added-desc">Recently Added</SelectItem>
+                <SelectItem value="date-added-asc">Earliest Added</SelectItem>
               </SelectContent>
             </Select>
             
-            {/* Secondary Sort - only show when sorting by publisher */}
             {isPublisherSort && (
               <Select value={secondarySort} onValueChange={setSecondarySort}>
                 <SelectTrigger className="w-[160px]">
@@ -419,7 +438,6 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
                 </TooltipContent>
               </Tooltip>
             </div>
-            {/* Selection Mode Toggle - Moved here */}
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="selection-mode"
@@ -432,15 +450,14 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
             </div>
           </div>
         </div>
-        {/* Bulk Actions - Now conditionally rendered and sticky */}
         {selectionMode && (
-          <div className="sticky top-0 z-10 bg-background py-4 -mt-4"> {/* Added sticky styling */}
+          <div className="sticky top-0 z-10 bg-background py-4 -mt-4">
             <LibraryBulkActions
-              comics={filteredComics} // Pass filtered comics for accurate total
+              comics={filteredComics}
               selectedComics={selectedComics}
               onSelectionChange={setSelectedComics}
-              totalComics={filteredComics.length} // Pass total count
-              onClearSelection={handleClearSelection} // Pass clear selection handler
+              totalComics={filteredComics.length}
+              onClearSelection={handleClearSelection}
             />
           </div>
         )}
@@ -452,9 +469,9 @@ const Library = ({ onToggleInspector }: LibraryProps) => {
               sortOption={sortOption}
               onSeriesDoubleClick={sortOption.startsWith('series-') ? handleSeriesDoubleClick : undefined}
               onToggleInspector={onToggleInspector}
-              selectionMode={selectionMode} // Pass selectionMode
-              selectedComics={selectedComics} // Pass selectedComics
-              onSelectionChange={setSelectedComics} // Pass onSelectionChange
+              selectionMode={selectionMode}
+              selectedComics={selectedComics}
+              onSelectionChange={setSelectedComics}
             />
           ) : viewMode === "series" ? (
             <SeriesView comics={sortedAndGroupedComics} sortOption={sortOption} />
