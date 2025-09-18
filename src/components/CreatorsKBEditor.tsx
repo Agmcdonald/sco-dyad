@@ -34,7 +34,12 @@ const CreatorsKBEditor = () => {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    setLocalCreators(knowledgeBase.creators.map(c => ({ ...c, roles: [...c.roles] })));
+    setLocalCreators(
+      knowledgeBase.creators.map(c => ({
+        ...c,
+        roles: Array.isArray(c.roles) ? [...c.roles] : []
+      }))
+    );
   }, [knowledgeBase.creators]);
 
   const creatorCounts = useMemo(() => {
