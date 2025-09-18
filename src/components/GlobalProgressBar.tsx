@@ -18,13 +18,18 @@ const GlobalProgressBar = () => {
       setIsVisible(true);
       setStatusIcon(Loader2);
       setStatusColor("text-primary animate-spin");
-      setDisplayMessage(
-        `Scanning ${metadataScanProgress.processed} of ${metadataScanProgress.total} comics... (${metadataScanProgress.updated} updated)`
-      );
-      setDisplayProgress(
-        (metadataScanProgress.processed / metadataScanProgress.total) * 100 || 0
-      );
-    } else if (metadataScanProgress.total > 0 && metadataScanProgress.processed === metadataScanProgress.total) {
+      if (metadataScanProgress) {
+        setDisplayMessage(
+          `Scanning ${metadataScanProgress.processed} of ${metadataScanProgress.total} comics... (${metadataScanProgress.updated} updated)`
+        );
+        setDisplayProgress(
+          (metadataScanProgress.processed / metadataScanProgress.total) * 100 || 0
+        );
+      } else {
+        setDisplayMessage("Starting metadata scan...");
+        setDisplayProgress(0);
+      }
+    } else if (metadataScanProgress && metadataScanProgress.total > 0 && metadataScanProgress.processed === metadataScanProgress.total) {
       // Operation just completed
       setIsVisible(true);
       if (metadataScanProgress.updated > 0) {
